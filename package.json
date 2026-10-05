@@ -6,10 +6,15 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "vinext dev",
+    "dev": "set XDG_CONFIG_HOME=%CD%\\.wrangler-config&& vinext dev --port 3000",
     "build": "vinext build",
     "start": "vinext start",
+    "build:cloudrun": "next build",
+    "start:cloudrun": "next start -H 0.0.0.0",
+    "start:local": "node --env-file=.env.local scripts/start-local.mjs",
+    "deploy:cloudrun": "node scripts/deploy-cloudrun.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "bigquery:smoke": "node scripts/bigquery-smoke.mjs",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
@@ -18,7 +23,8 @@
     "next": "16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "recharts": "^2.15.0"
+    "recharts": "^2.15.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",

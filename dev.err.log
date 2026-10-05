@@ -1,0 +1,329 @@
+9:29:42 p. m. [vite] (client) [console.error] ReferenceError: TrendingUp is not defined
+    at LoginForm (http://localhost:3000/app/page.tsx?t=1790555381397:4354:32)
+    at Object.react_stack_bottom_frame (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:12867:12)
+    at renderWithHooks (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:4212:19)
+    at updateFunctionComponent (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:5568:16)
+    at beginWork (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:6139:20)
+    at runWithFiberInDEV (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:850:66)
+    at performUnitOfWork (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8428:92)
+    at workLoopSync (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8324:37)
+    at renderRootSync (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8308:6)
+    at performWorkOnRoot (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:7993:27)
+9:29:42 p. m. [vite] (client) [console.error] The above error occurred in a React component:
+
+    at LoginForm (http://localhost:3000/app/page.tsx?t=1790555381397:3953:22)
+    at Home (http://localhost:3000/app/page.tsx?t=1790555381397:4462:34)
+    at AwaitAppRenderDependencies [Server] (<anonymous>)
+    at Slot (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:17)
+    at LayoutSegmentProvider (http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:34)
+    at RedirectErrorBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3)
+    at RedirectBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:29)
+    at Children (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:64:17)
+    at body (<anonymous>)
+    at html (<anonymous>)
+    at RootLayout [Server] (<anonymous>)
+    at default (about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26)
+    at default (about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26)
+    at Slot (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:17)
+    at LayoutSegmentProvider (http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:34)
+    at Slot (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:17)
+    at NavigationCommitSignal (http://localhost:3000/node_modules/vinext/dist/server/app-browser-navigation-controller.js?v=cd78a38a:184:36)
+    at RedirectErrorBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3)
+    at RedirectBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:29)
+    at DevRecoveryBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:268:3)
+    at BrowserRoot (http://localhost:3000/node_modules/vinext/dist/server/app-browser-entry.js?v=cd78a38a:209:24)
+9:29:45 p. m. [vite] (client) [console.error] LoginForm@http://localhost:3000/app/page.tsx?t=1790555381397:4354:32
+react_stack_bottom_frame@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:12867:12
+renderWithHooks@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:4212:37
+updateFunctionComponent@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:5568:16
+beginWork@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:6139:20
+runWithFiberInDEV@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:850:123
+performUnitOfWork@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8428:92
+workLoopSync@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8324:54
+renderRootSync@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8308:6
+performWorkOnRoot@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:7993:27
+performSyncWorkOnRoot@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:9066:21
+flushSyncWorkAcrossRoots_impl@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8983:302
+flushSyncWork$1@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8121:81
+scheduleRefresh@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:327:5
+performReactRefresh/<@http://localhost:3000/@react-refresh:228:17
+performReactRefresh@http://localhost:3000/@react-refresh:217:26
+enqueueUpdate<@http://localhost:3000/@react-refresh:604:3
+
+9:29:45 p. m. [vite] (client) [console.error] The above error occurred in a React component:
+
+LoginForm@http://localhost:3000/app/page.tsx?t=1790555381397:3953:19
+Home@http://localhost:3000/app/page.tsx?t=1790555381397:4462:42
+AwaitAppRenderDependencies [Server]@unknown:0:0
+Slot@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:14
+LayoutSegmentProvider@http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:31
+RedirectErrorBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3
+RedirectBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:26
+Children@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:64:17
+body@unknown:0:0
+html@unknown:0:0
+RootLayout [Server]@unknown:0:0
+default@about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26
+default@about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26
+Slot@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:14
+LayoutSegmentProvider@http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:31
+Slot@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:14
+NavigationCommitSignal@http://localhost:3000/node_modules/vinext/dist/server/app-browser-navigation-controller.js?v=cd78a38a:184:33
+RedirectErrorBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3
+RedirectBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:26
+DevRecoveryBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:268:3
+BrowserRoot@http://localhost:3000/node_modules/vinext/dist/server/app-browser-entry.js?v=cd78a38a:209:21
+9:29:47 p. m. [vite] (client) [console.error] ReferenceError: TrendingUp is not defined
+    at LoginForm (http://localhost:3000/app/page.tsx?t=1790555381397:4354:32)
+    at Object.react_stack_bottom_frame (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:12867:12)
+    at renderWithHooks (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:4212:19)
+    at updateFunctionComponent (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:5568:16)
+    at beginWork (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:6139:20)
+    at runWithFiberInDEV (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:850:66)
+    at performUnitOfWork (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8428:92)
+    at workLoopConcurrentByScheduler (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8424:55)
+    at renderRootConcurrent (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8407:64)
+    at performWorkOnRoot (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:7956:145)
+9:29:47 p. m. [vite] (client) [console.error] The above error occurred in a React component:
+
+    at LoginForm (http://localhost:3000/app/page.tsx?t=1790555381397:3953:22)
+    at Home (http://localhost:3000/app/page.tsx?t=1790555381397:4462:34)
+    at AwaitAppRenderDependencies [Server] (<anonymous>)
+    at Slot (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:17)
+    at LayoutSegmentProvider (http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:34)
+    at RedirectErrorBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3)
+    at RedirectBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:29)
+    at Children (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:64:17)
+    at body (<anonymous>)
+    at html (<anonymous>)
+    at RootLayout [Server] (<anonymous>)
+    at default (about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26)
+    at default (about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26)
+    at Slot (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:17)
+    at LayoutSegmentProvider (http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:34)
+    at Slot (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:17)
+    at NavigationCommitSignal (http://localhost:3000/node_modules/vinext/dist/server/app-browser-navigation-controller.js?v=cd78a38a:184:36)
+    at RedirectErrorBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3)
+    at RedirectBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:29)
+    at DevRecoveryBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:268:3)
+    at BrowserRoot (http://localhost:3000/node_modules/vinext/dist/server/app-browser-entry.js?v=cd78a38a:209:24)
+9:29:47 p. m. [vite] (client) [console.error] LoginForm@http://localhost:3000/app/page.tsx?t=1790555381397:4354:32
+react_stack_bottom_frame@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:12867:12
+renderWithHooks@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:4212:37
+updateFunctionComponent@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:5568:16
+beginWork@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:6139:20
+runWithFiberInDEV@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:850:123
+performUnitOfWork@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8428:92
+workLoopSync@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8324:54
+renderRootSync@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8308:6
+performWorkOnRoot@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:7993:27
+performWorkOnRootViaSchedulerTask@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:9058:21
+performWorkUntilDeadline@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:35:46
+
+9:29:47 p. m. [vite] (client) [console.error] The above error occurred in a React component:
+
+LoginForm@http://localhost:3000/app/page.tsx?t=1790555381397:3953:19
+Home@http://localhost:3000/app/page.tsx?t=1790555381397:4462:42
+AwaitAppRenderDependencies [Server]@unknown:0:0
+Slot@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:14
+LayoutSegmentProvider@http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:31
+RedirectErrorBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3
+RedirectBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:26
+Children@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:64:17
+body@unknown:0:0
+html@unknown:0:0
+RootLayout [Server]@unknown:0:0
+default@about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26
+default@about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26
+Slot@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:14
+LayoutSegmentProvider@http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:31
+Slot@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:14
+NavigationCommitSignal@http://localhost:3000/node_modules/vinext/dist/server/app-browser-navigation-controller.js?v=cd78a38a:184:33
+RedirectErrorBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3
+RedirectBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:26
+DevRecoveryBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:268:3
+BrowserRoot@http://localhost:3000/node_modules/vinext/dist/server/app-browser-entry.js?v=cd78a38a:209:21
+9:30:05 p. m. [vite] (client) [console.error] ReferenceError: TrendingUp is not defined
+    at LoginForm (http://localhost:3000/app/page.tsx?t=1790555404752:4354:32)
+    at Object.react_stack_bottom_frame (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:12867:12)
+    at renderWithHooks (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:4212:19)
+    at updateFunctionComponent (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:5568:16)
+    at beginWork (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:6139:20)
+    at runWithFiberInDEV (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:850:66)
+    at performUnitOfWork (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8428:92)
+    at workLoopSync (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8324:37)
+    at renderRootSync (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8308:6)
+    at performWorkOnRoot (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:7993:27)
+9:30:05 p. m. [vite] (client) [console.error] The above error occurred in a React component:
+
+    at LoginForm (http://localhost:3000/app/page.tsx?t=1790555404752:3953:22)
+    at Home (http://localhost:3000/app/page.tsx?t=1790555404752:4462:34)
+    at AwaitAppRenderDependencies [Server] (<anonymous>)
+    at Slot (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:17)
+    at LayoutSegmentProvider (http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:34)
+    at RedirectErrorBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3)
+    at RedirectBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:29)
+    at Children (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:64:17)
+    at body (<anonymous>)
+    at html (<anonymous>)
+    at RootLayout [Server] (<anonymous>)
+    at default (about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26)
+    at default (about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26)
+    at Slot (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:17)
+    at LayoutSegmentProvider (http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:34)
+    at Slot (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:17)
+    at NavigationCommitSignal (http://localhost:3000/node_modules/vinext/dist/server/app-browser-navigation-controller.js?v=cd78a38a:184:36)
+    at RedirectErrorBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3)
+    at RedirectBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:29)
+    at DevRecoveryBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:268:3)
+    at BrowserRoot (http://localhost:3000/node_modules/vinext/dist/server/app-browser-entry.js?v=cd78a38a:209:24)
+9:30:08 p. m. [vite] (client) [console.error] LoginForm@http://localhost:3000/app/page.tsx?t=1790555404752:4354:32
+react_stack_bottom_frame@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:12867:12
+renderWithHooks@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:4212:37
+updateFunctionComponent@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:5568:16
+beginWork@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:6139:20
+runWithFiberInDEV@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:850:123
+performUnitOfWork@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8428:92
+workLoopSync@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8324:54
+renderRootSync@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8308:6
+performWorkOnRoot@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:7993:27
+performSyncWorkOnRoot@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:9066:21
+flushSyncWorkAcrossRoots_impl@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8983:302
+flushSyncWork$1@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8121:81
+scheduleRefresh@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:327:5
+performReactRefresh/<@http://localhost:3000/@react-refresh:228:17
+performReactRefresh@http://localhost:3000/@react-refresh:217:26
+enqueueUpdate<@http://localhost:3000/@react-refresh:604:3
+
+9:30:08 p. m. [vite] (client) [console.error] The above error occurred in a React component:
+
+LoginForm@http://localhost:3000/app/page.tsx?t=1790555404752:3953:19
+Home@http://localhost:3000/app/page.tsx?t=1790555404752:4462:42
+AwaitAppRenderDependencies [Server]@unknown:0:0
+Slot@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:14
+LayoutSegmentProvider@http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:31
+RedirectErrorBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3
+RedirectBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:26
+Children@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:64:17
+body@unknown:0:0
+html@unknown:0:0
+RootLayout [Server]@unknown:0:0
+default@about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26
+default@about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26
+Slot@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:14
+LayoutSegmentProvider@http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:31
+Slot@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:14
+NavigationCommitSignal@http://localhost:3000/node_modules/vinext/dist/server/app-browser-navigation-controller.js?v=cd78a38a:184:33
+RedirectErrorBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3
+RedirectBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:26
+DevRecoveryBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:268:3
+BrowserRoot@http://localhost:3000/node_modules/vinext/dist/server/app-browser-entry.js?v=cd78a38a:209:21
+9:30:11 p. m. [vite] (client) [console.error] LoginForm@http://localhost:3000/app/page.tsx?t=1790555404752:4354:32
+react_stack_bottom_frame@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:12867:12
+renderWithHooks@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:4212:37
+updateFunctionComponent@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:5568:16
+beginWork@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:6139:20
+runWithFiberInDEV@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:850:123
+performUnitOfWork@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8428:92
+workLoopSync@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8324:54
+renderRootSync@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8308:6
+performWorkOnRoot@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:7993:27
+performWorkOnRootViaSchedulerTask@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:9058:21
+performWorkUntilDeadline@http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:35:46
+
+9:30:11 p. m. [vite] (client) [console.error] The above error occurred in a React component:
+
+LoginForm@http://localhost:3000/app/page.tsx?t=1790555404752:3953:19
+Home@http://localhost:3000/app/page.tsx?t=1790555404752:4462:42
+AwaitAppRenderDependencies [Server]@unknown:0:0
+Slot@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:14
+LayoutSegmentProvider@http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:31
+RedirectErrorBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3
+RedirectBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:26
+Children@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:64:17
+body@unknown:0:0
+html@unknown:0:0
+RootLayout [Server]@unknown:0:0
+default@about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26
+default@about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26
+Slot@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:14
+LayoutSegmentProvider@http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:31
+Slot@http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:14
+NavigationCommitSignal@http://localhost:3000/node_modules/vinext/dist/server/app-browser-navigation-controller.js?v=cd78a38a:184:33
+RedirectErrorBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3
+RedirectBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:26
+DevRecoveryBoundary@http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:268:3
+BrowserRoot@http://localhost:3000/node_modules/vinext/dist/server/app-browser-entry.js?v=cd78a38a:209:21
+9:30:11 p. m. [vite] (client) [console.error] ReferenceError: TrendingUp is not defined
+    at LoginForm (http://localhost:3000/app/page.tsx?t=1790555404752:4354:32)
+    at Object.react_stack_bottom_frame (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:12867:12)
+    at renderWithHooks (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:4212:19)
+    at updateFunctionComponent (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:5568:16)
+    at beginWork (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:6139:20)
+    at runWithFiberInDEV (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:850:66)
+    at performUnitOfWork (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8428:92)
+    at workLoopConcurrentByScheduler (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8424:55)
+    at renderRootConcurrent (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:8407:64)
+    at performWorkOnRoot (http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=cd78a38a:7956:145)
+9:30:11 p. m. [vite] (client) [console.error] The above error occurred in a React component:
+
+    at LoginForm (http://localhost:3000/app/page.tsx?t=1790555404752:3953:22)
+    at Home (http://localhost:3000/app/page.tsx?t=1790555404752:4462:34)
+    at AwaitAppRenderDependencies [Server] (<anonymous>)
+    at Slot (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:17)
+    at LayoutSegmentProvider (http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:34)
+    at RedirectErrorBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3)
+    at RedirectBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:29)
+    at Children (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:64:17)
+    at body (<anonymous>)
+    at html (<anonymous>)
+    at RootLayout [Server] (<anonymous>)
+    at default (about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26)
+    at default (about://React/Server/C:/Users/aparada/Desktop/Rentabilidad%20Tiendas%202027%20v2/app/layout.tsx?1:58:26)
+    at Slot (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:17)
+    at LayoutSegmentProvider (http://localhost:3000/node_modules/vinext/dist/shims/layout-segment-context.js?v=cd78a38a:32:34)
+    at Slot (http://localhost:3000/node_modules/vinext/dist/shims/slot.js?v=cd78a38a:42:17)
+    at NavigationCommitSignal (http://localhost:3000/node_modules/vinext/dist/server/app-browser-navigation-controller.js?v=cd78a38a:184:36)
+    at RedirectErrorBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:56:3)
+    at RedirectBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:86:29)
+    at DevRecoveryBoundary (http://localhost:3000/node_modules/vinext/dist/shims/error-boundary.js?v=cd78a38a:268:3)
+    at BrowserRoot (http://localhost:3000/node_modules/vinext/dist/server/app-browser-entry.js?v=cd78a38a:209:24)
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+9:30:48 p. m. [vite] Internal server error: TrendingUp is not defined
+      at LoginForm (C:/Users/aparada/Desktop/Rentabilidad Tiendas 2027 v2/app/page.tsx:1405:21)
+      at Object.react_stack_bottom_frame (C:/Users/aparada/Desktop/Rentabilidad Tiendas 2027 v2/node_modules/.vite/deps_ssr/react-dom-server.edge.development-DnFjSFwK.js?v=3ac5bf01:5306:11)
+      at renderWithHooks (C:/Users/aparada/Desktop/Rentabilidad Tiendas 2027 v2/node_modules/.vite/deps_ssr/react-dom-server.edge.development-DnFjSFwK.js?v=3ac5bf01:2792:19)
+      at renderElement (C:/Users/aparada/Desktop/Rentabilidad Tiendas 2027 v2/node_modules/.vite/deps_ssr/react-dom-server.edge.development-DnFjSFwK.js?v=3ac5bf01:2930:17)
+      at retryNode (C:/Users/aparada/Desktop/Rentabilidad Tiendas 2027 v2/node_modules/.vite/deps_ssr/react-dom-server.edge.development-DnFjSFwK.js?v=3ac5bf01:3359:285)
+      at renderNodeDestructive (C:/Users/aparada/Desktop/Rentabilidad Tiendas 2027 v2/node_modules/.vite/deps_ssr/react-dom-server.edge.development-DnFjSFwK.js?v=3ac5bf01:3340:265)
+      at finishFunctionComponent (C:/Users/aparada/Desktop/Rentabilidad Tiendas 2027 v2/node_modules/.vite/deps_ssr/react-dom-server.edge.development-DnFjSFwK.js?v=3ac5bf01:2808:233)
+      at renderElement (C:/Users/aparada/Desktop/Rentabilidad Tiendas 2027 v2/node_modules/.vite/deps_ssr/react-dom-server.edge.development-DnFjSFwK.js?v=3ac5bf01:2946:5)
+      at renderElement (C:/Users/aparada/Desktop/Rentabilidad Tiendas 2027 v2/node_modules/.vite/deps_ssr/react-dom-server.edge.development-DnFjSFwK.js?v=3ac5bf01:3230:7)
+      at retryNode (C:/Users/aparada/Desktop/Rentabilidad Tiendas 2027 v2/node_modules/.vite/deps_ssr/react-dom-server.edge.development-DnFjSFwK.js?v=3ac5bf01:3359:285)
+9:31:13 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+9:31:15 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+9:34:33 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+9:34:34 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+9:44:17 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+9:44:18 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+9:47:04 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+9:47:07 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+9:47:11 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+9:47:11 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+9:47:27 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+9:47:28 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+11:41:43 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+11:41:51 p. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+8:51:46 a. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+8:51:50 a. m. [vite] (client) [console.warn] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.

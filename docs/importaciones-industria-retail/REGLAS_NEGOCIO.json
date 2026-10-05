@@ -1,0 +1,63 @@
+{
+  "allowedClasses": ["CALZADO", "VESTUARIO", "ACCESORIOS"],
+  "allowedUnits": ["PARES", "UNIDADES"],
+  "fallbacks": {
+    "segment": "SIN CLASIFICACIÓN",
+    "importer": "OTROS",
+    "gender": "OTRO",
+    "privateBrand": "OTRAS",
+    "type": "OTROS",
+    "accessoryType": "OTROS",
+    "genderIII": "Otros",
+    "group": "OTRO"
+  },
+  "segmentByBrand": {
+    "HUSH PUPPIES": "LIFESTYLE", "BATA": "LIFESTYLE", "PANAMA JACK": "LIFESTYLE", "ALDO": "LIFESTYLE", "16 HORAS": "LIFESTYLE", "ROCKFORD": "LIFESTYLE",
+    "SKECHER": "URBAN", "CATERPILLAR": "URBAN", "VANS": "URBAN", "CONVERSE": "URBAN", "NORTH STAR": "URBAN",
+    "NIKE": "SPORT", "ADIDAS": "SPORT", "PUMA": "SPORT", "REEBOK": "SPORT", "UNDER ARMOUR": "SPORT",
+    "BUBBLE GUMMERS": "KIDS", "COLLOKY": "KIDS", "YAMP": "KIDS", "LIMONADA": "KIDS", "TRIBU": "KIDS", "CALPANY": "KIDS",
+    "MERRELL": "OUTDOOR", "COLUMBIA": "OUTDOOR", "LIPPI": "OUTDOOR", "NORTH FACE": "OUTDOOR",
+    "MANGO": "LIFESTYLE", "TOMMY HILFIGER": "LIFESTYLE", "ARROW": "LIFESTYLE", "FEROUCH": "LIFESTYLE", "ESPRIT": "LIFESTYLE",
+    "LEVIS": "URBAN", "POLEMIC": "URBAN", "SPALDING": "SPORT", "NEW BALANCE": "SPORT", "FICCUS": "KIDS", "HUSH PUPPIES KIDS": "KIDS",
+    "MARMOT": "OUTDOOR", "QUECHUA": "OUTDOOR", "WILD LAMA": "URBAN", "BODY & SOUL": "SPORT", "BSOUL": "SPORT", "DECATHLON": "SPORT",
+    "SALOMON": "OUTDOOR", "DC": "URBAN", "NORTHSTAR": "URBAN", "ANDESGEAR": "OUTDOOR", "LOTTO": "SPORT",
+    "AZALEIA": "LIFESTYLE", "GACEL": "LIFESTYLE", "GUANTE": "LIFESTYLE",
+    "CALVIN KLEIN": "OTROS SEGMENTOS", "BRUNO ROSSI": "OTROS SEGMENTOS", "BUFFALO": "OTROS SEGMENTOS", "BELLOTA": "OTROS SEGMENTOS", "BEARCLIFF": "OTROS SEGMENTOS", "BARBADOS": "OTROS SEGMENTOS", "GAP": "OTROS SEGMENTOS",
+    "PATAGONIA": "OUTDOOR", "HAKA HONU": "OUTDOOR", "H&M": "OTROS SEGMENTOS", "ZARA": "OTROS SEGMENTOS", "DOITE": "OUTDOOR",
+    "DIADORA": "SPORT", "ASICS": "SPORT", "SAVILLE ROW": "LIFESTYLE", "LACOSTE": "LIFESTYLE", "BROOKS BROTHER": "LIFESTYLE", "TRIAL": "LIFESTYLE", "NEWMAN": "LIFESTYLE", "POLO R. LAUREN": "LIFESTYLE"
+  },
+  "importerByRaw": {
+    "FALABELLA": "FALABELLA RETAIL S.A.", "CENCOSUD": "CENCOSUD RETAIL S.A.", "ECCSA": "COMERCIAL ECCSA S.A.", "WALMART": "WALMART CHILE S.A.",
+    "TRICOT": "TRICOT S.A.", "LA POLAR": "EMPRESAS LA POLAR S.A.", "HITES": "HITES S.A.", "TOTTUS": "TOTTUS S.A.", "ZARA": "ZARA S.A.",
+    "ADIDAS": "ADIDAS CHILE LTDA.", "PUMA": "PUMA CHILE SPA.", "FORUS": "FORUS S.A.", "CAFFARENA": "CAFFARENA S.A.", "KOMAX": "KOMAX S.A.",
+    "NIKE": "NIKE DE CHILE LTDA.", "BATA": "BATA CHILE S.A.", "SKECHERS": "SKECHERS CHILE LTDA.", "COLGRAM": "COLGRAM S.A.",
+    "SPARTA": "DEPORTES SPARTA LTDA.", "CORONA": "MULTITIENDAS CORONA S.A.", "DECATHLON CHILE SPA": "DECATHLON CHILE SPA.",
+    "STREET MACHINE S.A": "STREET MACHINE S.A.", "H&M HENNES & MAURITZ SPA": "H&M", "COMERCIAL FASHION S PARK SOCIEDAD ANONIMA": "FASHIONS PARK S.A.",
+    "COMERCIAL DOITE INTERNATIONAL LIMITADA": "DOITE LTDA."
+  },
+  "genderByRaw": {"Bebe": "Niño", "Hombre": "Hombre", "Mujer": "Mujer", "Nina": "Niño", "Nino": "Niño", "Ninos": "Niño", "Unisex": "Unisex"},
+  "genderIIIByRaw": {"Bebe": "Nino", "Hombre": "Hombre", "Mujer": "Mujer", "Nina": "Nino", "Nino": "Nino", "Ninos": "Nino", "Unisex": "Unisex"},
+  "privateBrandOwner": {"HARVEST": "RIPLEY", "MARQUIS": "RIPLEY", "INDEX": "RIPLEY", "REGATTA": "RIPLEY", "OPPOSITE": "PARIS", "ALANIZ": "PARIS", "UNIVERSITY CLUB": "FALABELLA", "AMERICANINO": "FALABELLA", "BASEMENT": "FALABELLA", "SYBILLA": "FALABELLA"},
+  "typeByRaw": {
+    "Alpargatas": "Alpargatas", "Bailarinas": "Ballerinas", "Balerinas": "Ballerinas", "BALLERINA": "Ballerinas", "BOTA": "Botas", "Botas": "Botas", "Botines": "Botin", "BOTIN": "Botin", "BOTOTO": "Bototos", "Bototos": "Bototos", "Hawaiana": "Hawaiana", "Mocasin": "Mocasin", "Pantuflas": "Pantuflas",
+    "SANDALIA": "Sandalias", "Sandalias": "Sandalias", "ZAPATILLA": "Zapatillas", "ZAPATILLA C/CAN": "Zapatillas", "Zapatillas": "Zapatillas", "ZAPATO": "Zapatos", "Zapatos": "Zapatos", "Calzados": "Zapatos",
+    "Abrigos": "Abrigos", "Beatles": "Beatles", "Blazers": "Blazers", "Blusas": "Blusas", "BLUSA M/L": "Blusas", "BLUSA M/C": "Blusas", "BLUSA": "Blusas", "BLUSA S/M": "Blusas",
+    "Buzos": "Buzos", "PANTALON BUZO": "Buzos", "BUZO": "Buzos", "Calzas": "Calzas", "CALZA": "Calzas", "Camisas": "Camisas", "CAMISA M/L": "Camisas", "CAMISA M/C": "Camisas", "Camisa": "Camisas", "Camisetas": "Camisetas", "CAMISETA": "Camisetas", "Cardigans": "Cardigans",
+    "CHALECO": "Chalecos", "Chalecos": "Chalecos", "Chaquetas": "Chaquetas", "CHAQUETA": "Chaquetas", "CHAQUETA S/M": "Chaquetas", "CORTAVIENTO": "Cortavientos", "Cortavientos": "Cortavientos",
+    "Faldas": "Faldas", "Falda y peto": "Faldas", "Falda": "Faldas", "Jerseys": "Jerseys", "Pantalones": "Pantalones", "Pantalones cortos": "Pantalones", "PANTALON": "Pantalones", "Pantalones y accesorios": "Pantalones", "PANTALON DE NIE": "Pantalones", "Pantalones con peto": "Pantalones",
+    "Parkas": "Parkas", "Parka": "Parkas", "PARKA S/M": "Parkas", "PARKA NIEVE": "Parkas", "PETO": "Petos", "Petos": "Petos", "Polar": "Polar", "POLAR S/M": "Polar",
+    "Poleras": "Poleras", "POLERA M/C": "Poleras", "POLERA M/L": "Poleras", "POLERA S/M": "Poleras", "POLERA": "Poleras", "POLERA DE AGUA": "Poleras", "Polerones": "Polerones", "POLERON": "Polerones", "POLERON S/M": "Polerones",
+    "Sueters": "Sueters", "Trajes de bano": "Trajes de baño", "BIKINI": "Trajes de baño", "BIKINI CALZON": "Trajes de baño", "BIKINI ENTERO": "Trajes de baño", "BIKINI SOSTEN": "Trajes de baño", "TRAJE DE BANO": "Trajes de baño", "Vestidos": "Vestidos", "VESTIDO": "Vestidos"
+  },
+  "accessoryTypeByHomologatedType": {"Accesorios para el cabello": "Accesorios para el cabello", "BANANO": "Banano", "Bandanas": "Bandanas", "BILLETERA": "Billetera", "BUFANDA": "Bufanda", "Bufandas": "Bufanda", "CALCETIN": "Calcetin", "CARTERA": "Cartera", "Carteras": "Cartera", "CINTURON": "Cinturon", "Cinturones": "Cinturon", "GORRO": "Gorro", "Gorros": "Gorro", "JOCKEY": "Jockey", "Jockeys": "Jockey", "MOCHILA": "Mochila", "Ropa interior": "Ropa interior"},
+  "importerOrderContains": [
+    ["FORUS S.A.", 1], ["FALABELLA RETAIL S.A.", 2], ["CENCOSUD RETAIL S.A.", 3], ["COMERCIAL ECCSA S.A.", 4], ["MULTITIENDAS CORONA S.A.", 5], ["WALMART CHILE S.A.", 6], ["TRICOT S.A.", 7], ["ADIDAS CHILE LTDA.", 8], ["PUMA CHILE SPA.", 9], ["BATA CHILE S.A.", 10], ["DEPORTES SPARTA LTDA.", 11], ["SKECHERS CHILE LTDA.", 12], ["DECATHLON CHILE SPA.", 13], ["KOMAX S.A.", 14], ["NIKE DE CHILE LTDA.", 15], ["CAFFARENA S.A.", 16], ["COLGRAM S.A.", 17], ["STREET MACHINE S.A.", 18], ["EMPRESAS LA POLAR S.A.", 19], ["TOTTUS S.A.", 20], ["HITES S.A.", 21], ["ZARA S.A.", 22], ["CARDINALE S.A.", 23], ["OTROS", 24]
+  ],
+  "importerOrderFallback": 25,
+  "groupByBrand": {
+    "ANDESGEAR": "AXO", "BANANA REP": "AXO", "DC": "AXO", "GAP": "AXO", "KIPLIN": "AXO", "KIVUL": "AXO", "NORTH FACE": "AXO", "MAMMUT": "AXO", "MARMOT": "AXO", "POLO": "AXO", "STOKED": "AXO", "SURPRICE": "AXO", "KLIPER": "AXO", "TIMBERLAND": "AXO", "UGG": "AXO",
+    "BAMER": "YANEKEN", "BELSPORT": "YANEKEN", "BOLD": "YANEKEN", "CROC": "YANEKEN", "DROP": "YANEKEN", "K-1": "YANEKEN", "OAKLEY": "YANEKEN", "QUIKSILVER": "YANEKEN", "ROXY": "YANEKEN", "THE LAB": "YANEKEN", "SAUCONY": "YANEKEN", "AUFBAU": "YANEKEN", "ANTIHUMAN": "YANEKEN"
+  },
+  "rename": {"US_FOB": "US$ FOB"},
+  "preservedPowerQueryBehavior": {"KOMAX": "KOMAX S.A."}
+}

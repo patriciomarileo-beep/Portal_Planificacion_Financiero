@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Retail Performance | EERR Tiendas",
-  description: "Dashboard ejecutivo de rentabilidad y Four Walls por tienda.",
+  title: "Portal Financiero | Forus",
+  description: "Portal de informes y planificación financiera de Forus.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

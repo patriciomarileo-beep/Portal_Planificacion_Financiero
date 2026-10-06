@@ -1,0 +1,304 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Diagrama de fuentes y origenes - Rentabilidad Tiendas 2027</title>
+  <style>
+    :root {
+      --ink: #182230;
+      --muted: #667085;
+      --line: #cbd5e1;
+      --paper: #f8fafc;
+      --card: #ffffff;
+      --blue: #1d4ed8;
+      --teal: #047857;
+      --orange: #c2410c;
+      --violet: #7c3aed;
+      --gray: #475569;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    main {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 32px 24px 48px;
+    }
+    header {
+      margin-bottom: 22px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      line-height: 1.15;
+    }
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .diagram-wrap {
+      overflow-x: auto;
+      padding: 14px;
+      background: var(--card);
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      box-shadow: 0 18px 55px rgba(15, 23, 42, 0.08);
+    }
+    svg {
+      display: block;
+      min-width: 1180px;
+      height: auto;
+    }
+    .box { fill: #fff; stroke: #d0d7e2; stroke-width: 1.5; rx: 8; }
+    .source { fill: #eff6ff; stroke: #93c5fd; }
+    .transform { fill: #ecfdf5; stroke: #86efac; }
+    .api { fill: #fff7ed; stroke: #fdba74; }
+    .ui { fill: #f5f3ff; stroke: #c4b5fd; }
+    .config { fill: #f1f5f9; stroke: #cbd5e1; }
+    .title { font-weight: 700; font-size: 13px; fill: var(--ink); }
+    .small { font-size: 11px; fill: var(--muted); }
+    .tiny { font-size: 10px; fill: var(--muted); }
+    .arrow { stroke: #64748b; stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+    .arrow-blue { stroke: var(--blue); }
+    .arrow-teal { stroke: var(--teal); }
+    .arrow-orange { stroke: var(--orange); }
+    .arrow-violet { stroke: var(--violet); }
+    .lane-title { font-size: 12px; font-weight: 700; fill: #334155; letter-spacing: .08em; }
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 20px 0 26px;
+    }
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .swatch {
+      width: 18px;
+      height: 12px;
+      border-radius: 3px;
+      border: 1px solid #cbd5e1;
+      flex: 0 0 auto;
+    }
+    section.notes {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    article {
+      background: var(--card);
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 17px;
+    }
+    ul {
+      margin: 0;
+      padding-left: 18px;
+      color: #344054;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    code {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 1px 4px;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+    }
+    @media (max-width: 900px) {
+      .legend, section.notes { grid-template-columns: 1fr; }
+      main { padding: 24px 14px 36px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Diagrama de fuentes y origenes del proyecto</h1>
+    <p class="subtitle">Proyecto: Rentabilidad Tiendas 2027 v2. Revisado desde la estructura local el 05-10-2026.</p>
+  </header>
+
+  <div class="legend" aria-label="Leyenda">
+    <span><i class="swatch" style="background:#eff6ff;border-color:#93c5fd"></i>Fuentes externas o archivos base</span>
+    <span><i class="swatch" style="background:#ecfdf5;border-color:#86efac"></i>Transformaciones y reglas</span>
+    <span><i class="swatch" style="background:#fff7ed;border-color:#fdba74"></i>APIs internas del proyecto</span>
+    <span><i class="swatch" style="background:#f5f3ff;border-color:#c4b5fd"></i>Vistas de usuario</span>
+  </div>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 1240 760" role="img" aria-labelledby="svg-title svg-desc">
+      <title id="svg-title">Flujo de fuentes y origenes</title>
+      <desc id="svg-desc">Mapa de datos desde fuentes externas y archivos locales hasta APIs internas y vistas del portal.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L9,3 z" fill="#64748b" />
+        </marker>
+      </defs>
+
+      <text class="lane-title" x="40" y="34">ORIGENES / FUENTES</text>
+      <text class="lane-title" x="355" y="34">TRANSFORMACION / MODELO</text>
+      <text class="lane-title" x="700" y="34">API / SERVIDOR</text>
+      <text class="lane-title" x="1010" y="34">PANTALLA / CONSUMO</text>
+
+      <rect class="box source" x="35" y="60" width="250" height="92" />
+      <text class="title" x="55" y="86">Excel financiero</text>
+      <text class="small" x="55" y="108">TIENDAS-current.xlsx</text>
+      <text class="tiny" x="55" y="130">Hoja esperada: BASE_CONSOLIDADA</text>
+
+      <rect class="box transform" x="355" y="60" width="255" height="92" />
+      <text class="title" x="375" y="86">Generador de snapshot</text>
+      <text class="small" x="375" y="108">scripts/refresh-base.mjs</text>
+      <text class="tiny" x="375" y="130">Lee XLSX, normaliza filas, filtra 2024-2027</text>
+
+      <rect class="box transform" x="355" y="178" width="255" height="96" />
+      <text class="title" x="375" y="204">Snapshot embebido</text>
+      <text class="small" x="375" y="226">app/base-consolidada.ts</text>
+      <text class="tiny" x="375" y="248">baseConsolidada + baseSnapshotAt</text>
+
+      <rect class="box transform" x="355" y="296" width="255" height="88" />
+      <text class="title" x="375" y="322">Clasificacion tiendas</text>
+      <text class="small" x="375" y="344">app/store-classification.ts</text>
+      <text class="tiny" x="375" y="366">SSS / NS por codigo, ano y mes</text>
+
+      <rect class="box source" x="35" y="430" width="250" height="94" />
+      <text class="title" x="55" y="456">CSV benchmark nacional</text>
+      <text class="small" x="55" y="478">public/data/market/national-source.csv</text>
+      <text class="tiny" x="55" y="500">Empresas retail, periodos y metricas</text>
+
+      <rect class="box source" x="35" y="560" width="250" height="98" />
+      <text class="title" x="55" y="586">BigQuery importaciones</text>
+      <text class="small" x="55" y="608">BIGQUERY_IMPORTS_TABLE</text>
+      <text class="tiny" x="55" y="630">Default: silver.ft_cl_planificacion_importaciones_industria</text>
+
+      <rect class="box transform" x="355" y="560" width="255" height="98" />
+      <text class="title" x="375" y="586">Reglas de negocio retail</text>
+      <text class="small" x="375" y="608">docs/importaciones-industria-retail/REGLAS_NEGOCIO.json</text>
+      <text class="tiny" x="375" y="630">Clases, unidades, marcas, importadores, segmentos</text>
+
+      <rect class="box source" x="35" y="690" width="250" height="50" />
+      <text class="title" x="55" y="716">BigQuery usuarios Talana</text>
+      <text class="small" x="55" y="735">BIGQUERY_TABLE</text>
+
+      <rect class="box api" x="690" y="60" width="250" height="96" />
+      <text class="title" x="710" y="86">Calculo cliente B&amp;L</text>
+      <text class="small" x="710" y="108">app/page.tsx</text>
+      <text class="tiny" x="710" y="130">Agrega ventas, margen, EBITDA, utilidad, Four Walls</text>
+
+      <rect class="box ui" x="1000" y="60" width="210" height="120" />
+      <text class="title" x="1020" y="86">Portal Financiero</text>
+      <text class="small" x="1020" y="108">Rentabilidad Forecast B&amp;L</text>
+      <text class="tiny" x="1020" y="130">Comparativa anual</text>
+      <text class="tiny" x="1020" y="148">Detalle tiendas</text>
+      <text class="tiny" x="1020" y="166">Break-Even / Monitor</text>
+
+      <rect class="box ui" x="1000" y="430" width="210" height="92" />
+      <text class="title" x="1020" y="456">Benchmark Nacional</text>
+      <text class="small" x="1020" y="478">app/market/NationalBenchmark.tsx</text>
+      <text class="tiny" x="1020" y="500">Carga CSV publico en navegador</text>
+
+      <rect class="box api" x="690" y="560" width="250" height="98" />
+      <text class="title" x="710" y="586">API importaciones industria</text>
+      <text class="small" x="710" y="608">app/api/importaciones-industria/route.ts</text>
+      <text class="tiny" x="710" y="630">Consulta schema, homologa columnas, calcula KPIs</text>
+
+      <rect class="box ui" x="1000" y="560" width="210" height="98" />
+      <text class="title" x="1020" y="586">Importaciones Industria Retail</text>
+      <text class="small" x="1020" y="608">app/market/ImportacionesIndustria.tsx</text>
+      <text class="tiny" x="1020" y="630">Filtro ano, periodo y mes</text>
+
+      <rect class="box api" x="690" y="690" width="250" height="50" />
+      <text class="title" x="710" y="716">Auth y administracion usuarios</text>
+      <text class="small" x="710" y="735">/api/auth/* + /api/usuarios</text>
+
+      <rect class="box config" x="690" y="260" width="250" height="112" />
+      <text class="title" x="710" y="286">Configuracion y credenciales</text>
+      <text class="small" x="710" y="308">.env.local / variables Cloud Run</text>
+      <text class="tiny" x="710" y="330">BigQuery auth, OAuth Google, AUTH_SESSION_SECRET</text>
+      <text class="tiny" x="710" y="350">No se copian valores secretos al diagrama</text>
+
+      <rect class="box source" x="35" y="292" width="250" height="92" />
+      <text class="title" x="55" y="318">Assets publicos</text>
+      <text class="small" x="55" y="340">public/forus.png, favicon, svg</text>
+      <text class="tiny" x="55" y="362">Marca y elementos visuales del portal</text>
+
+      <path class="arrow arrow-teal" d="M285 106 C318 106, 322 106, 355 106" />
+      <path class="arrow arrow-teal" d="M483 152 L483 178" />
+      <path class="arrow arrow-blue" d="M610 226 C648 226, 650 108, 690 108" />
+      <path class="arrow arrow-blue" d="M610 340 C650 340, 650 132, 690 132" />
+      <path class="arrow arrow-violet" d="M940 108 C970 108, 970 120, 1000 120" />
+
+      <path class="arrow arrow-violet" d="M285 338 C650 338, 642 156, 1000 156" />
+
+      <path class="arrow arrow-violet" d="M285 477 C640 477, 650 476, 1000 476" />
+
+      <path class="arrow arrow-orange" d="M285 609 C318 609, 322 609, 355 609" />
+      <path class="arrow arrow-orange" d="M610 609 C648 609, 650 609, 690 609" />
+      <path class="arrow arrow-orange" d="M285 609 C520 609, 520 586, 690 586" />
+      <path class="arrow arrow-violet" d="M940 609 C970 609, 970 609, 1000 609" />
+
+      <path class="arrow arrow-orange" d="M285 715 C508 715, 508 715, 690 715" />
+      <path class="arrow" d="M815 372 L815 560" />
+      <path class="arrow" d="M815 372 L815 690" />
+      <path class="arrow" d="M815 260 L815 156" />
+    </svg>
+  </div>
+
+  <section class="notes">
+    <article>
+      <h2>Fuentes detectadas</h2>
+      <ul>
+        <li><code>TIENDAS-current.xlsx</code>: origen esperado para la hoja <code>BASE_CONSOLIDADA</code>; se transforma con <code>scripts/refresh-base.mjs</code>.</li>
+        <li><code>app/base-consolidada.ts</code>: snapshot financiero embebido, generado el <code>2026-09-21T12:11:08.822Z</code>.</li>
+        <li><code>public/data/market/national-source.csv</code>: fuente local del Benchmark Nacional.</li>
+        <li><code>BIGQUERY_IMPORTS_TABLE</code>: tabla de importaciones retail; default en <code>forus-cl-planificacion.silver.ft_cl_planificacion_importaciones_industria</code>.</li>
+        <li><code>BIGQUERY_TABLE</code>: tabla de usuarios Talana; default en <code>forus-cl-planificacion.Planificacion.ft_cl_planificacion_TB_STG_CL_TALANA_PERSONA</code>.</li>
+      </ul>
+    </article>
+    <article>
+      <h2>Transformaciones clave</h2>
+      <ul>
+        <li><code>app/page.tsx</code> agrega el snapshot por tienda, cadena, ano, mes y calcula ventas, margen, EBITDA, utilidad y Four Walls.</li>
+        <li><code>app/store-classification.ts</code> clasifica tiendas en <code>SSS</code> y <code>NS</code> para 2026 y 2027 por mes.</li>
+        <li><code>docs/importaciones-industria-retail/REGLAS_NEGOCIO.json</code> homologa marcas, importadores, segmentos, generos, tipos, clases y unidades.</li>
+        <li><code>app/api/importaciones-industria/route.ts</code> detecta columnas reales en BigQuery y construye consultas agregadas para KPIs, tendencia, segmentos e importadores.</li>
+      </ul>
+    </article>
+    <article>
+      <h2>APIs internas</h2>
+      <ul>
+        <li><code>/api/auth/email</code> valida correo corporativo activo contra BigQuery.</li>
+        <li><code>/api/auth/google</code> valida token Google, dominio <code>@forus.cl</code> y usuario activo en BigQuery.</li>
+        <li><code>/api/auth/session</code> y <code>/api/auth/logout</code> administran la sesion firmada.</li>
+        <li><code>/api/usuarios</code> lista y actualiza rol/activo, restringido a administradores.</li>
+        <li><code>/api/config</code> expone solo el client id publico o lo oculta si Google login esta deshabilitado.</li>
+      </ul>
+    </article>
+    <article>
+      <h2>Notas de revision</h2>
+      <ul>
+        <li>El flujo de B&amp;L usa principalmente datos embebidos en frontend; refrescarlo requiere regenerar <code>app/base-consolidada.ts</code>.</li>
+        <li>Benchmark Nacional lee un CSV publico desde el navegador, sin pasar por API server.</li>
+        <li>Importaciones y Usuarios dependen de BigQuery y de las credenciales configuradas por ambiente.</li>
+        <li>Este archivo esta fuera del proyecto para revision externa y no modifica el repositorio.</li>
+      </ul>
+    </article>
+  </section>
+</main>
+</body>
+</html>

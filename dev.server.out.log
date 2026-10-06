@@ -1,0 +1,18 @@
+
+> rentabilidad-tiendas-2027@0.1.0 dev
+> set XDG_CONFIG_HOME=%CD%\.wrangler-config&& vinext dev --port 3000
+
+
+  vinext dev  (Vite 8.0.13)
+
+Using secrets defined in .env.local
+  ➜  Local:   http://localhost:3000/
+  ➜  Debug:   http://localhost:3000/__debug
+ POST /api/auth/email 500 in 106ms
+ GET /api/importaciones-industria?period=ANUAL&year=2026&month=1 500 in 57ms
+ GET / 200 in 16.6s (compile: 1791224311.1s, render: 16.5s)
+ GET /api/config 200 in 54ms
+ GET /api/auth/session 200 in 52ms
+ POST /api/auth/email 500 in 51ms
+ GET / 200 in 121ms (compile: 1791224311.1s, render: 71ms)
+ GET /api/importaciones-industria?period=ANUAL&year=2026&month=1 500 in 66ms

@@ -1,0 +1,35 @@
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.0.3.247:3000
+- Environments: .env.local
+✓ Ready in 1705ms
+Creating turbopack project {
+  dir: 'C:\\Users\\patricio.marileo\\Documents\\Proyectos_Python\\Rentabilidad Tiendas 2027 v2',
+  testMode: true
+}
+
+ GET /api/importaciones-industria?period=ANUAL&year=2026&month=1 500 in 2.3s (next.js: 1295ms, application-code: 985ms)
+ POST /api/auth/email 403 in 2.3s (next.js: 1148ms, application-code: 1128ms)
+○ Compiling /api/importaciones-industria ...
+ GET / 200 in 9.0s (next.js: 7.9s, application-code: 1129ms)
+ POST /api/auth/google 200 in 1089ms (next.js: 270ms, application-code: 819ms)
+ GET /api/auth/session 200 in 550ms (next.js: 528ms, application-code: 22ms)
+ GET /app/globals.css 404 in 960ms (next.js: 808ms, application-code: 152ms)
+ GET /__vite_rsc_findSourceMapURL?filename=C%3A%2FUsers%2Fpatricio.marileo%2FDocuments%2FProyectos_Python%2FRentabilidad+Tiendas+2027+v2%2Fapp%2Flayout.tsx&environmentName=Server 404 in 379ms (next.js: 117ms, application-code: 262ms)
+ GET /__vite_rsc_findSourceMapURL?filename=file%3A%2F%2F%2FZ%3A%2Fworkers%2Frunner-worker%2Findex.js&environmentName=Server 404 in 388ms (next.js: 59ms, application-code: 329ms)
+ GET /__vite_rsc_findSourceMapURL?filename=%00virtual%3Avite-rsc%2Fcss%3Ftype%3Drsc%26id%3DC%253A%252FUsers%252Fpatricio.marileo%252FDocuments%252FProyectos_Python%252FRentabilidad%2520Tiendas%25202027%2520v2%252Fapp%252Flayout.tsx%26lang.js&environmentName=Server 404 in 408ms (next.js: 163ms, application-code: 245ms)
+ GET /__vite_rsc_findSourceMapURL?filename=C%3A%2FUsers%2Fpatricio.marileo%2FDocuments%2FProyectos_Python%2FRentabilidad+Tiendas+2027+v2%2Fapp%2Flayout.tsx&environmentName=Server 404 in 614ms (next.js: 125ms, application-code: 489ms)
+ GET /__vite_rsc_findSourceMapURL?filename=%00virtual%3Avite-rsc%2Fcss%3Ftype%3Drsc%26id%3DC%253A%252FUsers%252Fpatricio.marileo%252FDocuments%252FProyectos_Python%252FRentabilidad%2520Tiendas%25202027%2520v2%252Fapp%252Flayout.tsx%26lang.js&environmentName=Server 404 in 603ms (next.js: 276ms, application-code: 327ms)
+ GET /__vite_rsc_findSourceMapURL?filename=C%3A%2FUsers%2Fpatricio.marileo%2FDocuments%2FProyectos_Python%2FRentabilidad+Tiendas+2027+v2%2Fapp%2Flayout.tsx&environmentName=Server 404 in 281ms (next.js: 91ms, application-code: 190ms)
+ GET /__vite_rsc_findSourceMapURL?filename=C%3A%2FUsers%2Fpatricio.marileo%2FDocuments%2FProyectos_Python%2FRentabilidad+Tiendas+2027+v2%2Fapp%2Flayout.tsx&environmentName=Server 404 in 1037ms (next.js: 45ms, application-code: 992ms)
+ GET /__vite_rsc_findSourceMapURL?filename=%00virtual%3Avite-rsc%2Fcss%3Ftype%3Drsc%26id%3DC%253A%252FUsers%252Fpatricio.marileo%252FDocuments%252FProyectos_Python%252FRentabilidad%2520Tiendas%25202027%2520v2%252Fapp%252Flayout.tsx%26lang.js&environmentName=Server 404 in 1033ms (next.js: 175ms, application-code: 858ms)
+ GET /__vite_rsc_findSourceMapURL?filename=C%3A%2FUsers%2Fpatricio.marileo%2FDocuments%2FProyectos_Python%2FRentabilidad+Tiendas+2027+v2%2Fapp%2Flayout.tsx&environmentName=Server 404 in 276ms (next.js: 99ms, application-code: 178ms)
+ GET /__vite_rsc_findSourceMapURL?filename=C%3A%2FUsers%2Fpatricio.marileo%2FDocuments%2FProyectos_Python%2FRentabilidad+Tiendas+2027+v2%2Fapp%2Flayout.tsx&environmentName=Server 404 in 622ms (next.js: 49ms, application-code: 572ms)
+ GET /__vite_rsc_findSourceMapURL?filename=%00virtual%3Avite-rsc%2Fcss%3Ftype%3Drsc%26id%3DC%253A%252FUsers%252Fpatricio.marileo%252FDocuments%252FProyectos_Python%252FRentabilidad%2520Tiendas%25202027%2520v2%252Fapp%252Flayout.tsx%26lang.js&environmentName=Server 404 in 143ms (next.js: 29ms, application-code: 114ms)
+ GET /__vite_rsc_findSourceMapURL?filename=%00virtual%3Avite-rsc%2Fcss%3Ftype%3Drsc%26id%3DC%253A%252FUsers%252Fpatricio.marileo%252FDocuments%252FProyectos_Python%252FRentabilidad%2520Tiendas%25202027%2520v2%252Fapp%252Flayout.tsx%26lang.js&environmentName=Server 404 in 605ms (next.js: 164ms, application-code: 441ms)
+ GET /__vite_rsc_findSourceMapURL?filename=C%3A%2FUsers%2Fpatricio.marileo%2FDocuments%2FProyectos_Python%2FRentabilidad+Tiendas+2027+v2%2Fapp%2Flayout.tsx&environmentName=Server 404 in 413ms (next.js: 22ms, application-code: 391ms)
+ GET /__vite_rsc_findSourceMapURL?filename=C%3A%2FUsers%2Fpatricio.marileo%2FDocuments%2FProyectos_Python%2FRentabilidad+Tiendas+2027+v2%2Fapp%2Flayout.tsx&environmentName=Server 404 in 205ms (next.js: 24ms, application-code: 180ms)
+ GET /__vite_rsc_findSourceMapURL?filename=C%3A%2FUsers%2Fpatricio.marileo%2FDocuments%2FProyectos_Python%2FRentabilidad+Tiendas+2027+v2%2Fapp%2Flayout.tsx&environmentName=Server 404 in 97ms (next.js: 14ms, application-code: 83ms)
+ GET / 200 in 140ms (next.js: 15ms, application-code: 125ms)
+ GET /api/auth/session 200 in 29ms (next.js: 12ms, application-code: 17ms)
+ GET /api/config 200 in 232ms (next.js: 217ms, application-code: 15ms)

@@ -1,82 +1,26 @@
+import { OAuth2Client } from "google-auth-library";
 import { createSessionCookie } from "../../_shared/session";
-import { parameter, runQuery, tablePath } from "../../_shared/bigquery";
-
+import { activeUser } from "../../_shared/auth";
+import { errorResponse, HttpError, json, readJson, requireSameOrigin } from "../../_shared/http";
 export const runtime = "nodejs";
-
-type GoogleTokenInfo = {
-  aud?: string;
-  email?: string;
-  email_verified?: string;
-  hd?: string;
-  name?: string;
-  error_description?: string;
-};
-
-type BigQueryUserPayload = {
-  rows?: { f: { v: unknown }[] }[];
-};
-
-const json = (body: unknown, init?: ResponseInit) =>
-  Response.json(body, {
-    ...init,
-    headers: {
-      "cache-control": "no-store",
-      ...(init?.headers ?? {}),
-    },
-  });
-
-const cellText = (cell: { v: unknown } | undefined) => String(cell?.v ?? "");
-
+const client = new OAuth2Client();
 export async function POST(request: Request) {
   try {
-    const { credential } = await request.json() as { credential?: string };
-    if (!credential) return json({ error: "Falta credencial de Google." }, { status: 400 });
-
-    const tokenResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
-    const token = await tokenResponse.json() as GoogleTokenInfo;
-    if (!tokenResponse.ok) {
-      return json({ error: token.error_description || "Google no pudo validar la credencial." }, { status: 401 });
-    }
-
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || process.env.GOOGLE_OAUTH_CLIENT_ID;
-    if (clientId && token.aud !== clientId) {
-      return json({ error: "La credencial de Google no corresponde a esta aplicacion." }, { status: 401 });
-    }
-
-    const email = String(token.email ?? "").toLowerCase();
-    const verified = token.email_verified === "true" || token.email_verified === "1";
-    if (!verified || !email.endsWith("@forus.cl")) {
-      return json({ error: "Debes acceder con un correo corporativo @forus.cl verificado." }, { status: 403 });
-    }
-
-    const userPayload = await runQuery<BigQueryUserPayload>(
-      `SELECT id_persona, nombre, apellido_paterno, apellido_materno, rol, activo
-       FROM \`${tablePath()}\`
-       WHERE LOWER(mail) = @email
-         AND CAST(activo AS STRING) IN ('1', 'true', 'TRUE', 'Activo', 'ACTIVO', 'activa', 'ACTIVA')
-       LIMIT 1`,
-      [parameter("email", "STRING", email)],
-    );
-
-    const row = userPayload.rows?.[0];
-    if (!row) {
-      return json({ error: "El correo no esta activo en la tabla de usuarios." }, { status: 403 });
-    }
-
-    const name = [
-      cellText(row.f[1]),
-      cellText(row.f[2]),
-      cellText(row.f[3]),
-    ].filter(Boolean).join(" ").trim() || token.name || email;
-    const role = cellText(row.f[4]);
-    const personId = cellText(row.f[0]);
-    const cookie = await createSessionCookie({ email, name, role, personId });
-
-    return json(
-      { user: { email, name, role, personId } },
-      { headers: { "set-cookie": cookie } },
-    );
-  } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "Error desconocido al iniciar sesion." }, { status: 500 });
-  }
+    requireSameOrigin(request);
+    const clientId = (process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "").trim();
+    if (!clientId || process.env.DISABLE_GOOGLE_LOGIN === "true") throw new HttpError(503, "El acceso no está disponible temporalmente.");
+    const body = await readJson(request);
+    const credential = body && typeof body === "object" && "credential" in body ? body.credential : null;
+    if (typeof credential !== "string" || credential.length < 20 || credential.length > 12000) throw new HttpError(400, "Credencial inválida.");
+    let token;
+    try {
+      // The official verifier checks the signature, audience, issuer and expiry.
+      token = (await client.verifyIdToken({ idToken: credential, audience: clientId })).getPayload();
+    } catch { throw new HttpError(401, "Google no pudo validar la credencial."); }
+    const email = String(token?.email ?? "").toLowerCase();
+    if (!token?.sub || token.email_verified !== true || token.hd !== "forus.cl" || !/^[^\s@]+@forus\.cl$/.test(email)) throw new HttpError(403, "Debes usar tu cuenta corporativa de Google habilitada.");
+    const user = await activeUser(email);
+    if (!user) throw new HttpError(403, "La cuenta no está habilitada para acceder.");
+    return json({ user }, { headers: { "set-cookie": await createSessionCookie(user) } });
+  } catch (error) { return errorResponse(error, "auth.google"); }
 }

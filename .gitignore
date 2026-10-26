@@ -40,3 +40,13 @@ next-env.d.ts
 /.wrangler/
 /.wrangler-config/
 /.gcloud/
+
+# Local diagnostics and audit tooling
+*.log
+/tmp/
+/output/
+/.venv/
+/.vinext/
+/.npm/
+*.xlsx
+Presupuesto Arriendo tiendas 2027_v13092026 - Detalle Presupuesto 2027.csv

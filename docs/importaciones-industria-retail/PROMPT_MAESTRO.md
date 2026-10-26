@@ -4,7 +4,7 @@ Trabaja sobre `C:\Users\aparada\Desktop\Rentabilidad Tiendas 2027 v2` y conserva
 
 ## Objetivo
 
-Implementar y habilitar **Mercado → Importaciones Industria Retail** como un módulo financiero dinámico alimentado exclusivamente desde BigQuery. La tabla indicada desde Power Query es `silver.ft_cl_planificacion_importaciones_industria`; primero descubre y confirma el proyecto, dataset, esquema y columnas reales. No inventes datos ni nombres de campos.
+Implementar y habilitar **Mercado → Importaciones Industria Retail** como un módulo financiero dinámico alimentado exclusivamente desde BigQuery. La fuente confirmada es `forus-analitica-test-datalake.silver.ft_cl_planificacion_importaciones_industria`. No inventes datos ni nombres de campos.
 
 ## Fuente y seguridad
 

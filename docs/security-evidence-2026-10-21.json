@@ -1,0 +1,76 @@
+{
+  "validatedAt": "2026-10-21T16:30:27.192Z",
+  "scope": "Local working tree; no deployment or IAM changes",
+  "pdfSha256": "ea47306075b57a778d7b1f9e798de228f41eccc84706d28c27e72a846327e699",
+  "npmProduction": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "npmAll": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 8,
+    "critical": 0,
+    "total": 8
+  },
+  "images": {
+    "previousRuntime": {
+      "artifact": "gcr.io/distroless/nodejs22-debian12:nonroot@sha256:13593b7570658e8477de39e2f4a1dd25db2f836d68a0ba771251572d23bb4f8e",
+      "high": 6,
+      "critical": 1,
+      "reportSha256": "b6ee42585d3a3d902494e9cabe9de283d6f36613878bb7dea197a7f016e46c31"
+    },
+    "replacementRuntime": {
+      "artifact": "gcr.io/distroless/nodejs22-debian13:nonroot@sha256:6c19627684167feb45e7ab0b4938e01a4922fc4abd9abd430df07606a6ab0e26",
+      "high": 0,
+      "critical": 0,
+      "reportSha256": "5a32be5ac895b79107a39cb727e32f8bf03faf661477b93297540d32b44d3104"
+    },
+    "replacementBuilder": {
+      "artifact": "tmp/node-builder-oci",
+      "high": 54,
+      "critical": 0,
+      "reportSha256": "b0170d224e5d732c485243500af958b6f4630027dcbaed5c5f38c781a375062d"
+    },
+    "finalApplicationImage": "not built/scanned on this machine; Docker unavailable"
+  },
+  "secrets": {
+    "history": 0,
+    "workingTree": 0
+  },
+  "checks": {
+    "securityTests": 16,
+    "backportTests": 4,
+    "deploymentTests": 3,
+    "marketTests": 8,
+    "dollarTests": 9,
+    "cleanInstallBackportVerified": true,
+    "productionBuild": true,
+    "httpSecurity": true,
+    "privateDataArtifacts": true,
+    "lintErrors": 0,
+    "lintWarnings": 13
+  },
+  "loginControlledBenchmark": {
+    "profile": "security-revalidated",
+    "afterGoogleMs": 109,
+    "sessionRequests": 1,
+    "dataRequests": 1,
+    "dataFinishedAtPortal": false,
+    "initialJsBytes": 967568,
+    "largestScriptBytes": 385682,
+    "pageErrors": []
+  },
+  "pending": [
+    "Official upstream braces release/formal development-tool findings treatment",
+    "Builder tool/OS findings treatment",
+    "Scan the final application image",
+    "Execute corporate CI and integrate internal template",
+    "Validate Cloud Run IAM/IAP, secrets and least privilege"
+  ]
+}

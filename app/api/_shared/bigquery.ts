@@ -1,3 +1,4 @@
+import { GoogleAuth } from "google-auth-library";
 export type BigQueryField = {
   name: string;
   type: string;
@@ -44,7 +45,11 @@ const splitTable = (tableId: string) => {
   return { projectId: parts[0] };
 };
 
-export const tablePath = () => process.env.BIGQUERY_TABLE || defaultTable;
+export const validatedTablePath = (table: string) => {
+  if (!/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+$/.test(table)) throw new Error("Invalid BigQuery table identifier.");
+  return table;
+};
+export const tablePath = () => validatedTablePath(process.env.BIGQUERY_TABLE || defaultTable);
 
 const configuredProjectId = () => process.env.BIGQUERY_PROJECT_ID || splitTable(tablePath()).projectId;
 
@@ -75,8 +80,9 @@ const adcPaths = async () => {
 };
 
 const readApplicationDefaultCredential = async (localOnly = false) => {
-  // En desarrollo corporativo se puede forzar la credencial renovable del equipo.
-  // Esto evita que un ADC serializado antiguo en .env.local provoque invalid_rapt.
+  // En desarrollo, el ADC renovable del equipo debe prevalecer sobre cualquier
+  // snapshot serializado en .env.local, que puede expirar con invalid_rapt.
+  const localBase64 = process.env.BIGQUERY_LOCAL_ADC_JSON_BASE64;
   if (!localOnly) {
     const inlineBase64 = process.env.BIGQUERY_ADC_JSON_BASE64;
     if (inlineBase64) {
@@ -105,6 +111,13 @@ const readApplicationDefaultCredential = async (localOnly = false) => {
     }
   }
 
+  if (localOnly && localBase64) {
+    const decoded = new TextDecoder().decode(
+      Uint8Array.from(atob(localBase64), (character) => character.charCodeAt(0)),
+    );
+    return JSON.parse(decoded) as ServiceAccountCredential | AuthorizedUserCredential;
+  }
+
   throw new Error("No encontre credenciales ADC. Ejecuta `gcloud auth application-default login` o define GOOGLE_APPLICATION_CREDENTIALS.");
 };
 
@@ -116,17 +129,19 @@ const base64Url = (bytes: ArrayBuffer | Uint8Array | string) => {
 };
 
 const pemToArrayBuffer = (pem: string) => {
+  const label = "PRIVATE KEY";
+  const begin = `-----BEGIN ${label}-----`, end = `-----END ${label}-----`;
   const normalized = pem
     .trim()
     .replace(/^["']|["']$/g, "")
     .replace(/\\n/g, "\n")
     .replace(/\\r/g, "\r");
-  if (!normalized.includes("-----BEGIN PRIVATE KEY-----")) {
+  if (!normalized.includes(begin)) {
     throw new Error("BIGQUERY_PRIVATE_KEY debe ser una llave PEM de cuenta de servicio, no una password de usuario.");
   }
   const cleaned = normalized
-    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
-    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replaceAll(begin, "")
+    .replaceAll(end, "")
     .replace(/\s/g, "");
   const binary = atob(cleaned);
   const bytes = new Uint8Array(binary.length);
@@ -207,10 +222,29 @@ const adcAccessToken = async (localOnly = false) => {
   throw new Error(`Tipo de credencial ADC no soportado: ${credential.type ?? "desconocido"}. Usa gcloud auth application-default login o una cuenta de servicio.`);
 };
 
-const accessToken = async () => {
+// Reuse the SDK client so it can retain and refresh its short-lived access token.
+// Application permissions are still checked in BigQuery on every request.
+let productionAuth: GoogleAuth | undefined;
+
+export const googleAccessToken = async (preferAdc = false) => {
+  if (process.env.NODE_ENV === "production") {
+    // Use the attached service account / Workload Identity, never serialized user ADC.
+    productionAuth ??= new GoogleAuth({
+      projectId: configuredProjectId(),
+      scopes: ["https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/spreadsheets.readonly"],
+    });
+    const token = await productionAuth.getAccessToken();
+    if (!token) throw new Error("Cloud credentials unavailable.");
+    return token;
+  }
+  if (preferAdc) return adcAccessToken();
   const authMode = (process.env.BIGQUERY_AUTH_MODE || "").toLowerCase();
+  // Los modos explícitos deben prevalecer sobre BIGQUERY_ACCESS_TOKEN, porque
+  // ese token es sólo un respaldo temporal y expira aproximadamente en una hora.
   if (authMode === "local-adc") return adcAccessToken(true);
   if (authMode === "adc") return adcAccessToken();
+
+  if (process.env.BIGQUERY_ACCESS_TOKEN) return process.env.BIGQUERY_ACCESS_TOKEN;
 
   const account = serviceAccount();
   if (account?.clientEmail && account.privateKey) return serviceAccountAccessToken(account);
@@ -219,7 +253,7 @@ const accessToken = async () => {
 };
 
 export const runQuery = async <T,>(query: string, queryParameters: QueryParameter[] = []) => {
-  const token = await accessToken();
+  const token = await googleAccessToken();
   const response = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${configuredProjectId()}/queries`, {
     method: "POST",
     headers: {

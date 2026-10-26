@@ -5,8 +5,13 @@
 .wrangler
 .wrangler-config
 .gcloud
+.aws
+.agents
+.codex
+.npm
 dist
 build
+vite.config.ts
 node_modules
 npm-debug.log*
 yarn-debug.log*
@@ -15,3 +20,11 @@ yarn-error.log*
 .env
 .env.*
 !.env.example
+
+# Local diagnostics and audit tooling
+*.log
+/tmp/
+/output/
+/.venv/
+*.xlsx
+Presupuesto Arriendo tiendas 2027_v13092026 - Detalle Presupuesto 2027.csv

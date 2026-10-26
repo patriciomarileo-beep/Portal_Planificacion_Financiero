@@ -1,9 +1,11 @@
+import { localRuntimeEnv } from "./local-runtime-env.mjs";
 import { spawn } from "node:child_process";
-import { cpSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { cpSync, existsSync, rmSync } from "node:fs";
+import { join, resolve, sep } from "node:path";
 
-const port = process.env.PORT || "3000";
-const hostname = process.env.HOSTNAME || "0.0.0.0";
+const localEnv = localRuntimeEnv();
+const port = localEnv.PORT;
+const hostname = localEnv.HOSTNAME;
 const standaloneDir = join(process.cwd(), ".next", "standalone");
 const staticSource = join(process.cwd(), ".next", "static");
 const staticTarget = join(standaloneDir, ".next", "static");
@@ -15,19 +17,19 @@ if (!existsSync(join(standaloneDir, "server.js"))) {
   process.exit(1);
 }
 
-if (existsSync(staticSource)) {
-  cpSync(staticSource, staticTarget, { recursive: true, force: true });
-}
-
-if (existsSync(publicSource)) {
-  cpSync(publicSource, publicTarget, { recursive: true, force: true });
+for (const [source, target] of [[staticSource, staticTarget], [publicSource, publicTarget]]) {
+  // Refresh generated assets so older builds cannot retain public financial data.
+  const resolved = resolve(target);
+  if (!resolved.startsWith(resolve(standaloneDir) + sep)) throw new Error("Unexpected standalone output path.");
+  rmSync(resolved, { recursive: true, force: true });
+  if (existsSync(source)) cpSync(source, resolved, { recursive: true, force: true });
 }
 
 const child = spawn(process.execPath, ["server.js"], {
   cwd: standaloneDir,
   stdio: "inherit",
   env: {
-    ...process.env,
+    ...localEnv,
     PORT: port,
     HOSTNAME: hostname,
   },

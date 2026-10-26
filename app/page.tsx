@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import dynamic from "next/dynamic";
 import {
   Bar,
   BarChart,
@@ -8,6 +9,7 @@ import {
   Cell,
   Legend,
   Line,
+  LineChart,
   ReferenceLine,
   ResponsiveContainer,
   Scatter,
@@ -18,27 +20,43 @@ import {
 } from "recharts";
 import {
   AlertTriangle,
+  Activity,
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
   Building2,
   ChevronDown,
+  ChevronRight,
+  CircleDollarSign,
   Filter,
+  Download,
   Globe2,
+  Landmark,
+  LogOut,
   Menu,
   PackageCheck,
-  PanelLeftClose,
   RefreshCw,
   Save,
   Search,
   Store,
-  TrendingUp,
+  Waves,
   Users,
 } from "lucide-react";
-import NationalBenchmark from "./market/NationalBenchmark";
-import ImportacionesIndustria from "./market/ImportacionesIndustria";
-import { baseConsolidada, baseSnapshotAt, type BaseRow } from "./base-consolidada";
+import { parseMarketIndicators, indicatorDateLabel, type MarketIndicator } from "./market/indicator-data";
+import type { DollarHistoryPayload } from "./market/dollar-history-data";
+import type { BaseRow } from "./base-consolidada";
+import { PrivateDataContext, usePrivateData, type PrivateData } from "./private-data-context";
 import { storeClassification, type StoreClassification } from "./store-classification";
+const reportLoading = () => <div className="portal-data-status" role="status"><RefreshCw className="spin" /><p>Cargando informe…</p></div>;
+const NationalBenchmark = dynamic(() => import("./market/NationalBenchmark"), { loading: reportLoading });
+const InternationalBenchmark = dynamic(() => import("./market/InternationalBenchmark"), { loading: reportLoading });
+const ImportacionesIndustria = dynamic(() => import("./market/ImportacionesIndustria"), { loading: reportLoading });
+const MacroeconomicsMarket = dynamic(() => import("./market/MacroeconomicsMarket"), { loading: reportLoading });
+const RetailCncMarket = dynamic(() => import("./market/RetailCncMarket"), { loading: reportLoading });
+const ChannelProfitability = dynamic(() => import("./profitability/ChannelProfitability"), { loading: reportLoading });
+const CountryProfitability = dynamic(() => import("./profitability/CountryProfitability"), { loading: reportLoading });
+const ToolboxPlanning = dynamic(() => import("./toolbox/ToolboxPlanning"), { loading: reportLoading });
+const StoreSensitivity = dynamic(() => import("./profitability/StoreSensitivity"), { loading: reportLoading });
 
 type Year = 2024 | 2025 | 2026 | 2027;
 type FwBand = "negative" | "low" | "high" | null;
@@ -46,6 +64,7 @@ type ProfitMetric = "fourWalls" | "utility";
 type Quarter = "ANUAL" | "Q1" | "Q2" | "Q3" | "Q4";
 type ReportPeriod = Quarter | "MES";
 type ClassificationFilter = "TOTAL" | StoreClassification;
+type MonitorFilter = "TOTAL" | "CHAIN_OTHER" | "DUPLICATE" | "ACTIVE_YEAR" | "NO_CONTRACT" | "NO_M2" | "SSS_YEAR" | "NS_YEAR" | "REMODELED";
 type PortalSection = {
   id: string;
   label: string;
@@ -134,7 +153,6 @@ declare global {
 }
 
 const years: Year[] = [2024, 2025, 2026, 2027];
-const snapshotLabel = `${baseSnapshotAt.slice(8, 10)}-${baseSnapshotAt.slice(5, 7)}-${baseSnapshotAt.slice(0, 4)} · ${baseSnapshotAt.slice(11, 16)}`;
 const yearLabel = (year: Year) =>
   ({ 2024: "2024R", 2025: "2025R", 2026: "2026E", 2027: "2027P" })[year];
 const monthOrder = [
@@ -155,11 +173,11 @@ const portalGroups: { id: string; label: string; description: string; icon: type
     icon: BarChart3,
     items: [
       { id: "bl", label: "B&L", enabled: true },
-      { id: "ecommerce", label: "Ecommerce" },
-      { id: "marketplace", label: "Marketplace" },
-      { id: "wholesale", label: "Wholesale" },
-      { id: "consolidada", label: "Consolidada" },
-      { id: "paises", label: "Países" },
+      { id: "ecommerce", label: "Ecommerce", enabled: true },
+      { id: "marketplace", label: "Marketplace", enabled: true },
+      { id: "wholesale", label: "Wholesale", enabled: true },
+      { id: "consolidada", label: "Consolidada", enabled: true },
+      { id: "paises", label: "Países", enabled: true },
     ],
   },
   {
@@ -169,9 +187,9 @@ const portalGroups: { id: string; label: string; description: string; icon: type
     icon: Globe2,
     items: [
       { id: "benchmark-nacional", label: "Benchmark Nacional", enabled: true },
-      { id: "benchmark-internacional", label: "Benchmark Internacional" },
-      { id: "macroeconomia-ipom", label: "Macroeconomía e IPoM" },
-      { id: "mercado-retail-cnc", label: "Mercado Retail · CNC" },
+      { id: "benchmark-internacional", label: "Benchmark Internacional", enabled: true },
+      { id: "macroeconomia-ipom", label: "Macroeconomía e IPoM", enabled: true },
+      { id: "mercado-retail-cnc", label: "Mercado Retail · CNC", enabled: true },
       { id: "importaciones-retail", label: "Importaciones Industria Retail", enabled: true },
       { id: "importaciones-cosmeticos", label: "Importaciones Cosméticos" },
     ],
@@ -298,7 +316,7 @@ const invalidSourceValue = (value: unknown) => {
   return !text || text.includes("#N/A") || text.includes("#REF") || text.includes("#VALUE") || text.includes("ARRAY RESULT") || text.includes("ERROR");
 };
 
-const stores: StoreRow[] = (() => {
+const buildStores = (baseConsolidada: BaseRow[]): StoreRow[] => {
   const map = new Map<string, StoreRow>();
   for (const r of baseConsolidada) {
     const year = r[0] as Year;
@@ -323,7 +341,7 @@ const stores: StoreRow[] = (() => {
     }
   }
   return [...map.values()];
-})();
+};
 
 const money = (n: number) =>
   `${n < 0 ? "-" : ""}$${Math.round(Math.abs(n) / 1000).toLocaleString("es-CL")}`;
@@ -901,26 +919,202 @@ function Detail({ selection }: { selection: StoreRow[] }) {
   );
 }
 
+const normalizeStoreKey = (value: string) => value
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .replace(/[^A-Z0-9]/gi, "")
+  .toUpperCase();
+
+function M2Analysis({ selection }: { selection: StoreRow[] }) {
+  const { storeM2, catM2SnapshotStores, catM2SnapshotTotals } = usePrivateData();
+  const [m2Year, setM2Year] = useState<Year>(2027);
+  const [m2Period, setM2Period] = useState<ReportPeriod>("ANUAL");
+  const [m2Months, setM2Months] = useState<string[]>(monthOrder);
+  const m2MonthFilterRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const closeMonthFilter = (event: PointerEvent) => {
+      if (m2MonthFilterRef.current && !m2MonthFilterRef.current.contains(event.target as Node)) {
+        m2MonthFilterRef.current.removeAttribute("open");
+      }
+    };
+    document.addEventListener("pointerdown", closeMonthFilter);
+    return () => document.removeEventListener("pointerdown", closeMonthFilter);
+  }, []);
+  const activeM2Months = m2Period === "ANUAL" ? [] : m2Period === "MES" ? m2Months : quarterMonths[m2Period];
+  const m2PeriodLabel = m2Period === "ANUAL"
+    ? yearLabel(m2Year)
+    : m2Period === "MES"
+      ? `${yearLabel(m2Year)} · ${m2Months.length === 1 ? monthShort[m2Months[0]] : `${m2Months.length} meses`}`
+      : `${yearLabel(m2Year)} · ${m2Period}`;
+  const metricForM2Period = (store: StoreRow) => {
+    if (m2Period === "ANUAL") return store.annual[m2Year];
+    if (m2Year !== 2026 && m2Year !== 2027) return emptyMetric();
+    return activeM2Months.reduce((sum, month) => addMetric(sum, store.monthly[m2Year][month] ?? emptyMetric()), emptyMetric());
+  };
+  const selectM2Period = (period: ReportPeriod) => {
+    setM2Period(period);
+    if (period !== "ANUAL" && m2Year !== 2026 && m2Year !== 2027) setM2Year(2027);
+    if (period !== "MES") m2MonthFilterRef.current?.removeAttribute("open");
+  };
+  const toggleM2Month = (month: string) => {
+    setM2Period("MES");
+    if (m2Year !== 2026 && m2Year !== 2027) setM2Year(2027);
+    setM2Months((current) => current.includes(month) ? current.filter((item) => item !== month) : [...current, month]);
+  };
+  const m2ByCode = useMemo(() => new Map(storeM2.map((row) => [normalizeStoreKey(row.code), row])), [storeM2]);
+  const m2ByName = useMemo(() => new Map(storeM2.map((row) => [normalizeStoreKey(row.name), row])), [storeM2]);
+  const rows = selection.map((store) => {
+    const source = m2ByCode.get(normalizeStoreKey(store.code)) ?? m2ByName.get(normalizeStoreKey(store.name));
+    const squareMeters = source?.squareMeters ?? 0;
+    return { ...store, metric: metricForM2Period(store), squareMeters };
+  });
+  const matched = rows.filter((row) => row.squareMeters > 0);
+  const missing = rows.filter((row) => row.squareMeters <= 0);
+  const totalM2 = matched.reduce((sum, row) => sum + row.squareMeters, 0);
+  const totals = matched.reduce((sum, row) => addMetric(sum, row.metric), emptyMetric());
+  const perM2 = (value: number, squareMeters: number) => squareMeters ? value / squareMeters : 0;
+  const m2Money = (value: number) => `${value < 0 ? "-" : ""}$${(Math.abs(value) / 1000).toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+  const exportM2 = () => downloadExcel(
+    `analisis-m2-tiendas-${yearLabel(m2Year)}-${m2Period.toLowerCase()}`,
+    ["CC", "TIENDA", "CADENA", "M2", "VENTA", "VENTA / M2", "MARGEN", "MARGEN / M2", "MARGEN %", "ARRIENDO", "ARRIENDO / M2", "REMUNERACIONES", "REMUNERACIONES / M2", "GASTOS GENERALES", "GASTOS GENERALES / M2", "COSTO OPERACIONAL", "COSTO OPERACIONAL / M2", "RESULTADO OPERACIONAL", "RESULTADO OPERACIONAL / M2", "RESULTADO NO OPERACIONAL", "RESULTADO NO OPERACIONAL / M2", "EBITDA", "EBITDA / M2", "UTILIDAD", "UTILIDAD / M2", "FOUR WALLS", "FOUR WALLS / M2"],
+    matched.map((row) => [
+      row.code, row.name, row.chain, row.squareMeters,
+      row.metric.sales, perM2(row.metric.sales, row.squareMeters),
+      row.metric.margin, perM2(row.metric.margin, row.squareMeters), pct(row.metric.margin, row.metric.sales).toFixed(2),
+      row.metric.rent, perM2(row.metric.rent, row.squareMeters),
+      row.metric.payroll, perM2(row.metric.payroll, row.squareMeters),
+      row.metric.general, perM2(row.metric.general, row.squareMeters),
+      row.metric.operatingCost, perM2(row.metric.operatingCost, row.squareMeters),
+      row.metric.operatingResult, perM2(row.metric.operatingResult, row.squareMeters),
+      row.metric.nonOperating, perM2(row.metric.nonOperating, row.squareMeters),
+      row.metric.ebitda, perM2(row.metric.ebitda, row.squareMeters),
+      row.metric.utility, perM2(row.metric.utility, row.squareMeters),
+      row.metric.fourWalls ?? 0, perM2(row.metric.fourWalls ?? 0, row.squareMeters),
+    ]),
+  );
+  const chartRows = [...matched]
+    .filter((row) => row.metric.sales !== 0)
+    .sort((a, b) => perM2(b.metric.sales, b.squareMeters) - perM2(a.metric.sales, a.squareMeters))
+    .slice(0, 12)
+    .map((row) => ({ name: row.name, sales: perM2(row.metric.sales, row.squareMeters) / 1000, margin: perM2(row.metric.margin, row.squareMeters) / 1000 }));
+  const catSnapshotVisible = selection.some((store) => store.chain === "Caterpillar");
+  const catActiveStores = catM2SnapshotStores.filter((store) => store.sales > 0);
+  const catSalesPerM2Benchmark = catM2SnapshotTotals.sales * 1000 / catM2SnapshotTotals.squareMeters;
+  const correlation = (xValues: number[], yValues: number[]) => {
+    const xMean = xValues.reduce((sum, value) => sum + value, 0) / xValues.length;
+    const yMean = yValues.reduce((sum, value) => sum + value, 0) / yValues.length;
+    const numerator = xValues.reduce((sum, value, index) => sum + (value - xMean) * (yValues[index] - yMean), 0);
+    const xVariance = xValues.reduce((sum, value) => sum + (value - xMean) ** 2, 0);
+    const yVariance = yValues.reduce((sum, value) => sum + (value - yMean) ** 2, 0);
+    return xVariance && yVariance ? numerator / Math.sqrt(xVariance * yVariance) : 0;
+  };
+  const catAreaResultCorrelation = correlation(
+    catActiveStores.map((store) => store.squareMeters),
+    catActiveStores.map((store) => store.operatingResult),
+  );
+  const catAreaSalesDensityCorrelation = correlation(
+    catActiveStores.map((store) => store.squareMeters),
+    catActiveStores.map((store) => store.salesPerM2),
+  );
+  const catClusterForStore = (store: (typeof catM2SnapshotStores)[number]) => {
+    if (store.sales === 0) return "S";
+    if (store.operatingResult > 0) return store.salesPerM2 >= catSalesPerM2Benchmark ? "A" : "B";
+    return store.salesPerM2 >= catSalesPerM2Benchmark ? "C" : "D";
+  };
+  const catClusterOrder = ["A", "B", "C", "D"];
+  const catClusters = catClusterOrder.map((cluster) => {
+    const storesInCluster = catM2SnapshotStores.filter((store) => catClusterForStore(store) === cluster);
+    const clusterArea = storesInCluster.reduce((sum, store) => sum + store.squareMeters, 0);
+    const clusterSales = storesInCluster.reduce((sum, store) => sum + store.sales, 0);
+    const clusterResult = storesInCluster.reduce((sum, store) => sum + store.operatingResult, 0);
+    const mixStores = storesInCluster.filter((store) => store.productMix !== null);
+    const averageMix = [0, 1, 2].map((index) => mixStores.length
+      ? mixStores.reduce((sum, store) => sum + (store.productMix?.[index] ?? 0), 0) / mixStores.length
+      : 0);
+    return {
+      id: cluster,
+      stores: storesInCluster,
+      count: storesInCluster.length,
+      area: clusterArea,
+      salesPerM2: clusterArea ? clusterSales * 1000 / clusterArea : 0,
+      operatingResult: clusterResult,
+      mix: averageMix,
+    };
+  });
+  const catInactiveStore = catM2SnapshotStores.find((store) => store.sales === 0);
+  const catFormatNumber = (value: number) => Math.round(value).toLocaleString("es-CL");
+  const exportCatM2 = () => downloadExcel(
+    "cat-analisis-m2-2025",
+    ["TIENDA", "CLUSTER", "M2", "VENTA", "VENTA / M2", "RESULTADO OPERACIONAL", "RESULTADO OPERACIONAL / M2", "CALZADO %", "VESTUARIO %", "ACCESORIOS %"],
+    catM2SnapshotStores.map((store) => [
+      store.name,
+      catClusterForStore(store),
+      store.squareMeters,
+      store.sales,
+      store.salesPerM2,
+      store.operatingResult,
+      store.operatingResultPerM2,
+      ...(store.productMix ?? ["", "", ""]),
+    ]),
+  );
+  return (
+    <>
+      <div className="title m2-title"><div><i>M2</i><span><h2>Productividad por metro cuadrado</h2><p>Venta, margen, arriendo y estructura completa del resultado normalizada por superficie</p></span></div><div className="title-actions m2-title-actions"><label className="year-select">AÑO<select value={m2Year} onChange={(e) => setM2Year(Number(e.target.value) as Year)}>{(m2Period === "ANUAL" ? years : ([2026, 2027] as Year[])).map((year) => <option key={year} value={year}>{yearLabel(year)}</option>)}</select><ChevronDown /></label><div className="quarter-filter" aria-label="Periodo del análisis M2">{(["ANUAL", "Q1", "Q2", "Q3", "Q4"] as Quarter[]).map((item) => <button key={item} className={m2Period === item ? "active" : ""} onClick={() => selectM2Period(item)}>{item}</button>)}<details className={`month-period-filter ${m2Period === "MES" ? "active" : ""}`} ref={m2MonthFilterRef}><summary onClick={() => selectM2Period("MES")}>MES</summary><div className="month-options"><div className="month-options-head"><b>{m2Months.length} MESES</b><button type="button" onClick={() => setM2Months(m2Months.length === monthOrder.length ? [] : monthOrder)}>{m2Months.length === monthOrder.length ? "LIMPIAR" : "TODOS"}</button></div>{monthOrder.map((month) => <label key={month}><input type="checkbox" checked={m2Months.includes(month)} onChange={() => toggleM2Month(month)} />{month}</label>)}</div></details></div><button className="export-button" onClick={exportM2} disabled={!matched.length}><Download /> EXPORTAR DETALLE EXCEL</button></div></div>
+      <section className="m2-kpis">
+        <article><label>SUPERFICIE ANALIZADA</label><strong>{totalM2.toLocaleString("es-CL", { maximumFractionDigits: 1 })} m²</strong><span>{matched.length} tiendas con superficie</span></article>
+        <article><label>VENTA / M²</label><strong>{m2Money(perM2(totals.sales, totalM2))}</strong><span>MM$ por m² · {m2PeriodLabel}</span></article>
+        <article><label>MARGEN / M²</label><strong>{m2Money(perM2(totals.margin, totalM2))}</strong><span>{pct(totals.margin, totals.sales).toFixed(1)}% sobre venta</span></article>
+        <article><label>ARRIENDO / M²</label><strong className="neg">{m2Money(perM2(totals.rent, totalM2))}</strong><span>costo del período por m²</span></article>
+        <article><label>UTILIDAD / M²</label><strong className={totals.utility >= 0 ? "pos" : "neg"}>{m2Money(perM2(totals.utility, totalM2))}</strong><span>resultado final por m²</span></article>
+      </section>
+      {catSnapshotVisible && <section className="m2-cat-analysis">
+        <div className="m2-cat-heading"><div><label>DECISIÓN COMERCIAL · B&L</label><h3>CAT · desempeño por m² y mix de producto</h3><p>Corte 2025 del archivo recibido · unidades informadas por la fuente · el mix no cambia con el período del filtro superior</p></div><div className="m2-cat-heading-actions"><details className="m2-cat-decision"><summary>¿Conviene aumentar los m²?<ChevronDown /></summary><div><b>Respuesta ejecutiva: no como regla general.</b><p>La correlación entre superficie y ROP total es {catAreaResultCorrelation.toFixed(2)}; entre superficie y venta/m² es {catAreaSalesDensityCorrelation.toFixed(2)}. El corte no demuestra que una tienda de mayor tamaño sea más rentable. Una ampliación solo debiera aprobarse cuando el margen incremental esperado cubra el arriendo y los demás costos adicionales del espacio.</p><small>Validar por local: venta incremental/m² · margen incremental · arriendo/m² · ROP posterior a la ampliación.</small></div></details><button className="export-button" onClick={exportCatM2}><Download /> EXPORTAR CAT 2025</button></div></div>
+        <div className="m2-cat-kpis">
+          <div><label>TIENDAS RENTABLES</label><strong>27 / 35</strong><span>8 tiendas con ROP negativo</span></div>
+          <div><label>VENTA / M² DE RED</label><strong>{catFormatNumber(catSalesPerM2Benchmark)}</strong><span>referencia ponderada 2025</span></div>
+          <div><label>ROP / M² DE RED</label><strong>{catFormatNumber(catM2SnapshotTotals.operatingResult * 1000 / catM2SnapshotTotals.squareMeters)}</strong><span>resultado operacional ponderado</span></div>
+          <div><label>TIENDA SIN VENTA</label><strong>{catInactiveStore?.name.replace("CAT ", "") ?? "—"}</strong><span>mix no informado en la fuente</span></div>
+        </div>
+        <div className="m2-cat-section-head"><div><label>SEGMENTACIÓN DE LA RED</label><h4>Clústeres por productividad y ROP</h4></div><span>Referencia de venta/m²: {catFormatNumber(catSalesPerM2Benchmark)} · ROP positivo/negativo</span></div>
+        <div className="scroll m2-cat-scroll"><table className="detail-table compact-table m2-cat-clusters"><thead><tr><th>GRUPO</th><th>CRITERIO</th><th>TIENDAS</th><th>VENTA / M²</th><th>ROP AGREGADO</th><th>CALZADO</th><th>VESTUARIO</th><th>ACCESORIOS</th></tr></thead><tbody>{catClusters.map((cluster) => <tr key={cluster.id}><td><b className={`m2-cat-badge cluster-${cluster.id}`}>{cluster.id}</b></td><td>{({ A: "Rentable · productividad sobre red", B: "Rentable · productividad bajo red", C: "Pérdida · productividad sobre red", D: "Pérdida · productividad bajo red" })[cluster.id as "A" | "B" | "C" | "D"]}</td><td>{cluster.count}</td><td>{cluster.count ? catFormatNumber(cluster.salesPerM2) : "—"}</td><td className={cluster.operatingResult >= 0 ? "pos" : "neg"}>{cluster.count ? catFormatNumber(cluster.operatingResult) : "—"}</td><td>{cluster.count ? `${(cluster.mix[0] ?? 0).toFixed(1)}%` : "—"}</td><td>{cluster.count ? `${(cluster.mix[1] ?? 0).toFixed(1)}%` : "—"}</td><td>{cluster.count ? `${(cluster.mix[2] ?? 0).toFixed(1)}%` : "—"}</td></tr>)}</tbody></table></div>
+        <p className="m2-cat-mix-note">El mix por sí solo no explica el resultado: en este corte la participación promedio de calzado varía poco entre grupos rentables y deficitarios. Contrastar cada categoría con margen, rotación y venta/m² antes de cambiar surtido o espacio.</p>
+        <div className="m2-cat-section-head"><div><label>TIENDAS CAT · 2025</label><h4>Detalle y clasificación</h4></div><span>Promedio de red ponderado · fuente: análisis CAT m² 2025</span></div>
+        <div className="scroll m2-cat-scroll"><table className="detail-table compact-table m2-cat-table"><thead><tr><th>TIENDA</th><th>GRUPO</th><th>M²</th><th>VENTA / M²</th><th>ROP</th><th>ROP / M²</th><th>CALZADO</th><th>VESTUARIO</th><th>ACCESORIOS</th></tr></thead><tbody>{[...catM2SnapshotStores].sort((a, b) => b.salesPerM2 - a.salesPerM2).map((store) => <tr key={store.name}><td><b>{store.name}</b></td><td><b className={`m2-cat-badge cluster-${catClusterForStore(store)}`}>{catClusterForStore(store)}</b></td><td>{store.squareMeters}</td><td>{catFormatNumber(store.salesPerM2)}</td><td className={store.operatingResult >= 0 ? "pos" : "neg"}>{catFormatNumber(store.operatingResult)}</td><td className={store.operatingResultPerM2 >= 0 ? "pos" : "neg"}>{catFormatNumber(store.operatingResultPerM2)}</td>{store.productMix ? store.productMix.map((share, index) => <td key={`${store.name}-${index}`}>{share}%</td>) : <td colSpan={3}>Sin mix informado</td>}</tr>)}</tbody></table></div>
+      </section>}
+      {missing.length > 0 && <div className="data-warning compact-warning"><AlertTriangle /><span><b>{missing.length} tiendas sin M2 homologado.</b> Se excluyen de los indicadores por superficie hasta completar el cruce en la hoja maestra.</span></div>}
+      <section className="panel m2-chart-panel"><div className="monitor-head"><div><label>PRODUCTIVIDAD COMERCIAL</label><h3>Top tiendas por venta / m²</h3></div><span>Valores en MM$ por m² · {m2PeriodLabel}</span></div><div className="m2-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartRows} layout="vertical" margin={{ left: 36, right: 24 }}><CartesianGrid stroke="#e7ebf1" horizontal={false} /><XAxis type="number" /><YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 9 }} /><Tooltip formatter={(value) => [`$${Number(value).toFixed(1)}`, "MM$ / m²"]} /><Legend /><Bar dataKey="sales" name="Venta / m²" fill="#285eb2" radius={[0, 4, 4, 0]} /><Bar dataKey="margin" name="Margen / m²" fill="#18a06b" radius={[0, 4, 4, 0]} /></BarChart></ResponsiveContainer></div></section>
+      <section className="panel m2-table-panel"><div className="monitor-head"><div><label>DETALLE POR TIENDA</label><h3>EERR normalizado por superficie</h3></div><span>{matched.length} tiendas · usa scroll horizontal para ver todos los ítems</span></div><div className="scroll m2-scroll"><table className="detail-table compact-table"><thead><tr><th>TIENDA</th><th>CADENA</th><th>M²</th><th>VENTA / M²</th><th>MARGEN / M²</th><th>MARGEN %</th><th>ARRIENDO / M²</th><th>REMUN. / M²</th><th>G. GENERALES / M²</th><th>COSTO OP. / M²</th><th>RESULTADO OP. / M²</th><th>EBITDA / M²</th><th>UTILIDAD / M²</th><th>FOUR WALLS / M²</th></tr></thead><tbody>{matched.sort((a, b) => perM2(b.metric.sales, b.squareMeters) - perM2(a.metric.sales, a.squareMeters)).map((row) => <tr key={row.code}><td><b>{row.name}</b><small>#{row.code}</small></td><td>{row.chain}</td><td><b>{row.squareMeters.toLocaleString("es-CL", { maximumFractionDigits: 1 })}</b></td><td>{m2Money(perM2(row.metric.sales, row.squareMeters))}</td><td>{m2Money(perM2(row.metric.margin, row.squareMeters))}</td><td>{pct(row.metric.margin, row.metric.sales).toFixed(1)}%</td><td className="neg">{m2Money(perM2(row.metric.rent, row.squareMeters))}</td><td className="neg">{m2Money(perM2(row.metric.payroll, row.squareMeters))}</td><td>{m2Money(perM2(row.metric.general, row.squareMeters))}</td><td className="neg">{m2Money(perM2(row.metric.operatingCost, row.squareMeters))}</td><td className={row.metric.operatingResult >= 0 ? "pos" : "neg"}>{m2Money(perM2(row.metric.operatingResult, row.squareMeters))}</td><td className={row.metric.ebitda >= 0 ? "pos" : "neg"}>{m2Money(perM2(row.metric.ebitda, row.squareMeters))}</td><td className={row.metric.utility >= 0 ? "pos bold" : "neg bold"}>{m2Money(perM2(row.metric.utility, row.squareMeters))}</td><td className={(row.metric.fourWalls ?? 0) >= 0 ? "pos" : "neg"}>{m2Money(perM2(row.metric.fourWalls ?? 0, row.squareMeters))}</td></tr>)}</tbody></table></div></section>
+    </>
+  );
+}
+
 function BreakEven({ selection }: { selection: StoreRow[] }) {
-  const overallSales = selection.reduce((a, s) => a + Math.max(0, s.annual[2027].sales), 0);
-  const overallMargin = selection.reduce((a, s) => a + Math.max(0, s.annual[2027].margin), 0);
+  const [breakEvenMetric, setBreakEvenMetric] = useState<ProfitMetric>("fourWalls");
+  const [breakEvenYear, setBreakEvenYear] = useState<Year>(2027);
+  const metricValue = (store: StoreRow, year: Year) => breakEvenMetric === "utility" ? store.annual[year].utility : store.annual[year].fourWalls;
+  const metricLabel = breakEvenMetric === "utility" ? "Utilidad" : "Four Walls";
+  const scenarioLabel = `${breakEvenYear}S`;
+  const overallSales = selection.reduce((a, s) => a + Math.max(0, s.annual[breakEvenYear].sales), 0);
+  const overallMargin = selection.reduce((a, s) => a + Math.max(0, s.annual[breakEvenYear].margin), 0);
   const overallRate = overallSales ? overallMargin / overallSales : 0;
   const chainRate = (chain: string) => {
-    const peers = selection.filter((s) => s.chain === chain && s.annual[2027].sales > 0 && s.annual[2027].margin > 0);
-    const sales = peers.reduce((a, s) => a + s.annual[2027].sales, 0);
-    return sales ? peers.reduce((a, s) => a + s.annual[2027].margin, 0) / sales : overallRate;
+    const peers = selection.filter((s) => s.chain === chain && s.annual[breakEvenYear].sales > 0 && s.annual[breakEvenYear].margin > 0);
+    const sales = peers.reduce((a, s) => a + s.annual[breakEvenYear].sales, 0);
+    return sales ? peers.reduce((a, s) => a + s.annual[breakEvenYear].margin, 0) / sales : overallRate;
   };
   const rows = selection
-    .filter((s) => s.annual[2027].utility < 0)
+    .filter((s) => (metricValue(s, breakEvenYear) ?? 0) < 0)
     .map((s) => {
-      const current = s.annual[2027];
+      const current = s.annual[breakEvenYear];
+      const currentResult = metricValue(s, breakEvenYear) ?? 0;
       const ownRate = current.sales > 0 && current.margin > 0 ? current.margin / current.sales : 0;
       const rate = ownRate || chainRate(s.chain);
-      const targetMargin = current.margin - current.utility;
+      const targetMargin = current.margin - currentResult;
       const targetSales = rate > 0 ? Math.max(current.sales, targetMargin / rate) : 0;
       return {
         ...s,
         current,
+        currentResult,
         rate,
         rateSource: ownRate ? "Margen tienda 2027P" : "Margen promedio cadena",
         targetMargin,
@@ -930,44 +1124,44 @@ function BreakEven({ selection }: { selection: StoreRow[] }) {
       };
     })
     .sort((a, b) => b.salesGap - a.salesGap);
-  const totalLoss = rows.reduce((a, s) => a + s.current.utility, 0);
+  const totalLoss = rows.reduce((a, s) => a + s.currentResult, 0);
   const totalCurrentSales = rows.reduce((a, s) => a + s.current.sales, 0);
   const totalTargetSales = rows.reduce((a, s) => a + s.targetSales, 0);
   const totalTargetMargin = rows.reduce((a, s) => a + s.targetMargin, 0);
   const exportBreakEven = () => downloadExcel(
-    "break-even-2027S",
-    ["CC", "TIENDA", "CADENA", ...years.flatMap((y) => [`VENTA ${yearLabel(y)}`, `MARGEN % ${yearLabel(y)}`, `UTILIDAD ${yearLabel(y)}`]), "VENTA 2027S", "MARGEN 2027S", "MARGEN % 2027S", "BRECHA VENTA", "UTILIDAD 2027S"],
+    `break-even-${breakEvenMetric}-${scenarioLabel}`,
+    ["CC", "TIENDA", "CADENA", ...years.flatMap((y) => [`VENTA ${yearLabel(y)}`, `MARGEN % ${yearLabel(y)}`, `${metricLabel.toUpperCase()} ${yearLabel(y)}`]), `VENTA ${scenarioLabel}`, `MARGEN ${scenarioLabel}`, `MARGEN % ${scenarioLabel}`, "BRECHA VENTA", `${metricLabel.toUpperCase()} ${scenarioLabel}`],
     rows.map((s) => [
       s.code, s.name, s.chain,
-      ...years.flatMap((y) => [Math.round(s.annual[y].sales / 1000), pct(s.annual[y].margin, s.annual[y].sales).toFixed(2), Math.round(s.annual[y].utility / 1000)]),
+      ...years.flatMap((y) => [Math.round(s.annual[y].sales / 1000), pct(s.annual[y].margin, s.annual[y].sales).toFixed(2), Math.round((metricValue(s, y) ?? 0) / 1000)]),
       Math.round(s.targetSales / 1000), Math.round(s.targetMargin / 1000), (s.rate * 100).toFixed(2), Math.round(s.salesGap / 1000), 0,
     ]),
   );
   return (
     <>
-      <div className="title"><div><i>05</i><span><h2>Break-Even</h2><p>Simulación de punto cero para tiendas con utilidad negativa en 2027P</p></span></div><div className="title-actions"><strong className="neg">{rows.length} tiendas bajo punto de equilibrio</strong><button className="export-button" onClick={exportBreakEven}>EXPORTAR A EXCEL</button></div></div>
+      <div className="title"><div><i>05</i><span><h2>Break-Even</h2><p>Simulación de punto cero para tiendas con {metricLabel.toLowerCase()} negativo en {yearLabel(breakEvenYear)}</p></span></div><div className="title-actions"><div className="quadrant-controls be-controls"><div className="profit-toggle"><button className={breakEvenMetric === "fourWalls" ? "active" : ""} onClick={() => setBreakEvenMetric("fourWalls")}>FOUR WALLS</button><button className={breakEvenMetric === "utility" ? "active" : ""} onClick={() => setBreakEvenMetric("utility")}>UTILIDAD</button></div><label className="year-select">AÑO<select value={breakEvenYear} onChange={(e) => setBreakEvenYear(Number(e.target.value) as Year)}>{years.map((y) => <option key={y} value={y}>{yearLabel(y)}</option>)}</select><ChevronDown /></label></div><strong className="neg">{rows.length} tiendas bajo punto de equilibrio</strong><button className="export-button" onClick={exportBreakEven}>EXPORTAR A EXCEL</button></div></div>
       <section className="be-kpis">
-        <article><label>PÉRDIDA 2027P</label><strong className="neg">{money(totalLoss)}</strong><span>universo simulado</span></article>
-        <article><label>VENTA ACTUAL 2027P</label><strong>{money(totalCurrentSales)}</strong><span>tiendas con pérdida</span></article>
-        <article><label>VENTA REQUERIDA 2027S</label><strong>{money(totalTargetSales)}</strong><span>punto de equilibrio</span></article>
+        <article><label>{metricLabel.toUpperCase()} NEGATIVO · {yearLabel(breakEvenYear)}</label><strong className="neg">{money(totalLoss)}</strong><span>universo simulado</span></article>
+        <article><label>VENTA ACTUAL · {yearLabel(breakEvenYear)}</label><strong>{money(totalCurrentSales)}</strong><span>tiendas con pérdida</span></article>
+        <article><label>VENTA REQUERIDA · {scenarioLabel}</label><strong>{money(totalTargetSales)}</strong><span>punto de equilibrio {metricLabel}</span></article>
         <article><label>BRECHA DE VENTA</label><strong className="pos">{money(totalTargetSales - totalCurrentSales)}</strong><span>incremento requerido</span></article>
       </section>
       <div className="be-method">
-        <b>Metodología 2027S:</b> costos y tasa de margen 2027P constantes. Margen requerido = margen 2027P − utilidad 2027P; venta requerida = margen requerido / tasa de margen. Si la tienda no tiene una tasa válida, se usa el promedio ponderado de su cadena.
+        <b>Metodología {scenarioLabel} · {metricLabel}:</b> costos y tasa de margen de {yearLabel(breakEvenYear)} constantes. Margen requerido = margen actual − {metricLabel.toLowerCase()} actual; venta requerida = margen requerido / tasa de margen. Si la tienda no tiene una tasa válida, se usa el promedio ponderado de su cadena.
       </div>
       <section className="panel be-panel">
-        <div className="monitor-head"><div><label>SIMULACIÓN BREAK-EVEN</label><h3>Historia y escenario 2027S</h3></div><span>Ordenado por mayor brecha de venta</span></div>
+        <div className="monitor-head"><div><label>SIMULACIÓN BREAK-EVEN · {metricLabel.toUpperCase()}</label><h3>Historia y escenario {scenarioLabel}</h3></div><span>Ordenado por mayor brecha de venta</span></div>
         <div className="scroll be-scroll">
           <table className="compact-table break-even-table">
             <thead>
               <tr>
                 <th rowSpan={2}>TIENDA</th><th rowSpan={2}>CADENA</th>
                 {years.map((y) => <th key={y} colSpan={3}>{yearLabel(y)}</th>)}
-                <th colSpan={5} className="sim-head">2027S · PUNTO CERO</th>
+                <th colSpan={5} className="sim-head">{scenarioLabel} · PUNTO CERO {metricLabel.toUpperCase()}</th>
               </tr>
               <tr>
-                {years.flatMap((y) => [<th key={`${y}-v`}>VENTA</th>,<th key={`${y}-m`}>MARGEN %</th>,<th key={`${y}-u`}>UTILIDAD</th>])}
-                <th>VENTA</th><th>MARGEN</th><th>MARGEN %</th><th>BRECHA VENTA</th><th>UTILIDAD</th>
+                {years.flatMap((y) => [<th key={`${y}-v`}>VENTA</th>,<th key={`${y}-m`}>MARGEN %</th>,<th key={`${y}-u`}>{metricLabel.toUpperCase()}</th>])}
+                <th>VENTA</th><th>MARGEN</th><th>MARGEN %</th><th>BRECHA VENTA</th><th>{metricLabel.toUpperCase()}</th>
               </tr>
             </thead>
             <tbody>{rows.map((s) => <tr key={s.code}>
@@ -977,7 +1171,7 @@ function BreakEven({ selection }: { selection: StoreRow[] }) {
                 return [
                   <td key={`${y}-v`}>{money(m.sales)}</td>,
                   <td key={`${y}-m`}>{pct(m.margin,m.sales).toFixed(2)}%</td>,
-                  <td key={`${y}-u`} className={m.utility < 0 ? "neg" : "pos"}>{money(m.utility)}</td>,
+                  <td key={`${y}-u`} className={(metricValue(s, y) ?? 0) < 0 ? "neg" : "pos"}>{money(metricValue(s, y) ?? 0)}</td>,
                 ];
               })}
               <td className="sim-cell"><b>{money(s.targetSales)}</b></td>
@@ -1002,7 +1196,12 @@ const mallOf = (name: string) => {
 };
 
 function StoreMonitor({ selection }: { selection: StoreRow[] }) {
+  const { storeM2, storeContractEnd } = usePrivateData();
   const [classificationFilter, setClassificationFilter] = useState<ClassificationFilter>("TOTAL");
+  const [monitorFilter, setMonitorFilter] = useState<MonitorFilter>("TOTAL");
+  const [monitorYear, setMonitorYear] = useState<2026 | 2027>(2027);
+  const m2ByCode = useMemo(() => new Map(storeM2.map((row) => [normalizeStoreKey(row.code), row])), [storeM2]);
+  const m2ByName = useMemo(() => new Map(storeM2.map((row) => [normalizeStoreKey(row.name), row])), [storeM2]);
   const duplicateNames = new Set(
     selection
       .filter((s, _, all) => all.filter((x) => x.name.trim().toUpperCase() === s.name.trim().toUpperCase()).length > 1)
@@ -1010,16 +1209,26 @@ function StoreMonitor({ selection }: { selection: StoreRow[] }) {
   );
   const rows = selection.map((s) => {
     const active = years.filter((y) => Math.abs(s.annual[y].sales) > 0);
+    const contractEnd = storeContractEnd[s.code] ?? null;
+    const m2Source = m2ByCode.get(normalizeStoreKey(s.code)) ?? m2ByName.get(normalizeStoreKey(s.name));
+    const squareMeters = m2Source?.squareMeters ?? 0;
     const issues = [
       s.chain === "OTROS" ? "Revisar cadena" : "",
       mallOf(s.name) === "Pendiente" ? "Completar mall" : "",
       duplicateNames.has(s.name.trim().toUpperCase()) ? "Nombre duplicado" : "",
       !active.length ? "Sin ventas" : "",
+      !contractEnd && s.annual[monitorYear].sales !== 0 ? "Falta fecha contrato" : "",
     ].filter(Boolean);
-    return { ...s, mall: mallOf(s.name), active, issues };
+    return { ...s, mall: mallOf(s.name), contractEnd, active, issues, squareMeters };
   });
   const hasNsInYear = (store: StoreRow, year: 2026 | 2027) =>
     monthOrder.some((month) => openingType(store, year, month) === "NS");
+  const nsMonthsInYear = (store: StoreRow, year: 2026 | 2027) =>
+    monthOrder.filter((month) => openingType(store, year, month) === "NS");
+  const isRemodeled = (store: StoreRow, year: 2026 | 2027) => {
+    const nsMonths = nsMonthsInYear(store, year).length;
+    return nsMonths >= 1 && nsMonths <= 3;
+  };
   const classificationCounts = {
     2026: {
       ns: rows.filter((store) => hasNsInYear(store, 2026)).length,
@@ -1032,21 +1241,37 @@ function StoreMonitor({ selection }: { selection: StoreRow[] }) {
   };
   const pending = rows.filter((r) => r.issues.length);
   const hasAnyNsMonth = (store: StoreRow) => ([2026, 2027] as const).some((year) => hasNsInYear(store, year));
+  const monitorRows = rows.filter((store) => {
+    if (monitorFilter === "TOTAL") return true;
+    if (monitorFilter === "CHAIN_OTHER") return store.chain === "OTROS";
+    if (monitorFilter === "DUPLICATE") return duplicateNames.has(store.name.trim().toUpperCase());
+    if (monitorFilter === "ACTIVE_YEAR") return store.annual[monitorYear].sales !== 0;
+    if (monitorFilter === "NO_CONTRACT") return !store.contractEnd && store.annual[monitorYear].sales !== 0;
+    if (monitorFilter === "NO_M2") return store.squareMeters <= 0;
+    if (monitorFilter === "SSS_YEAR") return !hasNsInYear(store, monitorYear);
+    if (monitorFilter === "NS_YEAR") return hasNsInYear(store, monitorYear);
+    return isRemodeled(store, monitorYear);
+  });
   const visibleRows = classificationFilter === "TOTAL"
-    ? rows
-    : rows.filter((store) => classificationFilter === "NS" ? hasAnyNsMonth(store) : !hasAnyNsMonth(store));
+    ? monitorRows
+    : monitorRows.filter((store) => classificationFilter === "NS" ? hasAnyNsMonth(store) : !hasAnyNsMonth(store));
+  const selectMonitorFilter = (filter: MonitorFilter) => {
+    setMonitorFilter((current) => current === filter && filter !== "TOTAL" ? "TOTAL" : filter);
+    setClassificationFilter("TOTAL");
+  };
   return (
     <>
-      <div className="title"><div><i>04</i><span><h2>Monitor maestro de tiendas</h2><p>Control preliminar para cuadratura de tiendas, cadenas y mall / ubicación</p></span></div><strong>{pending.length} registros por revisar</strong></div>
+      <div className="title"><div><i>04</i><span><h2>Monitor maestro de tiendas</h2><p>Control preliminar para cuadratura de tiendas, cadenas y mall / ubicación</p></span></div><div className="monitor-year-control"><div className="classification-filter" aria-label="Año del monitor">{([2026, 2027] as const).map((year) => <button type="button" key={year} className={monitorYear === year ? "active" : ""} onClick={() => { setMonitorYear(year); setMonitorFilter("TOTAL"); setClassificationFilter("TOTAL"); }}>{year === 2026 ? "2026E" : "2027P"}</button>)}</div><strong>{pending.length} registros por revisar</strong></div></div>
       <section className="monitor-kpis">
-        <article><label>TIENDAS / CC</label><strong>{rows.length}</strong><span>registros únicos</span></article>
-        <article><label>CADENA OTROS</label><strong>{rows.filter((r) => r.chain === "OTROS").length}</strong><span>requieren clasificación</span></article>
-        <article><label>NOMBRES DUPLICADOS</label><strong>{duplicateNames.size}</strong><span>posibles homologaciones</span></article>
-        <article><label>ACTIVAS 2027P</label><strong>{rows.filter((r) => r.annual[2027].sales !== 0).length}</strong><span>con venta anual</span></article>
-        <article className="classification-kpi sss"><label>SSS 2026E</label><strong>{classificationCounts[2026].sss}</strong><span>SSS los 12 meses</span></article>
-        <article className="classification-kpi ns"><label>NS 2026E</label><strong>{classificationCounts[2026].ns}</strong><span>al menos un mes NS</span></article>
-        <article className="classification-kpi sss"><label>SSS 2027P</label><strong>{classificationCounts[2027].sss}</strong><span>SSS los 12 meses</span></article>
-        <article className="classification-kpi ns"><label>NS 2027P</label><strong>{classificationCounts[2027].ns}</strong><span>al menos un mes NS</span></article>
+        <button type="button" className={`monitor-kpi ${monitorFilter === "TOTAL" ? "active" : ""}`} onClick={() => selectMonitorFilter("TOTAL")}><label>TIENDAS / CC</label><strong>{rows.length}</strong><span>registros únicos</span></button>
+        <button type="button" className={`monitor-kpi ${monitorFilter === "CHAIN_OTHER" ? "active" : ""}`} onClick={() => selectMonitorFilter("CHAIN_OTHER")}><label>CADENA OTROS</label><strong>{rows.filter((r) => r.chain === "OTROS").length}</strong><span>requieren clasificación</span></button>
+        <button type="button" className={`monitor-kpi ${monitorFilter === "DUPLICATE" ? "active" : ""}`} onClick={() => selectMonitorFilter("DUPLICATE")}><label>NOMBRES DUPLICADOS</label><strong>{duplicateNames.size}</strong><span>posibles homologaciones</span></button>
+        <button type="button" className={`monitor-kpi ${monitorFilter === "ACTIVE_YEAR" ? "active" : ""}`} onClick={() => selectMonitorFilter("ACTIVE_YEAR")}><label>ACTIVAS {monitorYear === 2026 ? "2026E" : "2027P"}</label><strong>{rows.filter((r) => r.annual[monitorYear].sales !== 0).length}</strong><span>con venta anual</span></button>
+        <button type="button" className={`monitor-kpi ${monitorFilter === "NO_CONTRACT" ? "active" : ""}`} onClick={() => selectMonitorFilter("NO_CONTRACT")}><label>SIN FECHA CONTRATO</label><strong>{rows.filter((r) => !r.contractEnd && r.annual[monitorYear].sales !== 0).length}</strong><span>activas en el año seleccionado</span></button>
+        <button type="button" className={`monitor-kpi missing-m2 ${monitorFilter === "NO_M2" ? "active" : ""}`} onClick={() => selectMonitorFilter("NO_M2")}><label>TIENDAS SIN M²</label><strong>{rows.filter((r) => r.squareMeters <= 0).length}</strong><span>requieren completar superficie</span></button>
+        <button type="button" className={`monitor-kpi classification-kpi sss ${monitorFilter === "SSS_YEAR" ? "active" : ""}`} onClick={() => selectMonitorFilter("SSS_YEAR")}><label>SSS {monitorYear === 2026 ? "2026E" : "2027P"}</label><strong>{classificationCounts[monitorYear].sss}</strong><span>SSS los 12 meses</span></button>
+        <button type="button" className={`monitor-kpi classification-kpi ns ${monitorFilter === "NS_YEAR" ? "active" : ""}`} onClick={() => selectMonitorFilter("NS_YEAR")}><label>NS {monitorYear === 2026 ? "2026E" : "2027P"}</label><strong>{classificationCounts[monitorYear].ns}</strong><span>al menos un mes NS</span></button>
+        <button type="button" className={`monitor-kpi remodeled ${monitorFilter === "REMODELED" ? "active" : ""}`} onClick={() => selectMonitorFilter("REMODELED")}><label>REMODELADAS {monitorYear === 2026 ? "2026E" : "2027P"}</label><strong>{rows.filter((r) => isRemodeled(r, monitorYear)).length}</strong><span>entre 1 y 3 meses NS</span></button>
       </section>
       <section className="panel monitor-panel">
         <div className="monitor-head">
@@ -1063,11 +1288,11 @@ function StoreMonitor({ selection }: { selection: StoreRow[] }) {
         <div className="scroll monitor-scroll">
           <table className="detail-table compact-table">
             <thead>
-              <tr><th rowSpan={2}>CC REPORTE</th><th rowSpan={2}>TIENDA HOMOLOGADA</th><th rowSpan={2}>CADENA</th><th rowSpan={2}>MALL / UBICACIÓN</th><th colSpan={12}>CLASIFICACIÓN 2026E</th><th colSpan={12}>CLASIFICACIÓN 2027P</th><th rowSpan={2}>ESTADO CONTROL</th></tr>
+              <tr><th rowSpan={2}>CC REPORTE</th><th rowSpan={2}>TIENDA HOMOLOGADA</th><th rowSpan={2}>CADENA</th><th rowSpan={2}>MALL / UBICACIÓN</th><th rowSpan={2}>M²</th><th rowSpan={2}>MESES NS {monitorYear}</th><th rowSpan={2}>FIN CONTRATO</th><th colSpan={12}>CLASIFICACIÓN 2026E</th><th colSpan={12}>CLASIFICACIÓN 2027P</th><th rowSpan={2}>ESTADO CONTROL</th></tr>
               <tr>{([2026, 2027] as const).flatMap((year) => monthOrder.map((month) => <th key={`${year}-${month}`}>{monthShort[month]}</th>))}</tr>
             </thead>
             <tbody>{visibleRows.map((s) => <tr key={s.code}>
-              <td><b>{s.code}</b></td><td><b>{s.name}</b></td><td className={s.chain === "OTROS" ? "neg bold" : ""}>{s.chain}</td><td>{s.mall}</td>
+              <td><b>{s.code}</b></td><td><b>{s.name}</b></td><td className={s.chain === "OTROS" ? "neg bold" : ""}>{s.chain}</td><td>{s.mall}</td><td className={s.squareMeters <= 0 ? "missing-m2" : ""}>{s.squareMeters > 0 ? s.squareMeters.toLocaleString("es-CL", { maximumFractionDigits: 1 }) : "SIN M²"}</td><td>{nsMonthsInYear(s, monitorYear).length ? nsMonthsInYear(s, monitorYear).map((month) => monthShort[month]).join(" · ") : "—"}</td><td className={!s.contractEnd && s.annual[monitorYear].sales !== 0 ? "missing-contract" : ""}>{s.contractEnd ?? (s.annual[monitorYear].sales !== 0 ? "FALTA FECHA" : "NO REQUERIDA")}</td>
               {([2026, 2027] as const).flatMap((year) => monthOrder.map((month) => {
                 const classification = openingType(s, year, month);
                 return <td key={`${year}-${month}`}><i className={`tag classification-${classification.toLowerCase()}`}>{classification}</i></td>;
@@ -1262,13 +1487,105 @@ function UsuariosAdmin() {
   );
 }
 
+function EconomicIndicators() {
+  const [indicators, setIndicators] = useState<MarketIndicator[]>([]);
+  const [indicatorError, setIndicatorError] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/market-indicators", { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Indicadores no disponibles");
+        return response.json() as Promise<unknown>;
+      })
+      .then((payload) => {
+        const valid = parseMarketIndicators(payload);
+        setIndicators(valid);
+        setIndicatorError(valid.length < 4);
+      })
+      .catch((error) => { if (error.name !== "AbortError") setIndicatorError(true); });
+    return () => controller.abort();
+  }, []);
+
+  const icons = {
+    dolar: CircleDollarSign,
+    uf: Landmark,
+    petroleo: Waves,
+    cobre: Activity,
+  };
+  const numberFormat = (indicator: MarketIndicator) => new Intl.NumberFormat("es-CL", {
+    minimumFractionDigits: indicator.id === "uf" ? 2 : 2,
+    maximumFractionDigits: 2,
+  }).format(indicator.value);
+  const chartPoints = (history: number[]) => {
+    if (!history.length) return "";
+    const low = Math.min(...history);
+    const high = Math.max(...history);
+    const range = high - low || 1;
+    return history.map((value, index) => `${(index / Math.max(history.length - 1, 1)) * 100},${34 - ((value - low) / range) * 30}`).join(" ");
+  };
+
+  return <div className="economic-panel">
+    <div className="economic-panel-head"><div><small>PULSO ECONÓMICO</small><h2>Indicadores diarios</h2></div><span><i /> Datos actualizados</span></div>
+    <div className="economic-grid">
+      {indicators.length ? [...indicators].sort((a, b) => ["dolar", "uf", "petroleo", "cobre"].indexOf(a.id) - ["dolar", "uf", "petroleo", "cobre"].indexOf(b.id)).map((indicator) => {
+        const Icon = icons[indicator.id];
+        const hasTrend = indicator.history.length > 1;
+        const direction = indicator.change > 0.001 ? "up" : indicator.change < -0.001 ? "down" : "flat";
+        return <article className={`economic-card ${direction}`} key={indicator.id}>
+          <div className="economic-card-title"><i><Icon /></i><span><b>{indicator.label}</b><small>{indicator.unit}</small></span></div>
+          <strong>{indicator.id === "dolar" || indicator.id === "uf" ? "$" : "US$"} {numberFormat(indicator)}</strong>
+          <div className="economic-trend"><span>{hasTrend ? `${indicator.change >= 0 ? "+" : ""}${indicator.change.toFixed(2)}%` : "Último dato"}</span><small>{hasTrend ? "vs. dato anterior" : "disponible"}</small></div>
+          <svg viewBox="0 0 100 38" preserveAspectRatio="none" aria-hidden="true"><polyline points={chartPoints(indicator.history)} /></svg>
+          <time dateTime={indicator.date}>{indicatorDateLabel(indicator.date)}</time>
+        </article>;
+      }) : Array.from({ length: 4 }, (_, index) => <article className="economic-card loading" key={index}><span /><b /><i /></article>)}
+    </div>
+    <div className="economic-source"><span>{indicatorError ? "Algunos indicadores no están disponibles temporalmente." : "Valores referenciales · última observación disponible"}</span><a href="https://www.bcentral.cl/es/areas/estadisticas" target="_blank" rel="noreferrer">BCCh</a><a href="https://fred.stlouisfed.org/series/DCOILBRENTEU" target="_blank" rel="noreferrer">FRED</a></div>
+  </div>;
+}
+
+function DollarLoginPanel() {
+  const [dollarData, setDollarData] = useState<DollarHistoryPayload | null>(null);
+  const [dollarError, setDollarError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/dollar-history", { signal: controller.signal })
+      .then(async (response) => {
+        const payload = await response.json() as DollarHistoryPayload & { error?: string };
+        if (!response.ok) throw new Error(payload.error || "No fue posible cargar el dólar observado.");
+        if (!Array.isArray(payload.points) || !payload.points.length || !Array.isArray(payload.months) || !payload.months.length) throw new Error("No hay observaciones disponibles para este período.");
+        return payload;
+      })
+      .then(setDollarData)
+      .catch((error) => { if (error.name !== "AbortError") setDollarError(error instanceof Error ? error.message : "Fuente no disponible"); });
+    return () => controller.abort();
+  }, [loadAttempt]);
+
+  const peso = (value: number) => `$${new Intl.NumberFormat("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
+  const shortDate = (date: string) => new Intl.DateTimeFormat("es-CL", { day: "2-digit", month: "short", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
+  const latest = dollarData?.points.at(-1);
+
+  return <div className="finance-board dollar-board">
+    <header><div><i><BarChart3 /></i><span><b>DÓLAR OBSERVADO</b><small>Comportamiento diario · Chile</small></span></div>{latest && <em>{peso(latest.value)} · {shortDate(latest.date)}</em>}</header>
+    {dollarData ? <>
+      <div className="dollar-months">{dollarData.months.map((month) => <article key={month.key} className={month.closed ? "closed" : "current"}><span>{month.label}</span><strong>{peso(month.average)}</strong><small>Promedio mensual · {month.observations} días</small><i>{month.closed ? "MES CERRADO" : "MES ACTUAL"}</i></article>)}</div>
+      <div className="dollar-chart-head"><div><label>EVOLUCIÓN DIARIA</label><h2>Dos meses cerrados + mes actual</h2></div><span><i className="daily" />Valor diario <i className="average" />Promedio del mes</span></div>
+      <div className="dollar-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={dollarData.points} margin={{ top: 16, right: 14, left: 4, bottom: 4 }}><CartesianGrid stroke="#e4e9ef" vertical={false} /><XAxis dataKey="date" tickFormatter={shortDate} minTickGap={34} tick={{ fontSize: 9, fill: "#748196" }} axisLine={{ stroke: "#ccd5df" }} tickLine={false} /><YAxis domain={["dataMin - 5", "dataMax + 5"]} tickFormatter={(value) => `$${new Intl.NumberFormat("es-CL", { maximumFractionDigits: 0 }).format(Number(value))}`} tick={{ fontSize: 9, fill: "#748196" }} axisLine={false} tickLine={false} width={52} /><Tooltip labelFormatter={(label) => shortDate(String(label))} formatter={(value, name) => [peso(Number(value)), name === "value" ? "Dólar observado" : "Promedio mensual"]} contentStyle={{ border: "1px solid #dce2e9", borderRadius: 3, fontSize: 11 }} /><Line type="stepAfter" dataKey="average" name="average" stroke="#23a3cb" strokeWidth={1.7} strokeDasharray="5 5" dot={false} activeDot={false} /><Line type="monotone" dataKey="value" name="value" stroke="#173b70" strokeWidth={3} dot={{ r: 2, fill: "#fff", stroke: "#173b70", strokeWidth: 1.5 }} activeDot={{ r: 5, fill: "#173b70" }} /></LineChart></ResponsiveContainer></div>
+      <p className="dollar-observation">Última observación publicada: {new Intl.DateTimeFormat("es-CL", { day: "2-digit", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${latest!.date}T12:00:00Z`))}. Promedios calculados con las observaciones disponibles.</p>
+      <footer className="dollar-source"><span><i />FUENTE DE INFORMACIÓN</span><b>{dollarData.source}</b><a href={dollarData.sourceUrl} target="_blank" rel="noreferrer">Ver fuente de datos</a></footer>
+    </> : <div className={`dollar-loading ${dollarError ? "error" : ""}`} aria-live="polite">{dollarError ? <><AlertTriangle /><strong>{dollarError}</strong><button type="button" onClick={() => { setDollarError(""); setLoadAttempt(current => current + 1); }}>Reintentar</button></> : <><RefreshCw className="spin" /><strong>Cargando historia del dólar…</strong></>}</div>}
+  </div>;
+}
+
 function LoginForm({ onLogin }: { onLogin: (user: AuthUser) => void | Promise<void> }) {
   const buttonRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
   const [googleClientId, setGoogleClientId] = useState("");
-  const [configLoaded, setConfigLoaded] = useState(true);
+  const [configLoaded, setConfigLoaded] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -1285,26 +1602,6 @@ function LoginForm({ onLogin }: { onLogin: (user: AuthUser) => void | Promise<vo
       active = false;
     };
   }, []);
-
-  const loginWithActiveEmail = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      const authResponse = await fetch("/api/auth/email", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const payload = await authResponse.json() as { user?: AuthUser; error?: string };
-      if (!authResponse.ok || !payload.user) throw new Error(payload.error || "No se pudo iniciar sesion.");
-      await onLogin(payload.user);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo iniciar sesion.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (!configLoaded || !googleClientId) return;
@@ -1361,6 +1658,7 @@ function LoginForm({ onLogin }: { onLogin: (user: AuthUser) => void | Promise<vo
     const script = document.createElement("script");
     script.id = "google-identity";
     script.src = "https://accounts.google.com/gsi/client";
+    script.nonce = document.querySelector<HTMLMetaElement>('meta[name="csp-nonce"]')?.content ?? "";
     script.async = true;
     script.defer = true;
     script.onload = initializeGoogle;
@@ -1379,54 +1677,77 @@ function LoginForm({ onLogin }: { onLogin: (user: AuthUser) => void | Promise<vo
         </div>
         <div className="login-access">
           {googleClientId && <div ref={buttonRef} className={loading ? "login-button loading" : "login-button"} />}
-          {googleClientId && <div className="login-divider"><span>o ingresa con tu correo corporativo</span></div>}
-          <form className="email-login" onSubmit={loginWithActiveEmail}>
-            <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="correo@forus.cl" type="email" />
-            <button type="submit" disabled={loading}>INGRESAR</button>
-          </form>
           {loading && <span className="login-status">Validando usuario...</span>}
-          {configLoaded && !googleClientId && <span className="login-status">Acceso local · valida que el correo esté activo en BigQuery.</span>}
+          {configLoaded && !googleClientId && <span className="login-status">El acceso corporativo no está disponible. Contacta al administrador.</span>}
           {error && <div className="data-warning login-error"><AlertTriangle /><span>{error}</span></div>}
         </div>
         <div className="login-security"><i>01</i><span><b>ACCESO PROTEGIDO</b>Disponible para colaboradores @forus.cl habilitados.</span></div>
         <small className="login-legal">Planificación Financiera · Forus Chile</small>
       </section>
       <aside className="login-visual" aria-label="Inteligencia financiera y de mercado">
-        <div className="finance-board" aria-hidden="true">
-          <header><div><i><BarChart3 /></i><span><b>FINANCIAL OUTLOOK</b><small>Planificación Financiera · Forus</small></span></div><em>FORECAST 2027</em></header>
-          <div className="finance-signals">
-            <article><span>RENTABILIDAD</span><i><b /><b /><b /><b /></i><small>TENDENCIA</small></article>
-            <article><span>MARGEN</span><i><b /><b /><b /><b /><b /></i><small>EFICIENCIA</small></article>
-            <article><span>EBITDA</span><i><b /><b /><b /></i><small>CONVERSIÓN</small></article>
-          </div>
-          <div className="finance-chart">
-            <div className="finance-axis"><span>100</span><span>75</span><span>50</span><span>25</span><span>0</span></div>
-            <div className="finance-grid-lines"><i /><i /><i /><i /><i /></div>
-            <div className="finance-columns"><i style={{ height: "28%" }} /><i style={{ height: "38%" }} /><i style={{ height: "34%" }} /><i style={{ height: "49%" }} /><i style={{ height: "57%" }} /><i style={{ height: "64%" }} /><i style={{ height: "76%" }} /><i style={{ height: "86%" }} /></div>
-            <svg viewBox="0 0 620 220" preserveAspectRatio="none">
-              <defs><linearGradient id="financeArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#1d75bd" stopOpacity=".25" /><stop offset="100%" stopColor="#1d75bd" stopOpacity="0" /></linearGradient></defs>
-              <path className="finance-area" d="M0 182 C55 170 83 151 132 158 S220 125 272 132 S356 88 405 97 S510 52 620 29 L620 220 L0 220 Z" />
-              <path className="finance-line" d="M0 182 C55 170 83 151 132 158 S220 125 272 132 S356 88 405 97 S510 52 620 29" />
-              <circle cx="132" cy="158" r="5" /><circle cx="272" cy="132" r="5" /><circle cx="405" cy="97" r="5" /><circle cx="620" cy="29" r="5" />
-            </svg>
-            <div className="finance-quarters"><span>Q1</span><span>Q2</span><span>Q3</span><span>Q4</span></div>
-          </div>
-          <footer><span><i />ESCENARIO BASE</span><span>RETAIL</span><span>BENCHMARK</span><span>MACROECONOMÍA</span></footer>
-        </div>
-        <div className="login-intelligence-cards">
-          <article><TrendingUp /><span>RENTABILIDAD</span><b>Forecast &amp; B&amp;L</b></article>
-          <article><Globe2 /><span>MERCADO</span><b>Industria &amp; economía</b></article>
-          <article><Building2 /><span>GESTIÓN</span><b>KPI consolidados</b></article>
-        </div>
+        <DollarLoginPanel />
       </aside>
     </main>
   );
 }
 
-export default function Home() {
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
-  const [checkingAuth, setCheckingAuth] = useState(false);
-  const [view, setView] = useState<"annual" | "detail" | "monitor" | "break-even" | "users">("annual");
+function UserMenu({ user, onLogout }: { user: AuthUser; onLogout: () => Promise<void> }) {
+  const menuRef = useRef<HTMLDetailsElement>(null);
+  const [signingOut, setSigningOut] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const closeOutside = (event: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) menuRef.current.open = false;
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && menuRef.current?.open) {
+        menuRef.current.open = false;
+        menuRef.current.querySelector("summary")?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
+
+  const signOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    setError("");
+    try {
+      await onLogout();
+    } catch {
+      setError("No fue posible cerrar sesión. Intenta nuevamente.");
+      setSigningOut(false);
+    }
+  };
+
+  return <details className="portal-user" ref={menuRef}>
+    <summary aria-label={`Menú de usuario: ${user.name}`}>
+      <span className="avatar">{user.name.slice(0, 1).toUpperCase()}</span>
+      <span className="portal-user-name"><b>{user.name}</b><small>{user.role}</small></span>
+      <ChevronDown className="portal-user-chevron" aria-hidden="true" />
+    </summary>
+    <div className="portal-user-dropdown">
+      <button type="button" onClick={() => void signOut()} disabled={signingOut}>
+        <LogOut aria-hidden="true" />{signingOut ? "Cerrando sesión…" : "Cerrar sesión"}
+      </button>
+      {error && <p role="alert">{error}</p>}
+    </div>
+  </details>;
+}
+
+function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
+  authUser: AuthUser; onLogout: () => Promise<void>; reportsError: string; onRetryReports: () => void;
+}) {
+  const privateData = useContext(PrivateDataContext);
+  const baseSnapshotAt = privateData?.baseSnapshotAt ?? "";
+  const snapshotLabel = `${baseSnapshotAt.slice(8, 10)}-${baseSnapshotAt.slice(5, 7)}-${baseSnapshotAt.slice(0, 4)} · ${baseSnapshotAt.slice(11, 16)}`;
+  const [view, setView] = useState<"annual" | "detail" | "m2" | "monitor" | "break-even" | "sensitivity">("annual");
   const [selectedChains, setSelectedChains] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [quadrantYear, setQuadrantYear] = useState<Year>(2027);
@@ -1434,28 +1755,11 @@ export default function Home() {
   const [analysisMetric, setAnalysisMetric] = useState<ProfitMetric>("fourWalls");
   const [refreshing, setRefreshing] = useState(false);
   const [portalSection, setPortalSection] = useState("home");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [expandedPortalGroups, setExpandedPortalGroups] = useState<string[]>([]);
+  const blActive = portalSection === "bl";
+  const needsPrivateData = blActive || ["ecommerce", "marketplace", "wholesale", "consolidada"].includes(portalSection);
+  const stores = useMemo(() => blActive && privateData ? buildStores(privateData.baseConsolidada) : [], [blActive, privateData]);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const chainFilterRef = useRef<HTMLDetailsElement>(null);
-
-  useEffect(() => {
-    let active = true;
-    const checkSession = async () => {
-      try {
-        const response = await fetch("/api/auth/session", { cache: "no-store" });
-        const payload = await response.json() as { user?: AuthUser | null };
-        if (active && payload.user) setAuthUser(payload.user);
-      } catch {
-        if (active) setAuthUser(null);
-      } finally {
-        if (active) setCheckingAuth(false);
-      }
-    };
-    void checkSession();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     const closeChainFilter = (event: PointerEvent) => {
@@ -1480,7 +1784,7 @@ export default function Home() {
       s.name.toLowerCase().includes(needle) || s.code.toLowerCase().includes(needle)
     );
     return matchesChain && matchesQuery;
-  }), [selectedChains, query]);
+  }), [stores, selectedChains, query]);
   const selection = useMemo(
     () => fwBand ? universe.filter((s) => fwBandOf(s, quadrantYear, analysisMetric) === fwBand) : universe,
     [universe, fwBand, quadrantYear, analysisMetric],
@@ -1489,110 +1793,90 @@ export default function Home() {
     current.includes(chain) ? current.filter((item) => item !== chain) : [...current, chain]
   );
 
-  if (checkingAuth && authUser) {
-    return (
-      <main className="login-shell login-validating-shell">
-        <section className="login-panel">
-          <div className="brand login-brand"><img src="/forus.png" alt="Forus" /><b>PLANIFICACION <span>FINANCIERA</span><small>Acceso corporativo</small></b></div>
-          <span className="login-status">Validando sesion...</span>
-        </section>
-      </main>
-    );
-  }
-
-  const validateLoginSession = async () => {
-    const response = await fetch("/api/auth/session", { cache: "no-store" });
-    const payload = await response.json() as { user?: AuthUser | null };
-    if (!response.ok || !payload.user) {
-      throw new Error("La sesion no pudo validarse. Intenta nuevamente.");
-    }
-    setAuthUser(payload.user);
-  };
-
-  if (!authUser) return <LoginForm onLogin={validateLoginSession} />;
   const canManageUsers = isAdminRole(authUser.role);
-  const activeView = !canManageUsers && view === "users" ? "annual" : view;
+  const activeView = view;
   const selectedPortalItem = portalSection === "home"
     ? { id: "home", label: "Portada", enabled: true }
+    : portalSection === "users"
+      ? { id: "users", label: "Usuarios", enabled: true }
+    : portalSection === "toolbox"
+      ? { id: "toolbox", label: "Toolbox AP", enabled: true }
     : portalGroups.flatMap((group) => group.items).find((item) => item.id === portalSection) ?? portalGroups[0].items[0];
   const selectedPortalGroup = portalGroups.find((group) => group.items.some((item) => item.id === portalSection)) ?? portalGroups[0];
-  const blActive = portalSection === "bl";
-  const openPortalSection = (groupId: string, itemId: string) => {
+  const openPortalSection = (_groupId: string, itemId: string) => {
     setPortalSection(itemId);
-    setExpandedPortalGroups((current) => current.includes(groupId) ? current : [...current, groupId]);
   };
-  const togglePortalGroup = (groupId: string) => setExpandedPortalGroups((current) =>
-    current.includes(groupId) ? current.filter((id) => id !== groupId) : [...current, groupId]
-  );
 
   return (
-    <div className={`portal-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
-      <aside className="portal-sidebar">
-        <div className="portal-brand">
+    <div className="portal-shell microsoft-shell">
+      <header className="portal-topbar">
+        <button className="portal-brand" type="button" onClick={() => setPortalSection("home")} aria-label="Ir a la portada">
           <img src="/forus.png" alt="Forus" />
-          {!sidebarCollapsed && <span><b>Portal Financiero</b><small>Planificación · Forus</small></span>}
-          <button type="button" onClick={() => setSidebarCollapsed((current) => !current)} aria-label={sidebarCollapsed ? "Abrir menú" : "Cerrar menú"}>{sidebarCollapsed ? <Menu /> : <PanelLeftClose />}</button>
-        </div>
-        <nav className="portal-nav" aria-label="Informes financieros">
-          <button type="button" title="Portada" className={`portal-home-link ${portalSection === "home" ? "active" : ""}`} onClick={() => setPortalSection("home")}>
-            <Building2 />{!sidebarCollapsed && <span>Portada</span>}
-          </button>
+          <span><b>Portal Financiero</b><small>Planificación · Forus</small></span>
+        </button>
+        <button className="portal-mobile-toggle" type="button" onClick={() => setMobileNavOpen((current) => !current)} aria-expanded={mobileNavOpen} aria-label="Abrir menú"><Menu /></button>
+        <nav className={`portal-topnav ${mobileNavOpen ? "open" : ""}`} aria-label="Informes financieros">
+          <button type="button" className={portalSection === "home" ? "active" : ""} onClick={() => { setPortalSection("home"); setMobileNavOpen(false); }}>Inicio</button>
+          <button type="button" className={portalSection === "toolbox" ? "active" : ""} onClick={() => { setPortalSection("toolbox"); setMobileNavOpen(false); }}>Toolbox AP</button>
           {portalGroups.map((group) => {
             const GroupIcon = group.icon;
-            const expanded = expandedPortalGroups.includes(group.id);
-            return <section className="portal-nav-group" key={group.id}>
-              <button type="button" className={`portal-nav-title ${expanded ? "expanded" : ""}`} title={group.label} onClick={() => togglePortalGroup(group.id)} aria-expanded={expanded}>
-                <GroupIcon />{!sidebarCollapsed && <><span>{group.label}</span><ChevronDown /></>}
+            return <div className="portal-topnav-group" key={group.id}>
+              <button type="button" className={group.items.some((item) => item.id === portalSection) ? "active" : ""}>
+                <GroupIcon /><span>{group.label}</span><ChevronDown />
               </button>
-              {expanded && <div className="portal-nav-items">
-                {group.items.map((item) => <button
-                  type="button"
-                  key={item.id}
-                  title={item.label}
-                  className={`${portalSection === item.id ? "active" : ""} ${item.enabled ? "available" : "construction"}`}
-                  onClick={() => openPortalSection(group.id, item.id)}
-                >
-                  <i>{item.enabled ? "●" : "○"}</i>
-                  {!sidebarCollapsed && <span>{item.label}{!item.enabled && <small>Próximamente</small>}</span>}
-                </button>)}
-              </div>}
-            </section>;
+              <div className="portal-mega-menu">
+                <div className="portal-mega-intro"><GroupIcon /><small>ÁREA</small><strong>{group.label}</strong><p>{group.description}</p></div>
+                <div className="portal-mega-links">
+                  {group.items.map((item) => <button type="button" key={item.id} className={item.enabled ? "available" : ""} onClick={() => { openPortalSection(group.id, item.id); setMobileNavOpen(false); }}>
+                    <span><b>{item.label}</b><small>{item.enabled ? "Disponible" : "Próximamente"}</small></span><ChevronRight />
+                  </button>)}
+                </div>
+              </div>
+            </div>;
           })}
+          {canManageUsers && <button type="button" className={portalSection === "users" ? "active" : ""} aria-current={portalSection === "users" ? "page" : undefined} onClick={() => { setPortalSection("users"); setMobileNavOpen(false); }}><Users /> Usuarios</button>}
         </nav>
-        {!sidebarCollapsed && <div className="portal-sidebar-foot"><span className="avatar">PF</span><div><b>{authUser.name}</b><small>{authUser.role}</small></div></div>}
-      </aside>
+        <UserMenu user={authUser} onLogout={onLogout} />
+      </header>
       <main className="portal-workspace">
-      <header>
-        <div className="portal-context"><small>{portalSection === "home" ? "Portal Financiero" : selectedPortalGroup.label}</small><b>{selectedPortalItem.label}</b></div>
+      <header className={`portal-reportbar ${portalSection === "home" ? "home" : ""}`}>
+        <div className="portal-context"><small>{portalSection === "home" ? "Portal Financiero" : portalSection === "users" ? "Administración" : portalSection === "toolbox" ? "Planificación Financiera" : selectedPortalGroup.label}</small><b>{selectedPortalItem.label}</b></div>
         {blActive && <nav>
           <button className={activeView === "annual" ? "active" : ""} onClick={() => setView("annual")}>Comparativa anual</button>
           <button className={activeView === "detail" ? "active" : ""} onClick={() => setView("detail")}>Detalle tiendas</button>
           <button className={activeView === "break-even" ? "active" : ""} onClick={() => setView("break-even")}>Break-Even</button>
+          <button className={activeView === "m2" ? "active" : ""} onClick={() => setView("m2")}>m2</button>
+          <button className={activeView === "sensitivity" ? "active" : ""} onClick={() => setView("sensitivity")}>Sensibilidad tiendas</button>
           <button className={activeView === "monitor" ? "active" : ""} onClick={() => setView("monitor")}>Monitor tiendas</button>
-          {canManageUsers && <button className={activeView === "users" ? "active" : ""} onClick={() => setView("users")}><Users /> Usuarios</button>}
         </nav>}
         {blActive && <button className="refresh-button" onClick={refreshView} disabled={refreshing} title="Recargar la última versión disponible"><RefreshCw className={refreshing ? "spin" : ""} /> {refreshing ? "ACTUALIZANDO…" : "ACTUALIZAR"}</button>}
       </header>
       {portalSection === "home" ? <section className="portal-home-page">
         <div className="portal-home-heading">
-          <label>PLANIFICACIÓN FINANCIERA · FORUS</label>
-          <h1>Portal de Informes</h1>
-          <p>Selecciona un área para consultar sus informes disponibles o revisar los próximos desarrollos.</p>
+          <div className="portal-home-copy"><label>INTELIGENCIA FINANCIERA · 2027</label><h1>Decisiones más claras.<br /><em>Resultados más fuertes.</em></h1><p>Un punto de encuentro para explorar la rentabilidad, anticipar escenarios y convertir datos del negocio en acciones.</p><button type="button" onClick={() => { openPortalSection("forecast", "bl"); setView("break-even"); }}>Explora el Break-Even de las tiendas <ChevronRight /></button></div>
+          <EconomicIndicators />
         </div>
+        <div className="portal-section-heading"><div><label>EXPLORA EL PORTAL</label><h2>Todo lo que necesitas, en un solo lugar</h2></div><p>Accede a los informes disponibles y conoce los próximos desarrollos.</p></div>
         <div className="portal-legend-grid">
+            <article className="portal-legend-card toolbox-home-card">
+              <div className="portal-legend-head"><span><PackageCheck /></span><div><small>HERRAMIENTA DE PLANIFICACIÓN</small><h2>Toolbox AP</h2><p>Planificación financiera, carga de bases y herramientas operativas del área.</p></div></div>
+              <div className="portal-legend-links"><button type="button" className="available" onClick={() => setPortalSection("toolbox")}><span><b>Abrir Toolbox AP</b><small>Disponible</small></span><ChevronRight /></button></div>
+            </article>
             {portalGroups.map((group) => {
               const GroupIcon = group.icon;
               return <article className="portal-legend-card" key={group.id}>
-                <div className="portal-legend-head"><GroupIcon /><div><h2>{group.label}</h2><p>{group.description}</p></div></div>
-                <div className="portal-legend-links">{group.items.map((item) => <button type="button" key={item.id} className={item.enabled ? "available" : ""} onClick={() => openPortalSection(group.id, item.id)}><span>{item.label}</span><small>{item.enabled ? "ABRIR" : "EN CONSTRUCCIÓN"}</small></button>)}</div>
+                <div className="portal-legend-head"><span><GroupIcon /></span><div><small>ÁREA DE ANÁLISIS</small><h2>{group.label}</h2><p>{group.description}</p></div></div>
+                <div className="portal-legend-links">{group.items.map((item) => <button type="button" key={item.id} className={item.enabled ? "available" : ""} onClick={() => openPortalSection(group.id, item.id)}><span><b>{item.label}</b><small>{item.enabled ? "Disponible" : "En construcción"}</small></span><ChevronRight /></button>)}</div>
               </article>;
             })}
         </div>
-      </section> : blActive ? <><section className="hero">
-        <div><label>PLANIFICACIÓN FINANCIERA · PRESUPUESTO 2027P</label><h1>Rentabilidad de tiendas <em>2027P</em></h1><p>EERR Retail y riesgo Four Walls por tienda.</p></div>
+      </section> : needsPrivateData && !privateData ? <section className="portal-data-status" aria-live="polite">
+        {reportsError ? <><AlertTriangle /><h2>No pudimos cargar este informe</h2><p>{reportsError}</p><button type="button" onClick={onRetryReports}>Reintentar</button></> : <><RefreshCw className="spin" /><h2>Preparando tu informe</h2><p>Puedes seguir navegando mientras termina la carga.</p></>}
+      </section> : portalSection === "users" && canManageUsers ? <div className="content"><UsuariosAdmin /></div> : portalSection === "toolbox" ? <ToolboxPlanning /> : blActive ? <><section className="hero">
+        <div><label>PLANIFICACIÓN FINANCIERA · PRESUPUESTO 2027P</label><h1>Rentabilidad de tiendas.</h1><p>EERR Retail y riesgo Four Walls por tienda.</p></div>
         <span className="unit-badge"><b>INFORME EN MM$</b><small>ACTUALIZADO {snapshotLabel}</small></span>
       </section>
-      {activeView !== "users" && <section className="filters">
+      <section className="filters">
         <b><Filter /> Segmentar vista</b>
         <details className="chain-multiselect" ref={chainFilterRef}>
           <summary><span>CADENA<strong>{selectedChains.length === 0 ? "TODAS" : selectedChains.length === 1 ? selectedChains[0] : `${selectedChains.length} CADENAS`}</strong></span><ChevronDown /></summary>
@@ -1604,12 +1888,12 @@ export default function Home() {
         <div><Search /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="BUSCAR UNO O VARIOS CC / TIENDAS, SEPARADOS POR COMA..." /></div>
         {fwBand && <i className={`filter-chip band-${fwBand}`}>{analysisMetric === "utility" ? "Utilidad" : "Four Walls"} {yearLabel(quadrantYear)} · {fwBand === "negative" ? "Pérdida" : fwBand === "low" ? "Baja" : "Saludable"}</i>}
         <button onClick={() => { setSelectedChains([]); setQuery(""); setFwBand(null); }}>Limpiar filtros</button>
-      </section>}
+      </section>
       <div className="content">
-        {activeView === "annual" ? <Executive selection={selection} universe={universe} quadrantYear={quadrantYear} setQuadrantYear={setQuadrantYear} fwBand={fwBand} setFwBand={setFwBand} analysisMetric={analysisMetric} setAnalysisMetric={setAnalysisMetric} /> : activeView === "detail" ? <Detail selection={selection} /> : activeView === "break-even" ? <BreakEven selection={selection} /> : activeView === "users" ? <UsuariosAdmin /> : <StoreMonitor selection={selection} />}
+        {activeView === "annual" ? <Executive selection={selection} universe={universe} quadrantYear={quadrantYear} setQuadrantYear={setQuadrantYear} fwBand={fwBand} setFwBand={setFwBand} analysisMetric={analysisMetric} setAnalysisMetric={setAnalysisMetric} /> : activeView === "detail" ? <Detail selection={selection} /> : activeView === "break-even" ? <BreakEven selection={selection} /> : activeView === "m2" ? <M2Analysis selection={selection} /> : activeView === "sensitivity" ? <StoreSensitivity /> : <StoreMonitor selection={selection} />}
       </div>
       <footer>Planificación Financiera · Forus <span>INFORME EN MM$</span></footer>
-      </> : portalSection === "benchmark-nacional" ? <NationalBenchmark /> : portalSection === "importaciones-retail" ? <ImportacionesIndustria /> : <section className="construction-page">
+      </> : portalSection === "ecommerce" ? <ChannelProfitability channel="Ecommerce" /> : portalSection === "marketplace" ? <ChannelProfitability channel="Marketplace" /> : portalSection === "wholesale" ? <ChannelProfitability channel="Wholesale" /> : portalSection === "consolidada" ? <ChannelProfitability channel="Consolidado" /> : portalSection === "paises" ? <CountryProfitability /> : portalSection === "benchmark-nacional" ? <NationalBenchmark /> : portalSection === "benchmark-internacional" ? <InternationalBenchmark /> : portalSection === "macroeconomia-ipom" ? <MacroeconomicsMarket /> : portalSection === "mercado-retail-cnc" ? <RetailCncMarket /> : portalSection === "importaciones-retail" ? <ImportacionesIndustria /> : <section className="construction-page">
         <div className="construction-card">
           <i><Building2 /></i>
           <label>{selectedPortalGroup.label}</label>
@@ -1626,3 +1910,65 @@ export default function Home() {
 
 // Para refrescar el dashboard, reemplazar este snapshot mediante el mismo mapper
 // conectado a Google Sheets API y mantener los índices definidos en BaseRow.
+
+export default function Home() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [data, setData] = useState<PrivateData | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [error, setError] = useState("");
+  const [reportsError, setReportsError] = useState("");
+  const dataRequestRef = useRef<AbortController | null>(null);
+  const loadPortalData = useCallback(async () => {
+    dataRequestRef.current?.abort();
+    const controller = new AbortController();
+    dataRequestRef.current = controller;
+    setReportsError("");
+    try {
+      const response = await fetch("/api/portal-data", { cache: "no-store", signal: controller.signal });
+      if (response.status === 401) {
+        if (!controller.signal.aborted) {
+          setData(null);
+          setUser(null);
+          setError("Tu sesión ya no está disponible. Ingresa nuevamente.");
+        }
+        return;
+      }
+      if (!response.ok) throw new Error("No fue posible cargar los informes. Intenta nuevamente.");
+      const payload = await response.json() as PrivateData;
+      if (!controller.signal.aborted) setData(payload);
+    } catch (error) {
+      if (!controller.signal.aborted) setReportsError(error instanceof Error ? error.message : "No fue posible cargar los informes.");
+    }
+  }, []);
+  const acceptUser = useCallback((authenticatedUser: AuthUser) => {
+    setError("");
+    setData(null);
+    setUser(authenticatedUser);
+    void loadPortalData();
+  }, [loadPortalData]);
+  const loadSession = useCallback(async (signal: AbortSignal) => {
+    const response = await fetch("/api/auth/session", { cache: "no-store", signal });
+    if (!response.ok) throw new Error("No fue posible validar el acceso.");
+    const payload = await response.json() as { user: AuthUser | null };
+    if (signal.aborted) return;
+    if (!payload.user) { setUser(null); setData(null); return; }
+    acceptUser(payload.user);
+  }, [acceptUser]);
+  const logout = async () => {
+    const response = await fetch("/api/auth/logout", { method: "POST", cache: "no-store" });
+    if (!response.ok) throw new Error("No fue posible cerrar sesión.");
+    dataRequestRef.current?.abort();
+    setError("");
+    setReportsError("");
+    setData(null);
+    setUser(null);
+  };
+  useEffect(() => {
+    const controller = new AbortController();
+    void Promise.resolve().then(() => loadSession(controller.signal)).catch(() => { if (!controller.signal.aborted) setError("No fue posible validar el acceso. Intenta nuevamente."); }).finally(() => { if (!controller.signal.aborted) setChecking(false); });
+    return () => { controller.abort(); dataRequestRef.current?.abort(); };
+  }, [loadSession]);
+  if (checking) return <main className="login-shell"><span className="login-status">Validando acceso...</span></main>;
+  if (!user) return <>{error && <p role="alert">{error}</p>}<LoginForm onLogin={acceptUser} /></>;
+  return <PrivateDataContext.Provider value={data}><Portal authUser={user} onLogout={logout} reportsError={reportsError} onRetryReports={() => void loadPortalData()} /></PrivateDataContext.Provider>;
+}

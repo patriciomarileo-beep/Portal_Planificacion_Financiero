@@ -1,11 +1,10 @@
-import { readSession } from "../../_shared/session";
-
+import { requireAuth } from "../../_shared/auth";
+import { errorResponse, HttpError, json } from "../../_shared/http";
 export const runtime = "nodejs";
-
 export async function GET(request: Request) {
-  const session = await readSession(request.headers.get("cookie"));
-  return Response.json(
-    { user: session ? { email: session.email, name: session.name, role: session.role, personId: session.personId } : null },
-    { headers: { "cache-control": "no-store" } },
-  );
+  try { return json({ user: await requireAuth(request) }); }
+  catch (error) {
+    if (error instanceof HttpError && error.status === 401) return json({ user: null });
+    return errorResponse(error, "auth.session");
+  }
 }

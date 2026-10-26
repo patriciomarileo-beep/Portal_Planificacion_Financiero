@@ -1,0 +1,125 @@
+{
+  "package": "braces",
+  "version": "3.0.3",
+  "advisory": "GHSA-vfj7-8cjw-p6xm",
+  "upstream": "https://github.com/micromatch/braces/pull/72",
+  "upstreamCommit": "d0d575e55e74a4e0218e5248fafb79efc3e54ebb",
+  "notes": "Guard-only backport. Preserve original stringify parent semantics, floor fractional maxDepth, retain original package name and version so scanners continue reporting the advisory.",
+  "files": [
+    {
+      "path": "lib/constants.js",
+      "beforeSha256": "c18ac5adb57308f1ce42a28552da3a31f5d83709743ebd9a636336813a744d4b",
+      "afterSha256": "f9fb688959232eee3e6ad7906a5b0e3234815db49ee857ef86983d65b917dc7c",
+      "replacements": [
+        {
+          "from": "module.exports = {",
+          "to": "module.exports = {\n  MAX_DEPTH: 100,"
+        }
+      ]
+    },
+    {
+      "path": "lib/parse.js",
+      "beforeSha256": "e572166565f15fa6ad9865ae49d678218e32aabfd1b3720f6d0d43d39800d310",
+      "afterSha256": "aac864484929be4671e9786ef2ad8ad73e063e9baebee25d683237c137a7ee87",
+      "replacements": [
+        {
+          "from": "  MAX_LENGTH,",
+          "to": "  MAX_DEPTH,\n  MAX_LENGTH,"
+        },
+        {
+          "from": "  const opts = options || {};",
+          "to": "  const opts = options || {};\n  const maxDepth = Number.isFinite(opts.maxDepth) ? Math.min(MAX_DEPTH, Math.max(0, Math.floor(opts.maxDepth))) : MAX_DEPTH;"
+        },
+        {
+          "from": "  let depth = 0;",
+          "to": "  let depth = 0;\n  let nesting = 0;"
+        },
+        {
+          "from": "    if (value === CHAR_LEFT_PARENTHESES) {",
+          "to": "    if (value === CHAR_LEFT_PARENTHESES) {\n      if (nesting + 1 > maxDepth) {\n        throw new SyntaxError(`Input depth (${nesting + 1}), exceeds max depth (${maxDepth})`);\n      }\n      nesting++;"
+        },
+        {
+          "from": "    if (value === CHAR_LEFT_CURLY_BRACE) {",
+          "to": "    if (value === CHAR_LEFT_CURLY_BRACE) {\n      if (nesting + 1 > maxDepth) {\n        throw new SyntaxError(`Input depth (${nesting + 1}), exceeds max depth (${maxDepth})`);\n      }\n      nesting++;"
+        },
+        {
+          "from": "      block = stack.pop();\n      push({ type: 'text', value });",
+          "to": "      block = stack.pop();\n      nesting--;\n      push({ type: 'text', value });"
+        },
+        {
+          "from": "      depth--;",
+          "to": "      depth--;\n      nesting--;"
+        }
+      ]
+    },
+    {
+      "path": "lib/compile.js",
+      "beforeSha256": "dc98f22eee3d511785d92a00758d5f0d48efed5f5813bdecc2de430c529b5c9f",
+      "afterSha256": "effe6a7b78793b1c0920a7aa03803b43c978dcbb82eb360f5dd962e0de435b5b",
+      "replacements": [
+        {
+          "from": "const utils = require('./utils');",
+          "to": "const utils = require('./utils');\nconst { MAX_DEPTH } = require('./constants');"
+        },
+        {
+          "from": "  const walk = (node, parent = {}) => {",
+          "to": "  const maxDepth = Number.isFinite(options.maxDepth) ? Math.min(MAX_DEPTH, Math.max(0, Math.floor(options.maxDepth))) : MAX_DEPTH;\n  const walk = (node, parent = {}, depth = 0) => {\n    if (node.nodes && depth > maxDepth) {\n      throw new RangeError(`AST depth (${depth}), exceeds max depth (${maxDepth})`);\n    }"
+        },
+        {
+          "from": "output += walk(child, node);",
+          "to": "output += walk(child, node, child.nodes ? depth + 1 : depth);"
+        },
+        {
+          "from": "return walk(ast);",
+          "to": "return walk(ast, {}, ast.type === 'root' ? 0 : 1);"
+        }
+      ]
+    },
+    {
+      "path": "lib/expand.js",
+      "beforeSha256": "41ccc196ebfa7b7781a634e721eb744e4e7bcb54cba427a7e3d6806a1b9e58f7",
+      "afterSha256": "887c2325378ec14d0666eb747deedc4cb58fe8865e95a2c32d07c81c5fb57941",
+      "replacements": [
+        {
+          "from": "const utils = require('./utils');",
+          "to": "const utils = require('./utils');\nconst { MAX_DEPTH } = require('./constants');"
+        },
+        {
+          "from": "  const walk = (node, parent = {}) => {",
+          "to": "  const maxDepth = Number.isFinite(options.maxDepth) ? Math.min(MAX_DEPTH, Math.max(0, Math.floor(options.maxDepth))) : MAX_DEPTH;\n  const walk = (node, parent = {}, depth = 0) => {\n    if (node.nodes && depth > maxDepth) {\n      throw new RangeError(`AST depth (${depth}), exceeds max depth (${maxDepth})`);\n    }"
+        },
+        {
+          "from": "        walk(child, node);",
+          "to": "        walk(child, node, depth + 1);"
+        },
+        {
+          "from": "return utils.flatten(walk(ast));",
+          "to": "return utils.flatten(walk(ast, {}, ast.type === 'root' ? 0 : 1));"
+        }
+      ]
+    },
+    {
+      "path": "lib/stringify.js",
+      "beforeSha256": "379f22d77bfa1478341ccd49c5e4267464aabcbba03558bab332aac23fc6f23a",
+      "afterSha256": "6e9b4306259a93001afc9731d1b9822ae81cc5b638f8bd3412856b13c28b15f5",
+      "replacements": [
+        {
+          "from": "const utils = require('./utils');",
+          "to": "const utils = require('./utils');\nconst { MAX_DEPTH } = require('./constants');"
+        },
+        {
+          "from": "  const stringify = (node, parent = {}) => {",
+          "to": "  const maxDepth = Number.isFinite(options.maxDepth) ? Math.min(MAX_DEPTH, Math.max(0, Math.floor(options.maxDepth))) : MAX_DEPTH;\n  const stringify = (node, parent = {}, depth = 0) => {\n    if (node.nodes && depth > maxDepth) {\n      throw new RangeError(`AST depth (${depth}), exceeds max depth (${maxDepth})`);\n    }"
+        },
+        {
+          "from": "output += stringify(child);",
+          "to": "output += stringify(child, {}, child.nodes ? depth + 1 : depth);"
+        },
+        {
+          "from": "return stringify(ast);",
+          "to": "return stringify(ast, {}, ast.type === 'root' ? 0 : 1);"
+        }
+      ]
+    }
+  ]
+}

@@ -921,6 +921,10 @@ header .portal-nav-items button {
 .imports-analysis-table tr.total td { position: sticky; bottom: 0; border-top: 1px solid #183768; background: #fff; font-weight: 800; }
 .imports-analysis-table .positive { color: #147a51; }
 .imports-analysis-table .negative { color: #bf3044; }
+.imports-analysis-table > .imports-table-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #e3e8ef; background: #f8fafc; }
+.imports-table-pagination span { margin-right: auto; color: #62758d; font-size: 11px; }
+.imports-table-pagination button { padding: 6px 10px; border: 1px solid #cdd8e6; border-radius: 4px; background: #fff; color: #17375f; font-size: 11px; cursor: pointer; }
+.imports-table-pagination button:disabled { opacity: .45; cursor: default; }
 .brand-summary-table table { min-width: 980px; table-layout: fixed; }
 .brand-summary-table th, .brand-summary-table td { padding: 6px 5px; font-size: 8px; }
 .brand-summary-table th:first-child, .brand-summary-table td:first-child { width: 118px; min-width: 118px; max-width: 118px; overflow: hidden; text-overflow: ellipsis; }

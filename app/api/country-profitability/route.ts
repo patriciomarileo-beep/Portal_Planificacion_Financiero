@@ -1,4 +1,4 @@
-import { requireAuth } from "../_shared/auth";
+import { requireMenuAuth } from "../_shared/auth";
 import { errorResponse, HttpError, reportError, json } from "../_shared/http";
 import { googleAccessToken } from "../_shared/bigquery";
 import snapshot from "../../profitability/country-source.json";
@@ -45,7 +45,7 @@ const parseReport = (values: unknown[][]) => {
 };
 
 export async function GET(request: Request) {
-  try { await requireAuth(request); } catch (error) { return errorResponse(error, "data.auth"); }
+  try { await requireMenuAuth(request, "forecast"); } catch (error) { return errorResponse(error, "data.auth"); }
   try {
     if (cache && cache.expires > Date.now()) return json(cache.payload);
     const token = await googleAccessToken(true);

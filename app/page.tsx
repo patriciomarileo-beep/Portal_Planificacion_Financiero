@@ -47,6 +47,7 @@ import type { DollarHistoryPayload } from "./market/dollar-history-data";
 import type { BaseRow } from "./base-consolidada";
 import { PrivateDataContext, usePrivateData, type PrivateData } from "./private-data-context";
 import { storeClassification, type StoreClassification } from "./store-classification";
+import { canAccessMenu, type PortalMenu } from "./menu-access";
 const reportLoading = () => <div className="portal-data-status" role="status"><RefreshCw className="spin" /><p>Cargando informe…</p></div>;
 const NationalBenchmark = dynamic(() => import("./market/NationalBenchmark"), { loading: reportLoading });
 const InternationalBenchmark = dynamic(() => import("./market/InternationalBenchmark"), { loading: reportLoading });
@@ -101,6 +102,7 @@ type UsersPayload = {
   rows: UserRow[];
   keyColumn: string | null;
   roleColumn: string;
+  roleOptions: string[];
   activeColumn: string;
   totalRows: number;
   rowLimit?: number;
@@ -164,8 +166,7 @@ const monthShort: Record<string, string> = {
   MAYO: "May", JUNIO: "Jun", JULIO: "Jul", AGOSTO: "Ago",
   SEPTIEMBRE: "Sep", OCTUBRE: "Oct", NOVIEMBRE: "Nov", DICIEMBRE: "Dic",
 };
-const userRoleOptions = ["ADMINISTRADOR", "ANALISTA FINANCIERO"];
-const portalGroups: { id: string; label: string; description: string; icon: typeof BarChart3; items: PortalSection[] }[] = [
+const portalGroups: { id: PortalMenu; label: string; description: string; icon: typeof BarChart3; items: PortalSection[] }[] = [
   {
     id: "forecast",
     label: "Rentabilidad Forecast",
@@ -191,7 +192,7 @@ const portalGroups: { id: string; label: string; description: string; icon: type
       { id: "macroeconomia-ipom", label: "Macroeconomía e IPoM", enabled: true },
       { id: "mercado-retail-cnc", label: "Mercado Retail · CNC", enabled: true },
       { id: "importaciones-retail", label: "Importaciones Industria Retail", enabled: true },
-      { id: "importaciones-cosmeticos", label: "Importaciones Cosméticos" },
+      { id: "importaciones-cosmeticos", label: "Importaciones Cosméticos", enabled: true },
     ],
   },
   {
@@ -219,7 +220,10 @@ const portalGroups: { id: string; label: string; description: string; icon: type
     items: [{ id: "kpi-consolidado", label: "KPI Consolidado" }],
   },
 ];
-const isAdminRole = (role: string) => role.trim().toUpperCase() === "ADMINISTRADOR";
+const menuForSection = (section: string): PortalMenu | undefined => {
+  if (section === "home" || section === "toolbox" || section === "users") return section;
+  return portalGroups.find(group => group.items.some(item => item.id === section))?.id;
+};
 const hiddenUserColumns = new Set([
   "fecha_creacion",
   "sexo",
@@ -426,15 +430,7 @@ function Executive({
   const [classification, setClassification] = useState<ClassificationFilter>("TOTAL");
   const [selectedMonths, setSelectedMonths] = useState<string[]>(monthOrder);
   const monthFilterRef = useRef<HTMLDetailsElement>(null);
-  useEffect(() => {
-    const closeMonthFilter = (event: PointerEvent) => {
-      if (monthFilterRef.current && !monthFilterRef.current.contains(event.target as Node)) {
-        monthFilterRef.current.removeAttribute("open");
-      }
-    };
-    document.addEventListener("pointerdown", closeMonthFilter);
-    return () => document.removeEventListener("pointerdown", closeMonthFilter);
-  }, []);
+
   const displayedYears: Year[] = period === "ANUAL" && classification === "TOTAL" ? years : [2026, 2027];
   const activeMonths = period === "ANUAL"
     ? classification === "TOTAL" ? [] : monthOrder
@@ -547,7 +543,7 @@ function Executive({
               {(["ANUAL", "Q1", "Q2", "Q3", "Q4"] as Quarter[]).map((item) => (
                 <button key={item} className={period === item ? "active" : ""} onClick={() => { setPeriod(item); monthFilterRef.current?.removeAttribute("open"); }}>{item}</button>
               ))}
-              <details className={`month-period-filter ${period === "MES" ? "active" : ""}`} ref={monthFilterRef}>
+              <details data-dropdown name="portal-dropdown" className={`month-period-filter ${period === "MES" ? "active" : ""}`} ref={monthFilterRef}>
                 <summary onClick={() => setPeriod("MES")}>MES</summary>
                 <div className="month-options">
                   <div className="month-options-head">
@@ -931,15 +927,7 @@ function M2Analysis({ selection }: { selection: StoreRow[] }) {
   const [m2Period, setM2Period] = useState<ReportPeriod>("ANUAL");
   const [m2Months, setM2Months] = useState<string[]>(monthOrder);
   const m2MonthFilterRef = useRef<HTMLDetailsElement>(null);
-  useEffect(() => {
-    const closeMonthFilter = (event: PointerEvent) => {
-      if (m2MonthFilterRef.current && !m2MonthFilterRef.current.contains(event.target as Node)) {
-        m2MonthFilterRef.current.removeAttribute("open");
-      }
-    };
-    document.addEventListener("pointerdown", closeMonthFilter);
-    return () => document.removeEventListener("pointerdown", closeMonthFilter);
-  }, []);
+
   const activeM2Months = m2Period === "ANUAL" ? [] : m2Period === "MES" ? m2Months : quarterMonths[m2Period];
   const m2PeriodLabel = m2Period === "ANUAL"
     ? yearLabel(m2Year)
@@ -1059,7 +1047,7 @@ function M2Analysis({ selection }: { selection: StoreRow[] }) {
   );
   return (
     <>
-      <div className="title m2-title"><div><i>M2</i><span><h2>Productividad por metro cuadrado</h2><p>Venta, margen, arriendo y estructura completa del resultado normalizada por superficie</p></span></div><div className="title-actions m2-title-actions"><label className="year-select">AÑO<select value={m2Year} onChange={(e) => setM2Year(Number(e.target.value) as Year)}>{(m2Period === "ANUAL" ? years : ([2026, 2027] as Year[])).map((year) => <option key={year} value={year}>{yearLabel(year)}</option>)}</select><ChevronDown /></label><div className="quarter-filter" aria-label="Periodo del análisis M2">{(["ANUAL", "Q1", "Q2", "Q3", "Q4"] as Quarter[]).map((item) => <button key={item} className={m2Period === item ? "active" : ""} onClick={() => selectM2Period(item)}>{item}</button>)}<details className={`month-period-filter ${m2Period === "MES" ? "active" : ""}`} ref={m2MonthFilterRef}><summary onClick={() => selectM2Period("MES")}>MES</summary><div className="month-options"><div className="month-options-head"><b>{m2Months.length} MESES</b><button type="button" onClick={() => setM2Months(m2Months.length === monthOrder.length ? [] : monthOrder)}>{m2Months.length === monthOrder.length ? "LIMPIAR" : "TODOS"}</button></div>{monthOrder.map((month) => <label key={month}><input type="checkbox" checked={m2Months.includes(month)} onChange={() => toggleM2Month(month)} />{month}</label>)}</div></details></div><button className="export-button" onClick={exportM2} disabled={!matched.length}><Download /> EXPORTAR DETALLE EXCEL</button></div></div>
+      <div className="title m2-title"><div><i>M2</i><span><h2>Productividad por metro cuadrado</h2><p>Venta, margen, arriendo y estructura completa del resultado normalizada por superficie</p></span></div><div className="title-actions m2-title-actions"><label className="year-select">AÑO<select value={m2Year} onChange={(e) => setM2Year(Number(e.target.value) as Year)}>{(m2Period === "ANUAL" ? years : ([2026, 2027] as Year[])).map((year) => <option key={year} value={year}>{yearLabel(year)}</option>)}</select><ChevronDown /></label><div className="quarter-filter" aria-label="Periodo del análisis M2">{(["ANUAL", "Q1", "Q2", "Q3", "Q4"] as Quarter[]).map((item) => <button key={item} className={m2Period === item ? "active" : ""} onClick={() => selectM2Period(item)}>{item}</button>)}<details data-dropdown name="portal-dropdown" className={`month-period-filter ${m2Period === "MES" ? "active" : ""}`} ref={m2MonthFilterRef}><summary onClick={() => selectM2Period("MES")}>MES</summary><div className="month-options"><div className="month-options-head"><b>{m2Months.length} MESES</b><button type="button" onClick={() => setM2Months(m2Months.length === monthOrder.length ? [] : monthOrder)}>{m2Months.length === monthOrder.length ? "LIMPIAR" : "TODOS"}</button></div>{monthOrder.map((month) => <label key={month}><input type="checkbox" checked={m2Months.includes(month)} onChange={() => toggleM2Month(month)} />{month}</label>)}</div></details></div><button className="export-button" onClick={exportM2} disabled={!matched.length}><Download /> EXPORTAR DETALLE EXCEL</button></div></div>
       <section className="m2-kpis">
         <article><label>SUPERFICIE ANALIZADA</label><strong>{totalM2.toLocaleString("es-CL", { maximumFractionDigits: 1 })} m²</strong><span>{matched.length} tiendas con superficie</span></article>
         <article><label>VENTA / M²</label><strong>{m2Money(perM2(totals.sales, totalM2))}</strong><span>MM$ por m² · {m2PeriodLabel}</span></article>
@@ -1311,6 +1299,7 @@ function UsuariosAdmin() {
   const [columns, setColumns] = useState<string[]>([]);
   const [keyColumn, setKeyColumn] = useState<string | null>(null);
   const [roleColumn, setRoleColumn] = useState("Rol");
+  const [roleOptions, setRoleOptions] = useState<string[]>([]);
   const [activeColumn, setActiveColumn] = useState("Activo");
   const [totalRows, setTotalRows] = useState(0);
   const [usersCapped, setUsersCapped] = useState(false);
@@ -1331,6 +1320,7 @@ function UsuariosAdmin() {
       setColumns(payload.columns);
       setKeyColumn(payload.keyColumn);
       setRoleColumn(payload.roleColumn);
+      setRoleOptions(payload.roleOptions);
       setActiveColumn(payload.activeColumn);
       setTotalRows(payload.totalRows);
       setUsersCapped(Boolean(payload.capped));
@@ -1451,8 +1441,9 @@ function UsuariosAdmin() {
                         return (
                           <td key={column}>
                             <select className="user-role-input" value={draft.rol} onChange={(e) => setDraft(row, { rol: e.target.value })}>
-                              <option value="">SIN ROL</option>
-                              {userRoleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
+                              <option value="">Selecciona un rol</option>
+                              {draft.rol && !roleOptions.includes(draft.rol) && <option value={draft.rol} disabled>{draft.rol} (no disponible)</option>}
+                              {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
                             </select>
                           </td>
                         );
@@ -1692,27 +1683,8 @@ function LoginForm({ onLogin }: { onLogin: (user: AuthUser) => void | Promise<vo
 }
 
 function UserMenu({ user, onLogout }: { user: AuthUser; onLogout: () => Promise<void> }) {
-  const menuRef = useRef<HTMLDetailsElement>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    const closeOutside = (event: PointerEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) menuRef.current.open = false;
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && menuRef.current?.open) {
-        menuRef.current.open = false;
-        menuRef.current.querySelector("summary")?.focus();
-      }
-    };
-    document.addEventListener("pointerdown", closeOutside);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOutside);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, []);
 
   const signOut = async () => {
     if (signingOut) return;
@@ -1726,7 +1698,7 @@ function UserMenu({ user, onLogout }: { user: AuthUser; onLogout: () => Promise<
     }
   };
 
-  return <details className="portal-user" ref={menuRef}>
+  return <details data-dropdown name="portal-dropdown" className="portal-user">
     <summary aria-label={`Menú de usuario: ${user.name}`}>
       <span className="avatar">{user.name.slice(0, 1).toUpperCase()}</span>
       <span className="portal-user-name"><b>{user.name}</b><small>{user.role}</small></span>
@@ -1754,22 +1726,19 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   const [fwBand, setFwBand] = useState<FwBand>(null);
   const [analysisMetric, setAnalysisMetric] = useState<ProfitMetric>("fourWalls");
   const [refreshing, setRefreshing] = useState(false);
-  const [portalSection, setPortalSection] = useState("home");
+  const visiblePortalGroups = portalGroups.filter(group => canAccessMenu(authUser.role, group.id));
+  const canViewHome = canAccessMenu(authUser.role, "home");
+  const canUseToolbox = canAccessMenu(authUser.role, "toolbox");
+  const defaultSection = canViewHome ? "home" : visiblePortalGroups[0]?.items[0]?.id ?? "";
+  const [requestedPortalSection, setPortalSection] = useState("home");
+  const requestedMenu = menuForSection(requestedPortalSection);
+  const portalSection = requestedMenu && canAccessMenu(authUser.role, requestedMenu) ? requestedPortalSection : defaultSection;
   const blActive = portalSection === "bl";
   const needsPrivateData = blActive || ["ecommerce", "marketplace", "wholesale", "consolidada"].includes(portalSection);
   const stores = useMemo(() => blActive && privateData ? buildStores(privateData.baseConsolidada) : [], [blActive, privateData]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const chainFilterRef = useRef<HTMLDetailsElement>(null);
 
-  useEffect(() => {
-    const closeChainFilter = (event: PointerEvent) => {
-      if (chainFilterRef.current && !chainFilterRef.current.contains(event.target as Node)) {
-        chainFilterRef.current.removeAttribute("open");
-      }
-    };
-    document.addEventListener("pointerdown", closeChainFilter);
-    return () => document.removeEventListener("pointerdown", closeChainFilter);
-  }, []);
+
   const refreshView = () => {
     setRefreshing(true);
     window.setTimeout(() => window.location.reload(), 120);
@@ -1793,7 +1762,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
     current.includes(chain) ? current.filter((item) => item !== chain) : [...current, chain]
   );
 
-  const canManageUsers = isAdminRole(authUser.role);
+  const canManageUsers = canAccessMenu(authUser.role, "users");
   const activeView = view;
   const selectedPortalItem = portalSection === "home"
     ? { id: "home", label: "Portada", enabled: true }
@@ -1803,22 +1772,23 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
       ? { id: "toolbox", label: "Toolbox AP", enabled: true }
     : portalGroups.flatMap((group) => group.items).find((item) => item.id === portalSection) ?? portalGroups[0].items[0];
   const selectedPortalGroup = portalGroups.find((group) => group.items.some((item) => item.id === portalSection)) ?? portalGroups[0];
-  const openPortalSection = (_groupId: string, itemId: string) => {
-    setPortalSection(itemId);
+  const openPortalSection = (groupId: string, itemId: string) => {
+    const group = visiblePortalGroups.find(group => group.id === groupId);
+    if (group?.items.some(item => item.id === itemId)) setPortalSection(itemId);
   };
 
   return (
     <div className="portal-shell microsoft-shell">
       <header className="portal-topbar">
-        <button className="portal-brand" type="button" onClick={() => setPortalSection("home")} aria-label="Ir a la portada">
+        <button className="portal-brand" type="button" onClick={() => setPortalSection(defaultSection)} aria-label={canViewHome ? "Ir a la portada" : "Ir a Comex"}>
           <img src="/forus.png" alt="Forus" />
           <span><b>Portal Financiero</b><small>Planificación · Forus</small></span>
         </button>
         <button className="portal-mobile-toggle" type="button" onClick={() => setMobileNavOpen((current) => !current)} aria-expanded={mobileNavOpen} aria-label="Abrir menú"><Menu /></button>
         <nav className={`portal-topnav ${mobileNavOpen ? "open" : ""}`} aria-label="Informes financieros">
-          <button type="button" className={portalSection === "home" ? "active" : ""} onClick={() => { setPortalSection("home"); setMobileNavOpen(false); }}>Inicio</button>
-          <button type="button" className={portalSection === "toolbox" ? "active" : ""} onClick={() => { setPortalSection("toolbox"); setMobileNavOpen(false); }}>Toolbox AP</button>
-          {portalGroups.map((group) => {
+          {canViewHome && <button type="button" className={portalSection === "home" ? "active" : ""} onClick={() => { setPortalSection("home"); setMobileNavOpen(false); }}>Inicio</button>}
+          {canUseToolbox && <button type="button" className={portalSection === "toolbox" ? "active" : ""} onClick={() => { setPortalSection("toolbox"); setMobileNavOpen(false); }}>Toolbox AP</button>}
+          {visiblePortalGroups.map((group) => {
             const GroupIcon = group.icon;
             return <div className="portal-topnav-group" key={group.id}>
               <button type="button" className={group.items.some((item) => item.id === portalSection) ? "active" : ""}>
@@ -1858,11 +1828,11 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
         </div>
         <div className="portal-section-heading"><div><label>EXPLORA EL PORTAL</label><h2>Todo lo que necesitas, en un solo lugar</h2></div><p>Accede a los informes disponibles y conoce los próximos desarrollos.</p></div>
         <div className="portal-legend-grid">
-            <article className="portal-legend-card toolbox-home-card">
+            {canUseToolbox && <article className="portal-legend-card toolbox-home-card">
               <div className="portal-legend-head"><span><PackageCheck /></span><div><small>HERRAMIENTA DE PLANIFICACIÓN</small><h2>Toolbox AP</h2><p>Planificación financiera, carga de bases y herramientas operativas del área.</p></div></div>
               <div className="portal-legend-links"><button type="button" className="available" onClick={() => setPortalSection("toolbox")}><span><b>Abrir Toolbox AP</b><small>Disponible</small></span><ChevronRight /></button></div>
-            </article>
-            {portalGroups.map((group) => {
+            </article>}
+            {visiblePortalGroups.map((group) => {
               const GroupIcon = group.icon;
               return <article className="portal-legend-card" key={group.id}>
                 <div className="portal-legend-head"><span><GroupIcon /></span><div><small>ÁREA DE ANÁLISIS</small><h2>{group.label}</h2><p>{group.description}</p></div></div>
@@ -1878,7 +1848,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
       </section>
       <section className="filters">
         <b><Filter /> Segmentar vista</b>
-        <details className="chain-multiselect" ref={chainFilterRef}>
+        <details data-dropdown name="portal-dropdown" className="chain-multiselect">
           <summary><span>CADENA<strong>{selectedChains.length === 0 ? "TODAS" : selectedChains.length === 1 ? selectedChains[0] : `${selectedChains.length} CADENAS`}</strong></span><ChevronDown /></summary>
           <div className="chain-options">
             <button type="button" className={selectedChains.length === 0 ? "active" : ""} onClick={() => setSelectedChains([])}>TODAS</button>
@@ -1893,14 +1863,14 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
         {activeView === "annual" ? <Executive selection={selection} universe={universe} quadrantYear={quadrantYear} setQuadrantYear={setQuadrantYear} fwBand={fwBand} setFwBand={setFwBand} analysisMetric={analysisMetric} setAnalysisMetric={setAnalysisMetric} /> : activeView === "detail" ? <Detail selection={selection} /> : activeView === "break-even" ? <BreakEven selection={selection} /> : activeView === "m2" ? <M2Analysis selection={selection} /> : activeView === "sensitivity" ? <StoreSensitivity /> : <StoreMonitor selection={selection} />}
       </div>
       <footer>Planificación Financiera · Forus <span>INFORME EN MM$</span></footer>
-      </> : portalSection === "ecommerce" ? <ChannelProfitability channel="Ecommerce" /> : portalSection === "marketplace" ? <ChannelProfitability channel="Marketplace" /> : portalSection === "wholesale" ? <ChannelProfitability channel="Wholesale" /> : portalSection === "consolidada" ? <ChannelProfitability channel="Consolidado" /> : portalSection === "paises" ? <CountryProfitability /> : portalSection === "benchmark-nacional" ? <NationalBenchmark /> : portalSection === "benchmark-internacional" ? <InternationalBenchmark /> : portalSection === "macroeconomia-ipom" ? <MacroeconomicsMarket /> : portalSection === "mercado-retail-cnc" ? <RetailCncMarket /> : portalSection === "importaciones-retail" ? <ImportacionesIndustria /> : <section className="construction-page">
+      </> : portalSection === "ecommerce" ? <ChannelProfitability channel="Ecommerce" /> : portalSection === "marketplace" ? <ChannelProfitability channel="Marketplace" /> : portalSection === "wholesale" ? <ChannelProfitability channel="Wholesale" /> : portalSection === "consolidada" ? <ChannelProfitability channel="Consolidado" /> : portalSection === "paises" ? <CountryProfitability /> : portalSection === "benchmark-nacional" ? <NationalBenchmark /> : portalSection === "benchmark-internacional" ? <InternationalBenchmark /> : portalSection === "macroeconomia-ipom" ? <MacroeconomicsMarket /> : portalSection === "mercado-retail-cnc" ? <RetailCncMarket /> : portalSection === "importaciones-retail" ? <ImportacionesIndustria key="retail" /> : portalSection === "importaciones-cosmeticos" ? <ImportacionesIndustria key="cosmetics" variant="cosmetics" /> : <section className="construction-page">
         <div className="construction-card">
           <i><Building2 /></i>
           <label>{selectedPortalGroup.label}</label>
           <h1>{selectedPortalItem.label}</h1>
           <strong>EN CONSTRUCCIÓN</strong>
           <p>Este informe formará parte del Portal Financiero. Su estructura y fuentes de datos todavía están en preparación.</p>
-          <button type="button" onClick={() => setPortalSection("home")}>VOLVER A LA PORTADA</button>
+          {canViewHome && <button type="button" onClick={() => setPortalSection("home")}>VOLVER A LA PORTADA</button>}
         </div>
       </section>}
       </main>
@@ -1941,10 +1911,12 @@ export default function Home() {
     }
   }, []);
   const acceptUser = useCallback((authenticatedUser: AuthUser) => {
+    dataRequestRef.current?.abort();
     setError("");
+    setReportsError("");
     setData(null);
     setUser(authenticatedUser);
-    void loadPortalData();
+    if (canAccessMenu(authenticatedUser.role, "forecast")) void loadPortalData();
   }, [loadPortalData]);
   const loadSession = useCallback(async (signal: AbortSignal) => {
     const response = await fetch("/api/auth/session", { cache: "no-store", signal });

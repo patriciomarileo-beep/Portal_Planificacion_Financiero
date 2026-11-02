@@ -1,4 +1,4 @@
-import { requireAuth } from "../_shared/auth";
+import { requireMenuAuth } from "../_shared/auth";
 import { errorResponse, HttpError, reportError, json } from "../_shared/http";
 import { NextRequest } from "next/server";
 import rules from "../../../docs/importaciones-industria-retail/REGLAS_NEGOCIO.json";
@@ -51,7 +51,7 @@ const pick = (columns: Set<string>, actual: Map<string, string>, candidates: str
 };
 
 export async function GET(request: NextRequest) {
-  try { await requireAuth(request); } catch (error) { return errorResponse(error, "data.auth"); }
+  try { await requireMenuAuth(request, "mercado"); } catch (error) { return errorResponse(error, "data.auth"); }
   try {
     validatedTablePath(sourceTable);
     if (request.nextUrl.search.length > 4096) throw new HttpError(400, "Filtros demasiado extensos.");

@@ -1,12 +1,12 @@
 import { BigQuery, type InsertRowsOptions } from "@google-cloud/bigquery";
 import { planningEntrySchema } from "../../toolbox/schema";
-import { requireAuth } from "../_shared/auth";
+import { requireMenuAuth } from "../_shared/auth";
 import { errorResponse, HttpError, json, readJson, requireSameOrigin } from "../_shared/http";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     requireSameOrigin(request);
-    const session = await requireAuth(request);
+    const session = await requireMenuAuth(request, "toolbox");
     const parsed = planningEntrySchema.safeParse(await readJson(request));
     if (!parsed.success) throw new HttpError(400, "Datos de planificación inválidos.");
     const projectId = process.env.PROJECT_ID || process.env.BIGQUERY_PROJECT_ID || "";

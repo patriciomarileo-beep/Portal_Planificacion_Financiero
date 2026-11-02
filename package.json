@@ -23,7 +23,8 @@
     "audit:production": "npm audit --omit=dev --audit-level=low",
     "test:security:http": "node scripts/smoke-security.mjs",
     "test:security:assets": "node scripts/check-public-data.mjs",
-    "test:market": "node scripts/test-market-indicators.mjs"
+    "test:market": "node scripts/test-market-indicators.mjs",
+    "test:imports": "node scripts/test-imports.mjs"
   },
   "dependencies": {
     "@google-cloud/bigquery": "^9.1.0",
@@ -66,6 +67,9 @@
     },
     "satori": {
       "fflate": "0.7.5"
+    },
+    "miniflare": {
+      "undici": "7.30.1"
     }
   }
 }

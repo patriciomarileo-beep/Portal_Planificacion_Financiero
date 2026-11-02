@@ -1,7 +1,7 @@
 import { requireAuth } from "../_shared/auth";
 import { errorResponse, readJson, requireSameOrigin } from "../_shared/http";
 import { googleAccessToken, validatedTablePath } from "../_shared/bigquery";
-import { normalizedUserRole } from "../_shared/user-roles";
+import { getUserRoles, normalizedUserRole } from "../_shared/user-roles";
 
 export const runtime = "nodejs";
 
@@ -192,11 +192,14 @@ export async function GET(request: Request) {
       ? configuredMax
       : Math.min(Math.max(Number(limitParam), 1), configuredMax);
     const table = tablePath();
-    const payload = await runQueryRows(
-      `SELECT * FROM \`${table}\` LIMIT @limit`,
-      [parameter("limit", "INT64", limit)],
-      limit,
-    );
+    const [payload, roleOptions] = await Promise.all([
+      runQueryRows(
+        `SELECT * FROM \`${table}\` LIMIT @limit`,
+        [parameter("limit", "INT64", limit)],
+        limit,
+      ),
+      getUserRoles(),
+    ]);
     const fields = payload.schema?.fields ?? [];
     const roleColumn = exactColumn(fields, editableNames.role);
     const activeColumn = exactColumn(fields, editableNames.active);
@@ -210,6 +213,7 @@ export async function GET(request: Request) {
       columns: fields.map((field) => field.name),
       keyColumn: rowKey,
       roleColumn,
+      roleOptions,
       activeColumn,
       totalRows: Number(payload.loadedRows ?? payload.rows?.length ?? 0),
       rowLimit: limit,
@@ -242,8 +246,9 @@ export async function PATCH(request: Request) {
       activo?: unknown;
     };
     if (!body || typeof body !== "object" || typeof body.activo !== "boolean" || !["string", "number"].includes(typeof body.keyValue) || (typeof body.keyValue === "number" && !Number.isFinite(body.keyValue)) || String(body.keyValue).trim().length === 0 || String(body.keyValue).length > 500) return json({ error: "Datos de usuario inválidos." }, { status: 400 });
-    const role = normalizedUserRole(body.rol);
+    const role = normalizedUserRole(body.rol, await getUserRoles());
     if (!role && !(body.rol === "" && body.activo === false)) return json({ error: "Selecciona un rol permitido." }, { status: 400 });
+    if (body.activo && role === "SIN ROL") return json({ error: "Selecciona un rol de acceso para activar al usuario." }, { status: 400 });
     const table = tablePath();
     const schemaPayload = await runQuery<{ schema?: { fields?: BigQueryField[] } }>(
       `SELECT * FROM \`${table}\` LIMIT 1`,

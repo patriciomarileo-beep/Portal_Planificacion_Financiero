@@ -58,6 +58,7 @@ const ChannelProfitability = dynamic(() => import("./profitability/ChannelProfit
 const CountryProfitability = dynamic(() => import("./profitability/CountryProfitability"), { loading: reportLoading });
 const ToolboxPlanning = dynamic(() => import("./toolbox/ToolboxPlanning"), { loading: reportLoading });
 const StoreSensitivity = dynamic(() => import("./profitability/StoreSensitivity"), { loading: reportLoading });
+const KpiConsolidado = dynamic(() => import("./kpi/KpiConsolidado"), { loading: reportLoading });
 
 type Year = 2024 | 2025 | 2026 | 2027;
 type FwBand = "negative" | "low" | "high" | null;
@@ -217,7 +218,9 @@ const portalGroups: { id: PortalMenu; label: string; description: string; icon: 
     label: "KPI Consolidado",
     description: "Indicadores clave de gestión financiera y operacional.",
     icon: Building2,
-    items: [{ id: "kpi-consolidado", label: "KPI Consolidado" }],
+    items: [
+      { id: "kpi-consolidado", label: "KPI Consolidado", enabled: true },
+    ],
   },
 ];
 const menuForSection = (section: string): PortalMenu | undefined => {
@@ -1863,7 +1866,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
         {activeView === "annual" ? <Executive selection={selection} universe={universe} quadrantYear={quadrantYear} setQuadrantYear={setQuadrantYear} fwBand={fwBand} setFwBand={setFwBand} analysisMetric={analysisMetric} setAnalysisMetric={setAnalysisMetric} /> : activeView === "detail" ? <Detail selection={selection} /> : activeView === "break-even" ? <BreakEven selection={selection} /> : activeView === "m2" ? <M2Analysis selection={selection} /> : activeView === "sensitivity" ? <StoreSensitivity /> : <StoreMonitor selection={selection} />}
       </div>
       <footer>Planificación Financiera · Forus <span>INFORME EN MM$</span></footer>
-      </> : portalSection === "ecommerce" ? <ChannelProfitability channel="Ecommerce" /> : portalSection === "marketplace" ? <ChannelProfitability channel="Marketplace" /> : portalSection === "wholesale" ? <ChannelProfitability channel="Wholesale" /> : portalSection === "consolidada" ? <ChannelProfitability channel="Consolidado" /> : portalSection === "paises" ? <CountryProfitability /> : portalSection === "benchmark-nacional" ? <NationalBenchmark /> : portalSection === "benchmark-internacional" ? <InternationalBenchmark /> : portalSection === "macroeconomia-ipom" ? <MacroeconomicsMarket /> : portalSection === "mercado-retail-cnc" ? <RetailCncMarket /> : portalSection === "importaciones-retail" ? <ImportacionesIndustria key="retail" /> : portalSection === "importaciones-cosmeticos" ? <ImportacionesIndustria key="cosmetics" variant="cosmetics" /> : <section className="construction-page">
+      </> : portalSection === "ecommerce" ? <ChannelProfitability channel="Ecommerce" /> : portalSection === "marketplace" ? <ChannelProfitability channel="Marketplace" /> : portalSection === "wholesale" ? <ChannelProfitability channel="Wholesale" /> : portalSection === "consolidada" ? <ChannelProfitability channel="Consolidado" /> : portalSection === "paises" ? <CountryProfitability /> : portalSection === "kpi-consolidado" ? <KpiConsolidado /> : portalSection === "benchmark-nacional" ? <NationalBenchmark /> : portalSection === "benchmark-internacional" ? <InternationalBenchmark /> : portalSection === "macroeconomia-ipom" ? <MacroeconomicsMarket /> : portalSection === "mercado-retail-cnc" ? <RetailCncMarket /> : portalSection === "importaciones-retail" ? <ImportacionesIndustria key="retail" /> : portalSection === "importaciones-cosmeticos" ? <ImportacionesIndustria key="cosmetics" variant="cosmetics" /> : <section className="construction-page">
         <div className="construction-card">
           <i><Building2 /></i>
           <label>{selectedPortalGroup.label}</label>

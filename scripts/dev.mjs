@@ -33,7 +33,9 @@ if (localAdc) setInterval(() => {
   writeFileSync(envPath, `${current.replace(/^BIGQUERY_ACCESS_TOKEN=.*(?:\r?\n|$)/m, "").trimEnd()}\nBIGQUERY_ACCESS_TOKEN=${refreshed}\n`, "utf8");
 }, 45 * 60 * 1000).unref();
 
-const child = spawn(process.execPath, [join(process.cwd(), "node_modules", "vinext", "dist", "cli.js"), "dev", "--host", "127.0.0.1", "--port", process.env.PORT || "3000"], {
+const requestedHost = new URL(process.env.APP_ORIGIN || "http://localhost:3000").hostname;
+const host = requestedHost === "localhost" ? "localhost" : "127.0.0.1";
+const child = spawn(process.execPath, [join(process.cwd(), "node_modules", "vinext", "dist", "cli.js"), "dev", "--host", host, "--port", process.env.PORT || "3000"], {
   stdio: "inherit",
   env: { ...process.env, XDG_CONFIG_HOME: join(process.cwd(), ".wrangler-config"), BIGQUERY_ACCESS_TOKEN: bigQueryAccessToken },
 });

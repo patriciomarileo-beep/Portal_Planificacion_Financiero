@@ -59,6 +59,7 @@ const CountryProfitability = dynamic(() => import("./profitability/CountryProfit
 const ToolboxPlanning = dynamic(() => import("./toolbox/ToolboxPlanning"), { loading: reportLoading });
 const StoreSensitivity = dynamic(() => import("./profitability/StoreSensitivity"), { loading: reportLoading });
 const KpiConsolidado = dynamic(() => import("./kpi/KpiConsolidado"), { loading: reportLoading });
+const SalesMargin = dynamic(() => import("./sales-margin/SalesMargin"), { loading: reportLoading });
 
 type Year = 2024 | 2025 | 2026 | 2027;
 type FwBand = "negative" | "low" | "high" | null;
@@ -224,7 +225,7 @@ const portalGroups: { id: PortalMenu; label: string; description: string; icon: 
   },
 ];
 const menuForSection = (section: string): PortalMenu | undefined => {
-  if (section === "home" || section === "toolbox" || section === "users") return section;
+  if (section === "home" || section === "sales-margin" || section === "toolbox" || section === "users") return section;
   return portalGroups.find(group => group.items.some(item => item.id === section))?.id;
 };
 const hiddenUserColumns = new Set([
@@ -1729,8 +1730,10 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   const [fwBand, setFwBand] = useState<FwBand>(null);
   const [analysisMetric, setAnalysisMetric] = useState<ProfitMetric>("fourWalls");
   const [refreshing, setRefreshing] = useState(false);
+  const [salesMarginRefreshKey, setSalesMarginRefreshKey] = useState(0);
   const visiblePortalGroups = portalGroups.filter(group => canAccessMenu(authUser.role, group.id));
   const canViewHome = canAccessMenu(authUser.role, "home");
+  const canViewSalesMargin = canAccessMenu(authUser.role, "sales-margin");
   const canUseToolbox = canAccessMenu(authUser.role, "toolbox");
   const defaultSection = canViewHome ? "home" : visiblePortalGroups[0]?.items[0]?.id ?? "";
   const [requestedPortalSection, setPortalSection] = useState("home");
@@ -1740,12 +1743,18 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   const needsPrivateData = blActive || ["ecommerce", "marketplace", "wholesale", "consolidada"].includes(portalSection);
   const stores = useMemo(() => blActive && privateData ? buildStores(privateData.baseConsolidada) : [], [blActive, privateData]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [openTopnavGroup, setOpenTopnavGroup] = useState<PortalMenu | null>(null);
 
 
   const refreshView = () => {
     setRefreshing(true);
+    if (portalSection === "sales-margin") {
+      setSalesMarginRefreshKey((current) => current + 1);
+      return;
+    }
     window.setTimeout(() => window.location.reload(), 120);
   };
+  const completeSalesMarginRefresh = useCallback(() => setRefreshing(false), []);
   const universe = useMemo(() => stores.filter((s) => {
     const matchesChain = selectedChains.length === 0 || selectedChains.includes(s.chain);
     const needles = query
@@ -1769,6 +1778,8 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   const activeView = view;
   const selectedPortalItem = portalSection === "home"
     ? { id: "home", label: "Portada", enabled: true }
+    : portalSection === "sales-margin"
+      ? { id: "sales-margin", label: "Venta & Margen", enabled: true }
     : portalSection === "users"
       ? { id: "users", label: "Usuarios", enabled: true }
     : portalSection === "toolbox"
@@ -1777,24 +1788,39 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   const selectedPortalGroup = portalGroups.find((group) => group.items.some((item) => item.id === portalSection)) ?? portalGroups[0];
   const openPortalSection = (groupId: string, itemId: string) => {
     const group = visiblePortalGroups.find(group => group.id === groupId);
-    if (group?.items.some(item => item.id === itemId)) setPortalSection(itemId);
+    if (group?.items.some(item => item.id === itemId)) {
+      setPortalSection(itemId);
+      setOpenTopnavGroup(null);
+    }
   };
 
   return (
     <div className="portal-shell microsoft-shell">
       <header className="portal-topbar">
-        <button className="portal-brand" type="button" onClick={() => setPortalSection(defaultSection)} aria-label={canViewHome ? "Ir a la portada" : "Ir a Comex"}>
+        <button className="portal-brand" type="button" onClick={() => { setPortalSection(defaultSection); setOpenTopnavGroup(null); setMobileNavOpen(false); }} aria-label={canViewHome ? "Ir a la portada" : "Ir a Comex"}>
           <img src="/forus.png" alt="Forus" />
           <span><b>Portal Financiero</b><small>Planificación · Forus</small></span>
         </button>
-        <button className="portal-mobile-toggle" type="button" onClick={() => setMobileNavOpen((current) => !current)} aria-expanded={mobileNavOpen} aria-label="Abrir menú"><Menu /></button>
+        <button className="portal-mobile-toggle" type="button" onClick={() => { setMobileNavOpen((current) => !current); setOpenTopnavGroup(null); }} aria-expanded={mobileNavOpen} aria-label="Abrir menú"><Menu /></button>
         <nav className={`portal-topnav ${mobileNavOpen ? "open" : ""}`} aria-label="Informes financieros">
-          {canViewHome && <button type="button" className={portalSection === "home" ? "active" : ""} onClick={() => { setPortalSection("home"); setMobileNavOpen(false); }}>Inicio</button>}
-          {canUseToolbox && <button type="button" className={portalSection === "toolbox" ? "active" : ""} onClick={() => { setPortalSection("toolbox"); setMobileNavOpen(false); }}>Toolbox AP</button>}
+          {canViewHome && <button type="button" className={portalSection === "home" ? "active" : ""} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("home"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Inicio</button>}
+          {canViewSalesMargin && <button type="button" className={portalSection === "sales-margin" ? "active" : ""} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("sales-margin"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Venta & Margen</button>}
+          {canUseToolbox && <button type="button" className={portalSection === "toolbox" ? "active" : ""} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("toolbox"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Toolbox AP</button>}
           {visiblePortalGroups.map((group) => {
             const GroupIcon = group.icon;
-            return <div className="portal-topnav-group" key={group.id}>
-              <button type="button" className={group.items.some((item) => item.id === portalSection) ? "active" : ""}>
+            const groupOpen = openTopnavGroup === group.id;
+            return <div
+              className={`portal-topnav-group ${groupOpen ? "open" : ""}`}
+              key={group.id}
+              onMouseEnter={() => setOpenTopnavGroup(group.id)}
+              onMouseLeave={() => setOpenTopnavGroup((current) => current === group.id ? null : current)}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setOpenTopnavGroup((current) => current === group.id ? null : current);
+                }
+              }}
+            >
+              <button type="button" className={group.items.some((item) => item.id === portalSection) ? "active" : ""} aria-haspopup="true" aria-expanded={groupOpen} onClick={() => setOpenTopnavGroup(group.id)}>
                 <GroupIcon /><span>{group.label}</span><ChevronDown />
               </button>
               <div className="portal-mega-menu">
@@ -1807,13 +1833,13 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
               </div>
             </div>;
           })}
-          {canManageUsers && <button type="button" className={portalSection === "users" ? "active" : ""} aria-current={portalSection === "users" ? "page" : undefined} onClick={() => { setPortalSection("users"); setMobileNavOpen(false); }}><Users /> Usuarios</button>}
+          {canManageUsers && <button type="button" className={portalSection === "users" ? "active" : ""} aria-current={portalSection === "users" ? "page" : undefined} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("users"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}><Users /> Usuarios</button>}
         </nav>
         <UserMenu user={authUser} onLogout={onLogout} />
       </header>
       <main className="portal-workspace">
       <header className={`portal-reportbar ${portalSection === "home" ? "home" : ""}`}>
-        <div className="portal-context"><small>{portalSection === "home" ? "Portal Financiero" : portalSection === "users" ? "Administración" : portalSection === "toolbox" ? "Planificación Financiera" : selectedPortalGroup.label}</small><b>{selectedPortalItem.label}</b></div>
+        <div className="portal-context"><small>{portalSection === "home" ? "Portal Financiero" : portalSection === "users" ? "Administración" : portalSection === "toolbox" || portalSection === "sales-margin" ? "Planificación Financiera" : selectedPortalGroup.label}</small><b>{selectedPortalItem.label}</b></div>
         {blActive && <nav>
           <button className={activeView === "annual" ? "active" : ""} onClick={() => setView("annual")}>Comparativa anual</button>
           <button className={activeView === "detail" ? "active" : ""} onClick={() => setView("detail")}>Detalle tiendas</button>
@@ -1822,7 +1848,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
           <button className={activeView === "sensitivity" ? "active" : ""} onClick={() => setView("sensitivity")}>Sensibilidad tiendas</button>
           <button className={activeView === "monitor" ? "active" : ""} onClick={() => setView("monitor")}>Monitor tiendas</button>
         </nav>}
-        {blActive && <button className="refresh-button" onClick={refreshView} disabled={refreshing} title="Recargar la última versión disponible"><RefreshCw className={refreshing ? "spin" : ""} /> {refreshing ? "ACTUALIZANDO…" : "ACTUALIZAR"}</button>}
+        {(blActive || portalSection === "sales-margin") && <button className="refresh-button" onClick={refreshView} disabled={refreshing} title="Recargar la última versión disponible"><RefreshCw className={refreshing ? "spin" : ""} /> {refreshing ? "ACTUALIZANDO…" : "ACTUALIZAR"}</button>}
       </header>
       {portalSection === "home" ? <section className="portal-home-page">
         <div className="portal-home-heading">
@@ -1843,7 +1869,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
               </article>;
             })}
         </div>
-      </section> : needsPrivateData && !privateData ? <section className="portal-data-status" aria-live="polite">
+      </section> : portalSection === "sales-margin" ? <SalesMargin refreshKey={salesMarginRefreshKey} onRefreshComplete={completeSalesMarginRefresh} /> : needsPrivateData && !privateData ? <section className="portal-data-status" aria-live="polite">
         {reportsError ? <><AlertTriangle /><h2>No pudimos cargar este informe</h2><p>{reportsError}</p><button type="button" onClick={onRetryReports}>Reintentar</button></> : <><RefreshCw className="spin" /><h2>Preparando tu informe</h2><p>Puedes seguir navegando mientras termina la carga.</p></>}
       </section> : portalSection === "users" && canManageUsers ? <div className="content"><UsuariosAdmin /></div> : portalSection === "toolbox" ? <ToolboxPlanning /> : blActive ? <><section className="hero">
         <div><label>PLANIFICACIÓN FINANCIERA · PRESUPUESTO 2027P</label><h1>Rentabilidad de tiendas.</h1><p>EERR Retail y riesgo Four Walls por tienda.</p></div>

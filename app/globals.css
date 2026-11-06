@@ -3817,8 +3817,8 @@ body {
   background: #fff;
   box-shadow: 0 16px 38px rgba(0, 0, 0, .15);
 }
-.portal-topnav-group:hover .portal-mega-menu,
-.portal-topnav-group:focus-within .portal-mega-menu { display: grid; }
+.portal-topnav-group.open .portal-mega-menu { display: grid; }
+.portal-topnav-group:nth-last-of-type(-n + 2) .portal-mega-menu { right: 0; left: auto; }
 .portal-mega-intro { padding: 22px; background: linear-gradient(145deg, #eef6ff, #f8fbff); }
 .portal-mega-intro > svg { width: 25px; height: 25px; margin-bottom: 24px; color: #0067b8; }
 .portal-mega-intro small,
@@ -4008,27 +4008,34 @@ body {
 .microsoft-shell .portal-legend-links button.available span small { color: #107c10; }
 .microsoft-shell .portal-legend-links button > svg { width: 14px; color: #0067b8; }
 
-@media (max-width: 1180px) {
+@media (max-width: 1500px) {
   .portal-user-name { display: none; }
-  .microsoft-shell .portal-topbar { gap: 10px; padding: 0 22px; }
-  .microsoft-shell .portal-brand { min-width: 180px; }
-  .portal-topnav > button, .portal-topnav-group > button { padding: 0 9px; font-size: 12px; }
+  .microsoft-shell .portal-topbar { gap: 8px; padding: 0 18px; }
+  .microsoft-shell .portal-brand { min-width: 165px; padding-right: 12px; }
+  .microsoft-shell .portal-brand img { width: 48px; }
+  .microsoft-shell .portal-brand b { font-size: 13px; }
+  .microsoft-shell .portal-brand small { font-size: 9px; }
+  .portal-topnav > button, .portal-topnav-group > button { padding: 0 7px; font-size: 12px; }
+}
+@media (max-width: 1180px) {
   .microsoft-shell .portal-legend-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 800px) {
+@media (max-width: 1100px) {
   .microsoft-shell .portal-topbar { height: 62px; align-items: center; }
   .microsoft-shell .portal-brand { min-width: 0; flex: 1; border: 0; }
   .portal-mobile-toggle { width: 40px; height: 40px; display: grid; place-items: center; border: 0; background: #f1f1f1; color: #273444; }
   .portal-mobile-toggle svg { width: 20px; }
-  .portal-topnav { position: absolute; top: 62px; left: 0; right: 0; height: auto; display: none; flex-direction: column; align-items: stretch; gap: 0; padding: 8px 16px 18px; border-bottom: 1px solid #ddd; background: #fff; box-shadow: 0 14px 30px rgba(0,0,0,.15); }
+  .portal-topnav { position: absolute; top: 62px; left: 0; right: 0; height: auto; max-height: calc(100vh - 62px); display: none; flex-direction: column; align-items: stretch; gap: 0; overflow-y: auto; padding: 8px 16px 18px; border-bottom: 1px solid #ddd; background: #fff; box-shadow: 0 14px 30px rgba(0,0,0,.15); }
   .portal-topnav.open { display: flex; }
   .portal-topnav > button, .portal-topnav-group > button { width: 100%; min-height: 46px; justify-content: space-between; padding: 0 10px; box-shadow: none !important; }
   .portal-topnav-group > button > svg:first-child { display: block; width: 17px; }
   .portal-topnav-group > button span { flex: 1; text-align: left; }
   .portal-mega-menu { position: static; width: 100%; grid-template-columns: 1fr; border: 0; box-shadow: none; }
   .portal-mega-intro { display: none; }
-  .portal-topnav-group:focus-within .portal-mega-menu { display: grid; }
+  .portal-topnav-group.open .portal-mega-menu { display: grid; }
   .portal-mega-links { grid-template-columns: 1fr; }
+}
+@media (max-width: 800px) {
   .microsoft-shell .portal-home-heading { min-height: 0; grid-template-columns: 1fr; padding: 54px 26px 32px; }
   .portal-hero-visual { height: 280px; }
   .economic-panel { padding: 18px; }
@@ -4133,4 +4140,1045 @@ body {
   .kpi-deck-metrics { grid-template-columns: 1fr; }
   .kpi-source { flex-direction: column; gap: 7px; margin: 0 20px; }
   .kpi-source span:first-child { max-width: 100%; }
+}
+
+/* Venta & Margen · réplica operativa de Ventas_consolidadas */
+/* Contenedor raíz: alto mínimo, fondo general y espacio inferior del módulo. */
+.sales-margin-module { min-height: calc(100vh - 118px); padding-bottom: 38px; background: #f3f6f9; }
+/* Cabecera homologada con channel-hero: altura, espaciado y gradiente. */
+.sales-margin-hero { min-height: 208px; padding: 48px 42px 34px; display: flex; align-items: center; justify-content: space-between; gap: 32px; color: #fff; background: linear-gradient(118deg, #123568 0%, #1c4b88 58%, #2e68ad 100%); }
+/* Bloque principal de texto del encabezado. */
+.sales-margin-hero > div { max-width: 780px; }
+/* Etiqueta superior homologada con channel-hero. */
+.sales-margin-hero label { display: block; color: #a9cef8; font-size: 11px; font-weight: 800; letter-spacing: .17em; text-transform: uppercase; }
+/* Título principal homologado en escala, peso y separación. */
+.sales-margin-hero h1 { margin: 18px 0 8px; font-size: clamp(34px, 4vw, 54px); font-weight: 400; letter-spacing: -.04em; }
+/* Color destacado equivalente al utilizado por channel-hero. */
+.sales-margin-hero h1 em { color: #9cc9ff; font-style: normal; }
+/* Descripción homologada en color y tamaño. */
+.sales-margin-hero p { margin: 0; color: #d4e1f2; font-size: 17px; }
+/* Tarjeta informativa derecha homologada con channel-hero. */
+.sales-margin-hero-meta { min-width: 245px; padding: 24px; border: 1px solid rgba(255,255,255,.28); border-radius: 14px; background: rgba(255,255,255,.07); text-align: right; }
+/* Título y detalle de la tarjeta informativa. */
+.sales-margin-hero-meta b, .sales-margin-hero-meta small { display: block; }
+.sales-margin-hero-meta b { font-size: 18px; letter-spacing: .06em; }
+.sales-margin-hero-meta small { margin-top: 8px; color: #c4d7ee; font-size: 10px; }
+/* Rejilla compacta de Venta y Margen, alineada al inicio del contenido. */
+.sales-margin-kpis { display: grid; grid-template-columns: repeat(2, minmax(220px, 310px)); gap: 10px; justify-content: start; margin: 16px 42px; position: relative; z-index: 2; }
+/* Apariencia general de cada tarjeta KPI. */
+.sales-margin-kpis article { min-height: 92px; padding: 13px 16px; border: 1px solid #dde5ed; border-top: 3px solid #1c74a8; border-radius: 8px; background: #fff; box-shadow: 0 8px 20px #16355210; }
+/* Fuerza etiqueta, valor y descripción de cada KPI a ocupar líneas separadas. */
+.sales-margin-kpis article small, .sales-margin-kpis article b, .sales-margin-kpis article span { display: block; }
+/* Etiqueta superior de las tarjetas KPI. */
+.sales-margin-kpis article small { color: #718197; font-size: 8px; font-weight: 800; letter-spacing: .11em; }
+/* Valor numérico principal de las tarjetas KPI. */
+.sales-margin-kpis article b { margin: 0; color: #173d69; font-size: 22px; font-weight: 550; line-height: 1; }
+/* Texto descriptivo inferior de las tarjetas KPI. */
+.sales-margin-kpis article span { display: flex; align-items: center; gap: 5px; color: #8794a4; font-size: 9px; }
+/* Tamaño de los iconos presentes en la descripción del KPI. */
+.sales-margin-kpis article span svg { width: 13px; height: 13px; }
+/* Valor principal y unidad de medida en una misma línea. */
+.sales-margin-kpi-value { display: flex; align-items: baseline; gap: 7px; margin-top: 7px; }
+/* Variación 27P / 26E ubicada bajo el valor principal de cada indicador. */
+.sales-margin-kpi-variation { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; padding-top: 8px; border-top: 1px solid #e4eaf0; }
+.sales-margin-kpi-variation strong { display: flex; align-items: center; gap: 4px; color: #6f7d8d; font-size: 11px; font-weight: 800; }
+.sales-margin-kpi-variation strong svg { width: 12px; height: 12px; }
+.sales-margin-kpi-variation.positive strong { color: #147351; }
+.sales-margin-kpi-variation.negative strong { color: #aa3939; }
+/* Borde superior verde cuando la variación del KPI es positiva. */
+.sales-margin-kpis article.positive { border-top-color: #168b62; }
+/* Texto verde para un KPI con variación positiva. */
+.sales-margin-kpis article.positive b, .sales-margin-kpis article.positive span { color: #147351; }
+/* Borde superior rojo cuando la variación del KPI es negativa. */
+.sales-margin-kpis article.negative { border-top-color: #c64c4c; }
+/* Texto rojo para un KPI con variación negativa. */
+.sales-margin-kpis article.negative b, .sales-margin-kpis article.negative span { color: #aa3939; }
+/* Panel blanco que contiene pestañas, filtros, tabla y pie de fuente. */
+.sales-margin-panel { margin: 0 42px; border: 1px solid #dce4ec; border-radius: 10px; background: #fff; box-shadow: 0 15px 38px #1635520d; }
+/* Barra de pestañas de las distintas vistas del informe. */
+.sales-margin-tabs { display: flex; gap: 4px; padding: 10px 12px 0; border-bottom: 1px solid #dce4ec; background: #f8fafc; }
+/* Botón base de cada pestaña: alto, espaciado y tipografía. */
+.sales-margin-tabs button { min-height: 46px; display: flex; align-items: center; gap: 8px; padding: 0 17px; border: 0; border-bottom: 3px solid transparent; color: #607086; background: transparent; font-size: 11px; font-weight: 650; cursor: pointer; }
+/* Tamaño de los iconos de las pestañas. */
+.sales-margin-tabs button svg { width: 16px; }
+/* Apariencia de una pestaña al pasar el cursor. */
+.sales-margin-tabs button:hover { color: #126fa4; background: #edf6fb; }
+/* Apariencia de la pestaña actualmente seleccionada. */
+.sales-margin-tabs button.active { border-bottom-color: #0078a8; color: #075d8c; background: #eaf5fa; }
+/* Barra horizontal equivalente a Rentabilidad Consolidado. */
+.sales-margin-toolbar { min-height: 83px; display: grid; grid-template-columns: 180px repeat(3, minmax(150px, 1fr)) 190px auto; align-items: end; gap: 14px; padding: 15px 18px; }
+/* Cadena × marca agrega un cuarto filtro sin reemplazar la dimensión Canal. */
+.sales-margin-toolbar.with-chain-filter { grid-template-columns: 170px repeat(4, minmax(130px, 1fr)) 190px auto; }
+/* Texto pequeño usado como etiqueta dentro de la barra de herramientas. */
+.sales-margin-toolbar small { display: block; color: #718197; font-size: 8px; font-weight: 800; letter-spacing: .12em; }
+/* Título de la vista activa: Consolidado, Canal, Marca, etc. */
+.sales-margin-toolbar h2 { margin: 4px 0 0; color: #193b61; font-size: 21px; font-weight: 450; }
+/* El título ocupa la primera columna de la grilla. */
+.sales-margin-toolbar-title { min-width: 0; }
+/* La última columna agrupa limpiar, buscar y actualizar sin romper la fila. */
+.sales-margin-toolbar-right { min-width: 0; display: flex; align-items: stretch; justify-content: flex-end; gap: 8px; }
+/* Multiselección reutiliza el patrón de CADENA de B&L dentro de la grilla. */
+.sales-margin-multiselect { width: 100%; min-width: 0; flex: none; }
+.sales-margin-multiselect-options { width: max(240px, 100%); }
+.sales-margin-multiselect-options label {
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  align-items: center;
+  justify-content: start;
+  column-gap: 8px;
+  text-align: left;
+}
+.sales-margin-multiselect-options input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  justify-self: center;
+}
+/* Buscador escrito independiente para Marca, Canal, Cadena y Clase. */
+.sales-margin-option-search {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 5px;
+  padding: 0 8px;
+  border: 1px solid #dce3ea;
+  border-radius: 3px;
+  background: #f8fafc;
+}
+.sales-margin-option-search svg { width: 13px; color: #738399; }
+.sales-margin-option-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: #304158;
+  background: transparent;
+  font-size: 9px;
+}
+.sales-margin-option-empty {
+  display: block;
+  padding: 12px 8px;
+  color: #8793a5;
+  font-size: 9px;
+  text-align: center;
+}
+/* Selector de trimestre alineado con la altura de los filtros múltiples. */
+.sales-margin-quarter-filter {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+}
+/* Reparte el ancho útil entre ANUAL y los cuatro trimestres sin desbordar. */
+.sales-margin-quarter-filter button {
+  min-width: 0;
+  flex: 1 1 0;
+  padding-right: 4px;
+  padding-left: 4px;
+  white-space: nowrap;
+}
+/* Contenedor del buscador: ancho, alto, borde y espaciado interno. */
+.sales-margin-search { min-width: 190px; height: 38px; flex: 1 1 230px; display: flex; align-items: center; gap: 8px; padding: 0 11px; border: 1px solid #cfd9e4; border-radius: 6px; background: #fff; }
+/* Icono de lupa del buscador. */
+.sales-margin-search svg { width: 15px; color: #718197; }
+/* Campo de texto del buscador; no afecta los checkbox de los multiselect. */
+.sales-margin-search input { width: 100%; border: 0; outline: 0; color: #293a4f; background: transparent; font: inherit; font-size: 11px; }
+/* Contenedor de cada lista desplegable, homologado con Rentabilidad Marketplace. */
+.sales-margin-select { min-width: 150px; color: #7b8da5; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+/* Caja que contiene el select y su chevrón decorativo. */
+.sales-margin-select > div { position: relative; margin-top: 7px; }
+/* Control select: altura, borde y tipografía equivalentes a Rentabilidad Marketplace. */
+.sales-margin-select select { width: 100%; min-width: 0; min-height: 44px; padding: 0 38px 0 13px; appearance: none; border: 1px solid #cfdae8; border-radius: 8px; outline: 0; color: #18355d; background: #fff; font-size: 12px; font-weight: 700; letter-spacing: 0; cursor: pointer; }
+/* Chevrón visual del select; no intercepta la interacción con el control. */
+.sales-margin-select svg { position: absolute; top: 13px; right: 11px; width: 17px; pointer-events: none; color: #18355d; }
+/* Estilos compartidos por los botones Actualizar y Limpiar filtros. */
+.sales-margin-refresh, .sales-margin-clear { height: 38px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; border: 1px solid #1678a9; border-radius: 6px; color: #fff; background: #1678a9; font-size: 9px; font-weight: 750; text-transform: uppercase; cursor: pointer; }
+/* Diferencia visual del botón que limpia los filtros activos. */
+.sales-margin-clear { min-width: 42px; padding: 0 9px; border-color: #cbd5df; color: #52657a; background: #f4f7f9; }
+/* Estado deshabilitado del botón Actualizar durante una carga. */
+.sales-margin-refresh:disabled { opacity: .6; cursor: wait; }
+/* Tamaño de los iconos en los botones de la barra de herramientas. */
+.sales-margin-refresh svg, .sales-margin-clear svg { width: 14px; }
+/* Área desplazable de la tabla: controla alto máximo, scroll y márgenes laterales internos. */
+.sales-margin-table-wrap { max-height: 650px; overflow: auto; border-top: 1px solid #e2e8ef; border-bottom: 1px solid #e2e8ef; }
+/* Tabla principal: ancho general, separación y tipografía de la grilla. */
+.sales-margin-table { width: 100%; min-width: 1490px; table-layout: fixed; border-collapse: separate; border-spacing: 0; color: #27394e; font-size: 12px; }
+/* Configuración común para todas las celdas: alto, padding, bordes y texto sin salto. */
+.sales-margin-table th, .sales-margin-table td { height: 38px; padding: 5px 6px; border-right: 1px solid #e2e7ed; border-bottom: 1px solid #e7ebf0; white-space: nowrap; }
+/* Evita aplicar sticky al bloque thead completo; cada celda se fija por separado. */
+.sales-margin-table thead { position: static; }
+/* Encabezados de tabla: posición sticky, colores y tipografía. */
+.sales-margin-table thead th { position: sticky; top: 0; z-index: 4; color: #fff; background: #173d69; text-align: center; font-size: 12px; font-weight: 800; letter-spacing: .03em; }
+/* Mantiene la segunda fila del encabezado debajo de la primera al hacer scroll vertical. */
+.sales-margin-table thead tr:nth-child(2) th { top: 38px; z-index: 3; }
+/* Primera columna del encabezado: queda fija a la izquierda. */
+.sales-margin-table thead tr:first-child th:first-child { left: 0; z-index: 6; min-width: 150px; text-align: left; }
+/* Color de los encabezados de los años históricos 2024 y 2025. */
+.sales-margin-table thead .scenario-2024, .sales-margin-table thead .scenario-2025 { background: #4b6077; }
+/* Color del encabezado del escenario presupuesto 2026P. */
+.sales-margin-table thead .scenario-2026P { background: #81642b; }
+/* Color del encabezado del escenario estimado 2026E. */
+.sales-margin-table thead .scenario-2026 { background: #176c96; }
+/* Color del encabezado del escenario presupuesto 2027P. */
+.sales-margin-table thead .scenario-2027P { background: #14765c; }
+/* Ancho y padding de las columnas comparativas. */
+.sales-margin-table thead .comparison,
+.sales-margin-table td.variance { width: 54px; min-width: 54px; max-width: 54px; padding-right: 4px; padding-left: 4px; }
+/* Colores del encabezado de las columnas comparativas. */
+.sales-margin-table thead .comparison { color: #173d69; background: #dbeaf4; }
+/* Texto secundario “Var. venta” dentro de los encabezados comparativos. */
+.sales-margin-table thead .comparison small { display: block; margin-top: 3px; font-size: 12px; font-weight: 550; }
+/* Subencabezados Vta. MM$ y Mg % de cada año. */
+.sales-margin-table thead .subhead { color: #526277; background: #edf1f5; font-size: 12px; }
+/* Primera columna del cuerpo: sticky horizontal, color y alineación. */
+.sales-margin-table tbody th { position: sticky; left: 0; z-index: 2; min-width: 150px; color: #234363; background: #fff; text-align: left; vertical-align: top; font-size: 12px; }
+/* Tamaño de fuente general de las celdas de datos. */
+.sales-margin-table tbody td { font-size: 12px; }
+/* Fondo alternado para facilitar la lectura de filas pares. */
+.sales-margin-table tbody tr:nth-child(even) td, .sales-margin-table tbody tr:nth-child(even) th { background: #f8fafc; }
+/* Color de fondo aplicado a la fila sobre la que está el cursor. */
+.sales-margin-table tbody tr:hover td, .sales-margin-table tbody tr:hover th { background: #eef7fb; }
+/* Segunda dimensión de la tabla: Período, Canal o Clase según la pestaña. */
+.sales-margin-table td.dimension { min-width: 115px; color: #65758a; font-weight: 600; }
+/* Celdas numéricas: alineación derecha y dígitos tabulares. */
+.sales-margin-table td.number { min-width: 58px; text-align: right; font-variant-numeric: tabular-nums; }
+/* Celdas de margen porcentual: color y fondo diferenciados. */
+.sales-margin-table td.margin { color: #52677d; background: #fbfcfd; }
+/* Peso tipográfico de todas las celdas de variación. */
+.sales-margin-table td.variance { font-weight: 700; }
+/* Variación positiva: texto verde y fondo verde suave. */
+.sales-margin-table td.variance.positive { color: #157653; background: #edf8f3; }
+/* Variación negativa: texto rojo y fondo rojo suave. */
+.sales-margin-table td.variance.negative { color: #b13f3f; background: #fff1f1; }
+/* Variación neutra o no calculable: texto gris. */
+.sales-margin-table td.variance.neutral { color: #6f7d8d; }
+/* Filas de total y consolidado: fondo destacado y texto en negrita. */
+.sales-margin-table tr.total th, .sales-margin-table tr.total td { color: #173d69; background: #eaf2f8; font-weight: 800; }
+/* Variación positiva dentro de una fila total. */
+.sales-margin-table tr.total td.variance.positive { color: #126f4e; background: #dff2e9; }
+/* Variación negativa dentro de una fila total. */
+.sales-margin-table tr.total td.variance.negative { color: #a63131; background: #f9dfdf; }
+/* Pie del panel: distribuye la fuente técnica y la referencia funcional. */
+.sales-margin-panel > footer { display: flex; justify-content: space-between; gap: 24px; padding: 13px 18px; color: #748397; font-size: 8px; }
+/* Evita que las rutas largas desborden el pie y muestra puntos suspensivos. */
+.sales-margin-panel > footer span { max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Resalta la palabra FUENTE dentro del pie. */
+.sales-margin-panel > footer b { color: #1d547d; }
+/* Estado genérico de carga: centra icono y mensaje. */
+.sales-margin-state { min-height: 220px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #5e7085; }
+/* Icono utilizado en estados de carga o error. */
+.sales-margin-state svg { width: 20px; color: #1678a9; }
+/* Variante de error: disposición vertical y fondo de advertencia. */
+.sales-margin-state.error { min-height: 180px; flex-direction: column; margin: 24px 42px; border: 1px solid #eed1a3; border-radius: 8px; background: #fff8e8; }
+/* Texto descriptivo del estado de error. */
+.sales-margin-state.error p { margin: 0; font-size: 12px; }
+/* Botón Reintentar mostrado cuando falla la consulta. */
+.sales-margin-state.error button { padding: 9px 16px; border: 0; border-radius: 5px; color: #fff; background: #1678a9; cursor: pointer; }
+/* Mensaje mostrado cuando búsqueda y filtros no encuentran registros. */
+.sales-margin-empty { padding: 22px; color: #718197; text-align: center; font-size: 11px; }
+
+/* Ajustes para pantallas medianas y tablets. */
+@media (max-width: 1180px) {
+  /* Conserva las dos tarjetas compactas en pantallas medianas. */
+  .sales-margin-kpis { grid-template-columns: repeat(2, minmax(220px, 310px)); }
+  /* Habilita desplazamiento horizontal en la barra de pestañas. */
+  .sales-margin-tabs { overflow-x: auto; }
+  /* Evita que los botones de pestañas se compriman. */
+  .sales-margin-tabs button { flex: 0 0 auto; }
+  /* Título y filtros permanecen horizontales; período y acciones usan la segunda fila. */
+  .sales-margin-toolbar { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: end; }
+  .sales-margin-toolbar.with-chain-filter { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .sales-margin-quarter-filter { grid-column: 1 / 2; }
+  .sales-margin-toolbar-right { grid-column: 2 / -1; }
+}
+/* Ajustes para pantallas móviles. */
+@media (max-width: 800px) {
+  /* Apila el contenido del hero y reduce su padding lateral. */
+  .sales-margin-hero { align-items: flex-start; flex-direction: column; padding: 32px 22px 55px; }
+  /* Hace que las tarjetas informativas del hero ocupen todo el ancho. */
+  .sales-margin-hero-meta { width: 100%; }
+  /* Muestra los KPI en una sola columna y ajusta los márgenes. */
+  .sales-margin-kpis { grid-template-columns: 1fr; margin: -25px 18px 18px; }
+  /* Reduce los márgenes laterales del panel principal. */
+  .sales-margin-panel { margin: 0 18px; }
+  /* Apila título, filtros, búsqueda y botones verticalmente. */
+  .sales-margin-toolbar { grid-template-columns: 1fr; align-items: stretch; }
+  .sales-margin-toolbar.with-chain-filter { grid-template-columns: 1fr; }
+  .sales-margin-quarter-filter { width: 100%; grid-column: auto; }
+  .sales-margin-toolbar-right { width: 100%; grid-column: auto; align-items: stretch; flex-direction: column; }
+  /* Expande buscador y filtros desplegables al ancho del móvil. */
+  .sales-margin-search, .sales-margin-select { width: 100%; }
+  /* Centra el contenido del botón Actualizar. */
+  .sales-margin-refresh { justify-content: center; }
+  /* Apila los datos de fuente del pie. */
+  .sales-margin-panel > footer { flex-direction: column; gap: 6px; }
+  /* Permite que cada texto del pie utilice todo el ancho. */
+  .sales-margin-panel > footer span { max-width: 100%; }
+}
+
+
+/* ===========================================================================
+   ANCHOS DE LAS TABLAS DE VENTA & MARGEN
+
+   Cada vista define cuatro medidas:
+   - primary: primera dimensión (Período, Canal o Marca).
+   - secondary: segunda dimensión, cuando existe (Período, Canal o Clase).
+   - metric: cada subcolumna anual (Vta. MM$ o Mg %).
+   - comparison: columnas 25/24, 26E/25, 26E/26P y 27P/26E.
+
+   Los encabezados de escenario abarcan dos subcolumnas, por eso su ancho es
+   el doble de --sales-margin-metric-width.
+   ========================================================================== */
+
+/* Consolidado: Período + métricas anuales + comparaciones. */
+.sales-margin-table.view-summary {
+  /* Columna Período: 8 % del ancho disponible. */
+  --sales-margin-primary-width: 8%;
+
+  /* Diez columnas Venta y Mg %: 10 × 6,8 % = 68 %. */
+  --sales-margin-metric-width: 6.8%;
+
+  /* Cuatro columnas comparativas: 4 × 6 % = 24 %. */
+  --sales-margin-comparison-width: 6%;
+
+  /* 8 % + 68 % + 24 % = 100 %: evita el scroll horizontal en escritorio. */
+  width: 100%;
+  min-width: 0;
+}
+
+/* En pantallas pequeñas conserva una medida legible y habilita el scroll. */
+@media (max-width: 800px) {
+  .sales-margin-table.view-summary {
+    --sales-margin-primary-width: 90px;
+    --sales-margin-metric-width: 60px;
+    --sales-margin-comparison-width: 65px;
+    width: 950px;
+    min-width: 950px;
+  }
+}
+
+/* Canal: Canal + Período + métricas anuales + comparaciones. */
+.sales-margin-table.view-channel {
+  --sales-margin-primary-width: 9%;
+  --sales-margin-secondary-width: 5%;
+  --sales-margin-metric-width: 6.2%;
+  --sales-margin-comparison-width: 6%;
+  --sales-margin-period-width: 5%;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Cadena × Marca: cadenas Hush Puppies/Rockford + marca + métricas anuales. */
+.sales-margin-table.view-chainBrand {
+  --sales-margin-primary-width: 10%;
+  --sales-margin-secondary-width: 9%;
+  --sales-margin-metric-width: 5.7%;
+  --sales-margin-comparison-width: 6%;
+  --sales-margin-period-width: 5%;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Marca: Marca + métricas anuales + comparaciones. */
+.sales-margin-table.view-brand {
+  --sales-margin-primary-width: 12%;
+  --sales-margin-metric-width: 6.4%;
+  --sales-margin-comparison-width: 6%;
+  --sales-margin-period-width: 5%;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Marca × Canal: Marca + Canal + métricas anuales + comparaciones. */
+.sales-margin-table.view-brandChannel {
+  --sales-margin-primary-width: 11%;
+  --sales-margin-secondary-width: 8%;
+  --sales-margin-metric-width: 5.7%;
+  --sales-margin-comparison-width: 6%;
+  --sales-margin-period-width: 5%;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Marca × Clase: Marca + Clase + métricas anuales + comparaciones. */
+.sales-margin-table.view-brandClass {
+  --sales-margin-primary-width: 11%;
+  --sales-margin-secondary-width: 7%;
+  --sales-margin-metric-width: 5.8%;
+  --sales-margin-comparison-width: 6%;
+  --sales-margin-period-width: 5%;
+  width: 100%;
+  min-width: 0;
+}
+
+/* La apertura mensual agrega Período como segunda columna de Marca. */
+.sales-margin-table.view-brand.period-breakdown {
+  --sales-margin-primary-width: 9%;
+  --sales-margin-metric-width: 6.2%;
+}
+
+/* La apertura mensual agrega una tercera dimensión a Marca × Canal/Clase. */
+.sales-margin-table.view-brandChannel.period-breakdown {
+  --sales-margin-primary-width: 9%;
+  --sales-margin-secondary-width: 7%;
+  --sales-margin-metric-width: 5.5%;
+}
+
+.sales-margin-table.view-chainBrand.period-breakdown {
+  --sales-margin-primary-width: 9%;
+  --sales-margin-secondary-width: 8%;
+  --sales-margin-metric-width: 5.4%;
+}
+
+.sales-margin-table.view-brandClass.period-breakdown {
+  --sales-margin-primary-width: 10%;
+  --sales-margin-secondary-width: 6%;
+  --sales-margin-metric-width: 5.5%;
+}
+
+/* Primera dimensión: sincroniza el encabezado sticky y las celdas del cuerpo. */
+.sales-margin-table thead tr:first-child > th:first-child,
+.sales-margin-table tbody th {
+  width: var(--sales-margin-primary-width);
+  min-width: var(--sales-margin-primary-width);
+  max-width: var(--sales-margin-primary-width);
+}
+
+/* Segunda dimensión: solo se aplica a Canal, Marca × Canal y Marca × Clase. */
+.sales-margin-table.view-channel thead tr:first-child > th:nth-child(2),
+.sales-margin-table.view-channel td.dimension,
+.sales-margin-table.view-chainBrand thead tr:first-child > th:nth-child(2),
+.sales-margin-table.view-chainBrand td.dimension,
+.sales-margin-table.view-brandChannel thead tr:first-child > th:nth-child(2),
+.sales-margin-table.view-brandChannel td.dimension,
+.sales-margin-table.view-brandClass thead tr:first-child > th:nth-child(2),
+.sales-margin-table.view-brandClass td.dimension {
+  width: var(--sales-margin-secondary-width);
+  min-width: var(--sales-margin-secondary-width);
+  max-width: var(--sales-margin-secondary-width);
+}
+
+/* Apertura trimestral: reserva un ancho compacto para ENE–DIC y TOTAL. */
+.sales-margin-table.period-breakdown th.period-dimension,
+.sales-margin-table.period-breakdown td.period-dimension {
+  width: var(--sales-margin-period-width, 5%);
+  min-width: var(--sales-margin-period-width, 5%);
+  max-width: var(--sales-margin-period-width, 5%);
+  padding-right: 6px;
+  padding-left: 6px;
+  text-align: center;
+}
+
+/* En móviles prioriza la legibilidad y conserva el desplazamiento horizontal. */
+@media (max-width: 800px) {
+  .sales-margin-table.view-channel {
+    --sales-margin-primary-width: 120px;
+    --sales-margin-secondary-width: 70px;
+    --sales-margin-metric-width: 60px;
+    --sales-margin-comparison-width: 65px;
+    --sales-margin-period-width: 70px;
+    width: 1050px;
+    min-width: 1050px;
+  }
+
+  .sales-margin-table.view-brand {
+    --sales-margin-primary-width: 140px;
+    --sales-margin-metric-width: 60px;
+    --sales-margin-comparison-width: 65px;
+    --sales-margin-period-width: 70px;
+    width: 1000px;
+    min-width: 1000px;
+  }
+
+  .sales-margin-table.view-brand.period-breakdown {
+    --sales-margin-primary-width: 140px;
+    --sales-margin-metric-width: 60px;
+    width: 1070px;
+    min-width: 1070px;
+  }
+
+  .sales-margin-table.view-chainBrand,
+  .sales-margin-table.view-brandChannel,
+  .sales-margin-table.view-brandClass {
+    --sales-margin-primary-width: 140px;
+    --sales-margin-secondary-width: 90px;
+    --sales-margin-metric-width: 60px;
+    --sales-margin-comparison-width: 65px;
+    --sales-margin-period-width: 70px;
+    width: 1090px;
+    min-width: 1090px;
+  }
+
+  .sales-margin-table.view-chainBrand.period-breakdown,
+  .sales-margin-table.view-brandChannel.period-breakdown,
+  .sales-margin-table.view-brandClass.period-breakdown {
+    --sales-margin-primary-width: 140px;
+    --sales-margin-secondary-width: 90px;
+    --sales-margin-metric-width: 60px;
+    width: 1160px;
+    min-width: 1160px;
+  }
+}
+
+/* Encabezado anual: contiene las subcolumnas Vta. MM$ y Mg %. */
+.sales-margin-table thead .scenario {
+  width: calc(var(--sales-margin-metric-width) + var(--sales-margin-metric-width));
+  min-width: calc(var(--sales-margin-metric-width) + var(--sales-margin-metric-width));
+  max-width: calc(var(--sales-margin-metric-width) + var(--sales-margin-metric-width));
+}
+
+/* Subcolumnas anuales: mantiene alineados encabezado y valores del cuerpo. */
+.sales-margin-table thead .subhead,
+.sales-margin-table td.number:not(.variance) {
+  width: var(--sales-margin-metric-width);
+  min-width: var(--sales-margin-metric-width);
+  max-width: var(--sales-margin-metric-width);
+  padding-right: 3px;
+  padding-left: 3px;
+}
+
+.sales-margin-table td.number {
+  text-align: center;
+}
+
+/* Comparaciones: aplica el mismo ancho al encabezado y a sus valores. */
+.sales-margin-table thead .comparison,
+.sales-margin-table td.variance {
+  width: var(--sales-margin-comparison-width);
+  min-width: var(--sales-margin-comparison-width);
+  max-width: var(--sales-margin-comparison-width);
+}
+
+/* ===========================================================================
+   HOMOLOGACIÓN VISUAL B&L
+
+   Sistema compartido por Venta & Margen, Rentabilidad Forecast, Mercado y
+   KPI Consolidado. Este bloque restaura la versión validada antes de la
+   sobrescritura del archivo globals.css.
+   ========================================================================== */
+
+/* Lienzo común de los módulos financieros. */
+.microsoft-shell :is(
+  .sales-margin-module,
+  .channel-profitability,
+  .country-profitability,
+  .market-page,
+  .kpi-consolidated
+) {
+  color: var(--portal-copy);
+  background: var(--portal-canvas);
+}
+
+/* Encabezado editorial claro utilizado por B&L. */
+.microsoft-shell :is(
+  .sales-margin-hero,
+  .channel-hero,
+  .country-hero,
+  .market-title-row
+) {
+  min-height: 210px;
+  margin: 0;
+  padding: 42px max(34px, calc((100vw - 1340px) / 2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  border-bottom: 1px solid #e9e1d8;
+  color: var(--portal-copy);
+  background:
+    radial-gradient(circle at 86% 18%, rgba(23, 59, 112, .11), transparent 26%),
+    linear-gradient(112deg, var(--portal-warm), #fff 58%, #f1f6fb);
+}
+
+.microsoft-shell :is(
+  .sales-margin-hero,
+  .channel-hero,
+  .country-hero,
+  .market-title-row
+) label {
+  display: block;
+  color: var(--portal-navy);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.microsoft-shell :is(
+  .sales-margin-hero,
+  .channel-hero,
+  .country-hero,
+  .market-title-row
+) h1 {
+  margin: 12px 0 8px;
+  color: var(--portal-copy);
+  font-size: clamp(31px, 3.1vw, 46px);
+  font-weight: 300;
+  letter-spacing: -.035em;
+}
+
+.microsoft-shell :is(
+  .sales-margin-hero,
+  .channel-hero,
+  .country-hero,
+  .market-title-row
+) h1 em {
+  color: var(--portal-navy) !important;
+  font-style: normal;
+}
+
+.microsoft-shell :is(
+  .sales-margin-hero,
+  .channel-hero,
+  .country-hero,
+  .market-title-row
+) p {
+  margin: 0;
+  color: var(--portal-muted);
+  font-size: 14px;
+  line-height: 1.55;
+  text-transform: none;
+}
+
+/* Tarjeta de fuente y actualización alineada con el badge de B&L. */
+.microsoft-shell :is(
+  .sales-margin-hero-meta,
+  .channel-hero > span,
+  .country-hero > span,
+  .market-source
+) {
+  min-width: 225px;
+  padding: 20px;
+  border: 1px solid rgba(23, 59, 112, .16);
+  border-radius: 3px;
+  color: var(--portal-copy);
+  background: rgba(255, 255, 255, .84);
+  box-shadow: 0 16px 38px rgba(18, 48, 86, .10);
+  backdrop-filter: blur(12px);
+  text-align: left;
+}
+
+.microsoft-shell :is(
+  .sales-margin-hero-meta,
+  .channel-hero > span,
+  .country-hero > span,
+  .market-source
+) b {
+  color: var(--portal-navy);
+  font-size: 14px;
+  letter-spacing: .05em;
+}
+
+.microsoft-shell :is(
+  .sales-margin-hero-meta,
+  .channel-hero > span,
+  .country-hero > span,
+  .market-source
+) small {
+  margin-top: 5px;
+  color: #778291;
+  font-size: 9px;
+}
+
+/* Barras de filtros equivalentes a la segmentación de B&L. */
+.microsoft-shell :is(.channel-filters, .country-toolbar, .market-filters) {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 16px max(34px, calc((100vw - 1340px) / 2));
+  border: 0;
+  border-bottom: 1px solid var(--portal-border);
+  border-radius: 0;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(23, 40, 62, .06);
+}
+
+.microsoft-shell .sales-margin-toolbar {
+  padding: 16px;
+  border-bottom: 1px solid var(--portal-border);
+  background: #fff;
+}
+
+/* Selects compactos: etiqueta y valor viven dentro de una caja de 46 px. */
+.microsoft-shell :is(
+  .channel-filters > label,
+  .sales-margin-select,
+  .market-filters label
+) {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  margin-left: 0;
+  padding: 6px 28px 4px 10px;
+  border: 1px solid #dce1e7;
+  border-radius: 3px;
+  color: #8793a5;
+  background: #fafbfc;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: .1em;
+}
+
+.microsoft-shell .sales-margin-select { width: 100%; }
+.microsoft-shell .market-filters label { width: 180px; }
+
+.microsoft-shell :is(
+  .channel-filters label > div,
+  .sales-margin-select > div,
+  .market-select,
+  .international-search > div
+) {
+  position: static;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.microsoft-shell .market-filters :is(label > span, div > span),
+.microsoft-shell .sales-margin-select > span {
+  display: block;
+  margin: 0;
+  color: #8793a5;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: .1em;
+}
+
+.microsoft-shell :is(
+  .channel-filters select,
+  .sales-margin-select select,
+  .market-select select
+) {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  color: #304158;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  appearance: none;
+}
+
+.microsoft-shell :is(
+  .channel-filters label svg,
+  .sales-margin-select svg,
+  .market-select svg
+) {
+  position: absolute;
+  top: 15px;
+  right: 8px;
+  width: 15px;
+  color: #697990;
+  pointer-events: none;
+}
+
+/* Buscadores, botones segmentados y acciones de filtro. */
+.microsoft-shell :is(.sales-margin-search, .channel-search, .international-search > div) {
+  height: 46px;
+  border-color: #dce1e7;
+  border-radius: 3px;
+  background: #fafbfc;
+}
+
+.microsoft-shell :is(.country-tabs, .market-segments, .channel-periods) {
+  border-radius: 3px;
+  background: #edf0f4;
+}
+
+.microsoft-shell :is(.country-tabs, .market-segments, .channel-periods) button {
+  border-radius: 2px;
+}
+
+.microsoft-shell :is(.country-tabs, .market-segments, .channel-periods) button.active {
+  color: #fff;
+  background: var(--portal-navy);
+  box-shadow: none;
+}
+
+.microsoft-shell :is(
+  .sales-margin-refresh,
+  .sales-margin-clear,
+  .country-refresh
+) {
+  height: 46px;
+  min-height: 46px;
+  border: 1px solid #d7dee7;
+  border-radius: 3px;
+  color: var(--portal-navy);
+  background: #fff;
+}
+
+/* Ancho editorial común de los contenidos principales. */
+.microsoft-shell :is(
+  .sales-margin-kpis,
+  .sales-margin-panel,
+  .channel-kpis,
+  .channel-grid,
+  .channel-ranking,
+  .channel-channel-view,
+  .country-kpis,
+  .country-main-grid,
+  .country-cards,
+  .kpi-deck-view,
+  .market-kpis,
+  .market-grid,
+  .market-table-panel,
+  .macro-card-grid,
+  .benchmark-section,
+  .cnc-analysis-top,
+  .ipom-analysis-top
+) {
+  width: min(1340px, calc(100% - 68px));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.microsoft-shell .sales-margin-kpis { margin-top: 28px; }
+.microsoft-shell .sales-margin-panel { margin-top: 0; }
+
+/* Tarjetas KPI con el borde fino y radio reducido de B&L. */
+.microsoft-shell :is(
+  .sales-margin-kpis article,
+  .channel-kpis article,
+  .country-kpis article,
+  .country-cards button,
+  .market-kpis article,
+  .kpi-deck-metrics > article
+) {
+  border: 1px solid var(--portal-border);
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, .04);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.microsoft-shell :is(
+  .sales-margin-kpis article,
+  .channel-kpis article,
+  .country-kpis article,
+  .country-cards button,
+  .market-kpis article
+):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(21, 43, 70, .09);
+}
+
+/* Paneles blancos y rectangulares del sistema B&L. */
+.microsoft-shell :is(
+  .sales-margin-panel,
+  .channel-panel,
+  .country-panel,
+  .market-panel,
+  .market-table-panel,
+  .kpi-deck-slide
+) {
+  border-color: var(--portal-border);
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, .04);
+}
+
+.microsoft-shell :is(
+  .channel-panel,
+  .country-panel,
+  .market-panel,
+  .market-table-panel
+) > header {
+  border-bottom-color: var(--portal-border);
+  background: #fff;
+}
+
+.microsoft-shell :is(
+  .channel-panel,
+  .country-panel,
+  .market-panel,
+  .market-table-panel
+) h2 {
+  color: var(--portal-copy);
+  font-weight: 500;
+}
+
+/* Navegaciones internas alineadas al azul corporativo de B&L. */
+.microsoft-shell .sales-margin-tabs {
+  border-bottom-color: var(--portal-border);
+  background: #fff;
+}
+.microsoft-shell .sales-margin-tabs button { color: #647083; font-weight: 500; }
+.microsoft-shell .sales-margin-tabs button:hover { color: var(--portal-navy); background: #f4f6f8; }
+.microsoft-shell .sales-margin-tabs button.active {
+  border-bottom-color: var(--portal-navy);
+  color: var(--portal-navy);
+  background: #fff;
+}
+.microsoft-shell .kpi-deck-view { --kpi-brand-color: var(--portal-navy) !important; }
+.microsoft-shell .kpi-deck-tabs button { border-radius: 3px 3px 0 0; }
+.microsoft-shell .kpi-deck-slide > header { background: var(--portal-navy); }
+
+/* Tablas de Forecast y Mercado con encabezado neutro. */
+.microsoft-shell :is(
+  .sales-margin-table,
+  .channel-panel table,
+  .country-panel table,
+  .market-table-panel table
+) {
+  color: #304158;
+}
+
+.microsoft-shell :is(
+  .channel-panel th,
+  .country-panel th,
+  .market-table-panel th
+) {
+  color: #6f7d8f;
+  background: #f5f7f9;
+}
+
+/* Tablas de Venta & Margen homologadas con la matriz ejecutiva de B&L. */
+.microsoft-shell .sales-margin-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #405169;
+  background: #fff;
+  font-size: 9px;
+}
+
+.microsoft-shell .sales-margin-table th,
+.microsoft-shell .sales-margin-table td {
+  height: 36px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.microsoft-shell .sales-margin-table tbody th,
+.microsoft-shell .sales-margin-table tbody td {
+  border-top: 1px solid #edf0f4;
+  color: #405169;
+  background: #fff;
+  font-size: 9px;
+}
+
+.microsoft-shell .sales-margin-table thead th,
+.microsoft-shell .sales-margin-table thead .scenario,
+.microsoft-shell .sales-margin-table thead .comparison,
+.microsoft-shell .sales-margin-table thead .subhead {
+  color: #8793a5;
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.microsoft-shell .sales-margin-table thead .scenario {
+  color: #274a7d;
+  border-bottom: 1px solid #dce4ef;
+}
+.microsoft-shell .sales-margin-table thead .subhead {
+  color: #8793a5;
+  font-size: 8px;
+  font-weight: 600;
+}
+.microsoft-shell .sales-margin-table thead .comparison { color: #274a7d; }
+.microsoft-shell .sales-margin-table thead .comparison small {
+  color: #98a3b3;
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.microsoft-shell .sales-margin-table tbody th {
+  color: #304158;
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+/* En Cadena × marca, fija el nombre de la cadena al inicio de su bloque combinado. */
+.microsoft-shell .sales-margin-table.view-chainBrand tbody th[scope="rowgroup"] {
+  vertical-align: top;
+  padding-top: 12px;
+}
+.microsoft-shell .sales-margin-table td.dimension { color: #697990; font-weight: 500; }
+.microsoft-shell .sales-margin-table td.number { color: #405169; font-size: 12px; }
+.microsoft-shell .sales-margin-table td.margin { color: #596b80; background: #fff; }
+.microsoft-shell .sales-margin-table td.variance { background: #fff; font-weight: 700; }
+.microsoft-shell .sales-margin-table td.variance.positive { color: var(--green); background: #fff; }
+.microsoft-shell .sales-margin-table td.variance.negative { color: var(--red); background: #fff; }
+.microsoft-shell .sales-margin-table td.variance.neutral { color: #7c899c; }
+.microsoft-shell .sales-margin-table tbody tr:nth-child(even) th,
+.microsoft-shell .sales-margin-table tbody tr:nth-child(even) td { background: #fff; }
+.microsoft-shell .sales-margin-table tbody tr:hover th,
+.microsoft-shell .sales-margin-table tbody tr:hover td { background: #f7faff; }
+.microsoft-shell .sales-margin-table tbody tr.total th,
+.microsoft-shell .sales-margin-table tbody tr.total td,
+.microsoft-shell .sales-margin-table tbody tr.total td.variance.positive,
+.microsoft-shell .sales-margin-table tbody tr.total td.variance.negative {
+  color: #173e7d;
+  background: #edf4ff;
+  border-top: 2px solid #bcd0ed;
+  font-weight: 800;
+}
+
+/* Ajustes responsive compartidos. */
+@media (max-width: 900px) {
+  .microsoft-shell :is(
+    .sales-margin-hero,
+    .channel-hero,
+    .country-hero,
+    .market-title-row
+  ) {
+    min-height: 0;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 24px;
+    padding: 38px 24px;
+  }
+
+  .microsoft-shell :is(
+    .sales-margin-hero-meta,
+    .channel-hero > span,
+    .country-hero > span,
+    .market-source
+  ) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .microsoft-shell :is(.channel-filters, .country-toolbar, .market-filters) {
+    padding: 14px 20px;
+  }
+
+  .microsoft-shell :is(
+    .sales-margin-kpis,
+    .sales-margin-panel,
+    .channel-kpis,
+    .channel-grid,
+    .channel-ranking,
+    .channel-channel-view,
+    .country-kpis,
+    .country-main-grid,
+    .country-cards,
+    .kpi-deck-view,
+    .market-kpis,
+    .market-grid,
+    .market-table-panel,
+    .macro-card-grid,
+    .benchmark-section,
+    .cnc-analysis-top,
+    .ipom-analysis-top
+  ) {
+    width: calc(100% - 36px);
+  }
 }

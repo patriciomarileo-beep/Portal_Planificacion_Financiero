@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { register } from "node:module";
+
+register("../scripts/test-typescript-loader.mjs", import.meta.url);
 
 process.env.BIGQUERY_ACCESS_TOKEN = "test-access-token";
 process.env.BIGQUERY_PROJECT_ID = "test-project";

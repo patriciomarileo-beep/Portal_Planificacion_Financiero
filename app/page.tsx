@@ -48,6 +48,8 @@ import type { BaseRow } from "./base-consolidada";
 import { PrivateDataContext, usePrivateData, type PrivateData } from "./private-data-context";
 import { storeClassification, type StoreClassification } from "./store-classification";
 import { canAccessMenu, type PortalMenu } from "./menu-access";
+import SalesMargin from "./sales-margin/SalesMargin";
+import { clearSalesMarginData, loadSalesMargin } from "./sales-margin/sales-margin-data";
 const reportLoading = () => <div className="portal-data-status" role="status"><RefreshCw className="spin" /><p>Cargando informe…</p></div>;
 const NationalBenchmark = dynamic(() => import("./market/NationalBenchmark"), { loading: reportLoading });
 const InternationalBenchmark = dynamic(() => import("./market/InternationalBenchmark"), { loading: reportLoading });
@@ -221,7 +223,7 @@ const portalGroups: { id: PortalMenu; label: string; description: string; icon: 
   },
 ];
 const menuForSection = (section: string): PortalMenu | undefined => {
-  if (section === "home" || section === "toolbox" || section === "users") return section;
+  if (section === "home" || section === "sales-margin" || section === "toolbox" || section === "users") return section;
   return portalGroups.find(group => group.items.some(item => item.id === section))?.id;
 };
 const hiddenUserColumns = new Set([
@@ -1726,8 +1728,14 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   const [fwBand, setFwBand] = useState<FwBand>(null);
   const [analysisMetric, setAnalysisMetric] = useState<ProfitMetric>("fourWalls");
   const [refreshing, setRefreshing] = useState(false);
+  const [salesMarginRefreshKey, setSalesMarginRefreshKey] = useState(0);
   const visiblePortalGroups = portalGroups.filter(group => canAccessMenu(authUser.role, group.id));
   const canViewHome = canAccessMenu(authUser.role, "home");
+  const canViewSalesMargin = canAccessMenu(authUser.role, "sales-margin");
+  const salesMarginScope = `${authUser.personId}:${authUser.email}:${authUser.role}`;
+  useEffect(() => {
+    if (canViewSalesMargin) void loadSalesMargin(salesMarginScope).catch(() => { /* Retry when the report is opened. */ });
+  }, [canViewSalesMargin, salesMarginScope]);
   const canUseToolbox = canAccessMenu(authUser.role, "toolbox");
   const defaultSection = canViewHome ? "home" : visiblePortalGroups[0]?.items[0]?.id ?? "";
   const [requestedPortalSection, setPortalSection] = useState("home");
@@ -1741,8 +1749,13 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
 
   const refreshView = () => {
     setRefreshing(true);
+    if (portalSection === "sales-margin") {
+      setSalesMarginRefreshKey((current) => current + 1);
+      return;
+    }
     window.setTimeout(() => window.location.reload(), 120);
   };
+  const completeSalesMarginRefresh = useCallback(() => setRefreshing(false), []);
   const universe = useMemo(() => stores.filter((s) => {
     const matchesChain = selectedChains.length === 0 || selectedChains.includes(s.chain);
     const needles = query
@@ -1766,6 +1779,8 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   const activeView = view;
   const selectedPortalItem = portalSection === "home"
     ? { id: "home", label: "Portada", enabled: true }
+    : portalSection === "sales-margin"
+      ? { id: "sales-margin", label: "Venta & Margen", enabled: true }
     : portalSection === "users"
       ? { id: "users", label: "Usuarios", enabled: true }
     : portalSection === "toolbox"
@@ -1787,6 +1802,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
         <button className="portal-mobile-toggle" type="button" onClick={() => setMobileNavOpen((current) => !current)} aria-expanded={mobileNavOpen} aria-label="Abrir menú"><Menu /></button>
         <nav className={`portal-topnav ${mobileNavOpen ? "open" : ""}`} aria-label="Informes financieros">
           {canViewHome && <button type="button" className={portalSection === "home" ? "active" : ""} onClick={() => { setPortalSection("home"); setMobileNavOpen(false); }}>Inicio</button>}
+          {canViewSalesMargin && <button type="button" className={portalSection === "sales-margin" ? "active" : ""} onClick={() => { setPortalSection("sales-margin"); setMobileNavOpen(false); }}>Venta & Margen</button>}
           {canUseToolbox && <button type="button" className={portalSection === "toolbox" ? "active" : ""} onClick={() => { setPortalSection("toolbox"); setMobileNavOpen(false); }}>Toolbox AP</button>}
           {visiblePortalGroups.map((group) => {
             const GroupIcon = group.icon;
@@ -1810,7 +1826,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
       </header>
       <main className="portal-workspace">
       <header className={`portal-reportbar ${portalSection === "home" ? "home" : ""}`}>
-        <div className="portal-context"><small>{portalSection === "home" ? "Portal Financiero" : portalSection === "users" ? "Administración" : portalSection === "toolbox" ? "Planificación Financiera" : selectedPortalGroup.label}</small><b>{selectedPortalItem.label}</b></div>
+        <div className="portal-context"><small>{portalSection === "home" ? "Portal Financiero" : portalSection === "users" ? "Administración" : portalSection === "toolbox" || portalSection === "sales-margin" ? "Planificación Financiera" : selectedPortalGroup.label}</small><b>{selectedPortalItem.label}</b></div>
         {blActive && <nav>
           <button className={activeView === "annual" ? "active" : ""} onClick={() => setView("annual")}>Comparativa anual</button>
           <button className={activeView === "detail" ? "active" : ""} onClick={() => setView("detail")}>Detalle tiendas</button>
@@ -1819,7 +1835,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
           <button className={activeView === "sensitivity" ? "active" : ""} onClick={() => setView("sensitivity")}>Sensibilidad tiendas</button>
           <button className={activeView === "monitor" ? "active" : ""} onClick={() => setView("monitor")}>Monitor tiendas</button>
         </nav>}
-        {blActive && <button className="refresh-button" onClick={refreshView} disabled={refreshing} title="Recargar la última versión disponible"><RefreshCw className={refreshing ? "spin" : ""} /> {refreshing ? "ACTUALIZANDO…" : "ACTUALIZAR"}</button>}
+        {(blActive || portalSection === "sales-margin") && <button className="refresh-button" onClick={refreshView} disabled={refreshing} title="Recargar la última versión disponible"><RefreshCw className={refreshing ? "spin" : ""} /> {refreshing ? "ACTUALIZANDO…" : "ACTUALIZAR"}</button>}
       </header>
       {portalSection === "home" ? <section className="portal-home-page">
         <div className="portal-home-heading">
@@ -1840,7 +1856,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
               </article>;
             })}
         </div>
-      </section> : needsPrivateData && !privateData ? <section className="portal-data-status" aria-live="polite">
+      </section> : portalSection === "sales-margin" ? <SalesMargin key={salesMarginScope} sessionScope={salesMarginScope} refreshKey={salesMarginRefreshKey} onRefreshComplete={completeSalesMarginRefresh} /> : needsPrivateData && !privateData ? <section className="portal-data-status" aria-live="polite">
         {reportsError ? <><AlertTriangle /><h2>No pudimos cargar este informe</h2><p>{reportsError}</p><button type="button" onClick={onRetryReports}>Reintentar</button></> : <><RefreshCw className="spin" /><h2>Preparando tu informe</h2><p>Puedes seguir navegando mientras termina la carga.</p></>}
       </section> : portalSection === "users" && canManageUsers ? <div className="content"><UsuariosAdmin /></div> : portalSection === "toolbox" ? <ToolboxPlanning /> : blActive ? <><section className="hero">
         <div><label>PLANIFICACIÓN FINANCIERA · PRESUPUESTO 2027P</label><h1>Rentabilidad de tiendas.</h1><p>EERR Retail y riesgo Four Walls por tienda.</p></div>
@@ -1897,6 +1913,7 @@ export default function Home() {
       const response = await fetch("/api/portal-data", { cache: "no-store", signal: controller.signal });
       if (response.status === 401) {
         if (!controller.signal.aborted) {
+          clearSalesMarginData();
           setData(null);
           setUser(null);
           setError("Tu sesión ya no está disponible. Ingresa nuevamente.");
@@ -1912,6 +1929,7 @@ export default function Home() {
   }, []);
   const acceptUser = useCallback((authenticatedUser: AuthUser) => {
     dataRequestRef.current?.abort();
+    clearSalesMarginData();
     setError("");
     setReportsError("");
     setData(null);
@@ -1923,13 +1941,14 @@ export default function Home() {
     if (!response.ok) throw new Error("No fue posible validar el acceso.");
     const payload = await response.json() as { user: AuthUser | null };
     if (signal.aborted) return;
-    if (!payload.user) { setUser(null); setData(null); return; }
+    if (!payload.user) { clearSalesMarginData(); setUser(null); setData(null); return; }
     acceptUser(payload.user);
   }, [acceptUser]);
   const logout = async () => {
     const response = await fetch("/api/auth/logout", { method: "POST", cache: "no-store" });
     if (!response.ok) throw new Error("No fue posible cerrar sesión.");
     dataRequestRef.current?.abort();
+    clearSalesMarginData();
     setError("");
     setReportsError("");
     setData(null);

@@ -23,6 +23,11 @@ export type BigQueryRowsPayload = {
   };
 };
 
+type RunQueryOptions = {
+  paginate?: boolean;
+  pageSize?: number;
+};
+
 type ServiceAccountCredential = {
   type?: string;
   client_email?: string;
@@ -252,9 +257,15 @@ export const googleAccessToken = async (preferAdc = false) => {
   return adcAccessToken();
 };
 
-export const runQuery = async <T,>(query: string, queryParameters: QueryParameter[] = []) => {
+export const runQuery = async <T,>(
+  query: string,
+  queryParameters: QueryParameter[] = [],
+  options: RunQueryOptions = {},
+) => {
   const token = await googleAccessToken();
-  const response = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${configuredProjectId()}/queries`, {
+  const projectId = configuredProjectId();
+  const pageSize = Math.min(Math.max(Math.trunc(options.pageSize ?? 10000), 1), 10000);
+  const response = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${token}`,
@@ -265,11 +276,47 @@ export const runQuery = async <T,>(query: string, queryParameters: QueryParamete
       useLegacySql: false,
       parameterMode: "NAMED",
       queryParameters,
+      ...(options.paginate ? { maxResults: pageSize } : {}),
     }),
   });
-  const payload = await response.json() as T & { error?: { message?: string } };
+  const payload = await response.json() as T & BigQueryRowsPayload & { error?: { message?: string } };
   if (!response.ok) throw new Error(payload.error?.message || "Error ejecutando consulta BigQuery.");
-  return payload;
+  if (!options.paginate || !payload.pageToken) return payload;
+
+  const jobId = payload.jobReference?.jobId;
+  if (!jobId) throw new Error("BigQuery devolvio una pagina parcial sin jobId para continuar.");
+
+  const rows = [...(payload.rows ?? [])];
+  const location = payload.jobReference?.location;
+  const seenTokens = new Set<string>();
+  let pageToken: string | undefined = payload.pageToken;
+
+  while (pageToken) {
+    if (seenTokens.has(pageToken)) throw new Error("BigQuery repitio un pageToken durante la paginacion.");
+    seenTokens.add(pageToken);
+
+    const params = new URLSearchParams({
+      pageToken,
+      maxResults: String(pageSize),
+    });
+    if (location) params.set("location", location);
+
+    const pageResponse = await fetch(
+      `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries/${encodeURIComponent(jobId)}?${params.toString()}`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    const page = await pageResponse.json() as BigQueryRowsPayload & { error?: { message?: string } };
+    if (!pageResponse.ok) throw new Error(page.error?.message || "Error leyendo pagina BigQuery.");
+
+    rows.push(...(page.rows ?? []));
+    pageToken = page.pageToken;
+  }
+
+  return {
+    ...payload,
+    rows,
+    pageToken: undefined,
+  };
 };
 
 export const parameter = (name: string, type: string, value: unknown): QueryParameter => ({

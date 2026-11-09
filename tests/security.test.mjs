@@ -11,6 +11,7 @@ import { POST as googleLogin } from "../app/api/auth/google/route";
 import { GET as imports } from "../app/api/importaciones-industria/route";
 import { GET as cosmetics } from "../app/api/importaciones-cosmeticos/route";
 import { GET as countries } from "../app/api/country-profitability/route";
+import { GET as salesMargin } from "../app/api/sales-margin/route";
 import { GET as users, PATCH as updateUser } from "../app/api/usuarios/route";
 import { POST as ingest } from "../app/api/ingesta-bigquery/route";
 import { GET as portalData } from "../app/api/portal-data/route";
@@ -74,7 +75,7 @@ test("all sensitive handlers reject anonymous requests before reading source or 
     setup();
     mock.method(globalThis, "fetch", async () => { throw Error("must not call upstream"); });
     const request = new NextRequest("https://portal.example.com/api/importaciones-industria");
-    for (const handler of [imports, cosmetics, countries, users, portalData]) {
+    for (const handler of [imports, cosmetics, countries, salesMargin, users, portalData]) {
         const result = await handler(request);
         assert.equal(result.status, 401);
         assert.equal((await result.json()).error, "Sesión requerida.");
@@ -238,9 +239,9 @@ test("COMEX retains its session while SIN ROL grants no access", async () => {
 
 const expectedMenus = {
   "SIN ROL": [],
-  "ADMINISTRADOR": ["home", "toolbox", "forecast", "mercado", "comex", "kpi", "users"],
-  "ANALISTA FINANCIERO": ["home", "forecast", "mercado", "kpi"],
-  "PLANIFICADOR FINANCIERO": ["home", "toolbox", "forecast", "mercado", "comex", "kpi"],
+  "ADMINISTRADOR": ["home", "sales-margin", "toolbox", "forecast", "mercado", "comex", "kpi", "users"],
+  "ANALISTA FINANCIERO": ["home", "sales-margin", "forecast", "mercado", "kpi"],
+  "PLANIFICADOR FINANCIERO": ["home", "sales-margin", "toolbox", "forecast", "mercado", "comex", "kpi"],
   "COMEX": ["comex"],
 };
 
@@ -274,7 +275,7 @@ test("COMEX cannot read financial or market endpoints, private files or write pl
   const upstream = database("COMEX");
   const cookie = await createSessionCookie(user);
   const request = new NextRequest("https://portal.example.com/api/data", { headers: { cookie } });
-  for (const handler of [imports, cosmetics, countries, users, portalData]) {
+  for (const handler of [imports, cosmetics, countries, salesMargin, users, portalData]) {
     const response = await handler(request);
     assert.equal(response.status, 403);
     assert.doesNotMatch(await response.text(), /overview|countries|baseConsolidada|roleOptions/);

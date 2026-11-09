@@ -48,6 +48,7 @@ import type { BaseRow } from "./base-consolidada";
 import { PrivateDataContext, usePrivateData, type PrivateData } from "./private-data-context";
 import { storeClassification, type StoreClassification } from "./store-classification";
 import { canAccessMenu, type PortalMenu } from "./menu-access";
+import { clearSalesMarginData, loadSalesMargin } from "./sales-margin/sales-margin-data";
 const reportLoading = () => <div className="portal-data-status" role="status"><RefreshCw className="spin" /><p>Cargando informe…</p></div>;
 const NationalBenchmark = dynamic(() => import("./market/NationalBenchmark"), { loading: reportLoading });
 const InternationalBenchmark = dynamic(() => import("./market/InternationalBenchmark"), { loading: reportLoading });
@@ -1734,6 +1735,10 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   const visiblePortalGroups = portalGroups.filter(group => canAccessMenu(authUser.role, group.id));
   const canViewHome = canAccessMenu(authUser.role, "home");
   const canViewSalesMargin = canAccessMenu(authUser.role, "sales-margin");
+  const salesMarginScope = `${authUser.personId}:${authUser.email}:${authUser.role}`;
+  useEffect(() => {
+    if (canViewSalesMargin) void loadSalesMargin(salesMarginScope).catch(() => { /* Retry when the report is opened. */ });
+  }, [canViewSalesMargin, salesMarginScope]);
   const canUseToolbox = canAccessMenu(authUser.role, "toolbox");
   const defaultSection = canViewHome ? "home" : visiblePortalGroups[0]?.items[0]?.id ?? "";
   const [requestedPortalSection, setPortalSection] = useState("home");
@@ -1869,7 +1874,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
               </article>;
             })}
         </div>
-      </section> : portalSection === "sales-margin" ? <SalesMargin refreshKey={salesMarginRefreshKey} onRefreshComplete={completeSalesMarginRefresh} /> : needsPrivateData && !privateData ? <section className="portal-data-status" aria-live="polite">
+      </section> : portalSection === "sales-margin" ? <SalesMargin key={salesMarginScope} sessionScope={salesMarginScope} refreshKey={salesMarginRefreshKey} onRefreshComplete={completeSalesMarginRefresh} /> : needsPrivateData && !privateData ? <section className="portal-data-status" aria-live="polite">
         {reportsError ? <><AlertTriangle /><h2>No pudimos cargar este informe</h2><p>{reportsError}</p><button type="button" onClick={onRetryReports}>Reintentar</button></> : <><RefreshCw className="spin" /><h2>Preparando tu informe</h2><p>Puedes seguir navegando mientras termina la carga.</p></>}
       </section> : portalSection === "users" && canManageUsers ? <div className="content"><UsuariosAdmin /></div> : portalSection === "toolbox" ? <ToolboxPlanning /> : blActive ? <><section className="hero">
         <div><label>PLANIFICACIÓN FINANCIERA · PRESUPUESTO 2027P</label><h1>Rentabilidad de tiendas.</h1><p>EERR Retail y riesgo Four Walls por tienda.</p></div>
@@ -1926,6 +1931,7 @@ export default function Home() {
       const response = await fetch("/api/portal-data", { cache: "no-store", signal: controller.signal });
       if (response.status === 401) {
         if (!controller.signal.aborted) {
+          clearSalesMarginData();
           setData(null);
           setUser(null);
           setError("Tu sesión ya no está disponible. Ingresa nuevamente.");
@@ -1941,6 +1947,7 @@ export default function Home() {
   }, []);
   const acceptUser = useCallback((authenticatedUser: AuthUser) => {
     dataRequestRef.current?.abort();
+    clearSalesMarginData();
     setError("");
     setReportsError("");
     setData(null);
@@ -1952,13 +1959,14 @@ export default function Home() {
     if (!response.ok) throw new Error("No fue posible validar el acceso.");
     const payload = await response.json() as { user: AuthUser | null };
     if (signal.aborted) return;
-    if (!payload.user) { setUser(null); setData(null); return; }
+    if (!payload.user) { clearSalesMarginData(); setUser(null); setData(null); return; }
     acceptUser(payload.user);
   }, [acceptUser]);
   const logout = async () => {
     const response = await fetch("/api/auth/logout", { method: "POST", cache: "no-store" });
     if (!response.ok) throw new Error("No fue posible cerrar sesión.");
     dataRequestRef.current?.abort();
+    clearSalesMarginData();
     setError("");
     setReportsError("");
     setData(null);

@@ -226,6 +226,42 @@ test("user administration loads its role options from the BigQuery catalog", asy
   assert.equal(payload.rows[0].data.rol, "ADMINISTRADOR");
 });
 
+test("user pagination keeps job metadata inside the authenticated Google endpoint", async () => {
+  setup();
+  const jobId = "//attacker.invalid/job?redirect=metadata";
+  const pageToken = "next&redirect=https://attacker.invalid";
+  let pages = 0;
+  mock.method(GoogleAuth.prototype, "getAccessToken", async () => "test-access-token");
+  mock.method(globalThis, "fetch", async (input, options) => {
+    const url = new URL(input);
+    assert.equal(url.origin, "https://bigquery.googleapis.com");
+    assert.equal(options.redirect, "error");
+    if (!options.body) {
+      pages += 1;
+      assert.ok(url.pathname.endsWith(`/queries/${encodeURIComponent(jobId)}`));
+      assert.equal(url.searchParams.get("pageToken"), pageToken);
+      assert.equal(url.searchParams.get("location"), "us-east4");
+      return Response.json({ rows: [{ f: ["43", "ANALISTA FINANCIERO", "true"].map(v => ({ v })) }] });
+    }
+    const query = JSON.parse(options.body).query;
+    if (query.startsWith("SELECT id_persona")) return Response.json({ rows: [{ f: ["42", "Persona", "Prueba", "", "ADMINISTRADOR"].map(v => ({ v })) }] });
+    if (query.includes("ft_cl_planificacion_TB_ROLES_PLT_FINAN")) return Response.json({ rows: catalogRoles.map(v => ({ f: [{ v }] })) });
+    assert.ok(query.startsWith("SELECT *"));
+    return Response.json({
+      schema: { fields: [{ name: "id_persona", type: "INTEGER" }, { name: "rol", type: "STRING" }, { name: "activo", type: "BOOLEAN" }] },
+      rows: [{ f: ["42", "ADMINISTRADOR", "true"].map(v => ({ v })) }],
+      pageToken, jobReference: { jobId, location: "us-east4" },
+    });
+  });
+  const cookie = await createSessionCookie(user);
+  const response = await users(new Request("https://portal.example.com/api/usuarios", { headers: { cookie } }));
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(payload.totalRows, 2);
+  assert.equal(payload.capped, false);
+  assert.equal(pages, 1);
+});
+
 test("catalog roles can be assigned and removing one blocks subsequent updates", async () => {
   setup();
   const roles = [...catalogRoles, "TESORERIA"];

@@ -13,6 +13,20 @@ El despliegue usa la plantilla `forus-corp/planificacion-comercial/ci-templates`
 
 El despliegue manual descrito más abajo queda solo como respaldo.
 
+## Si la SCAN POLICY bloquea el MR
+
+El pipeline puede quedar en verde y el MR seguir bloqueado. El motivo está en el comentario de `GitLab-Security-Bot` del MR, en "Violations blocking this merge request".
+
+- "Newly detected" significa que el hallazgo no estaba en el último pipeline de `main`, no que lo haya traído el MR. Una CVE publicada después de ese pipeline bloquea aunque el MR no toque dependencias.
+- Si el hallazgo indica versión corregida ("Upgrade to ..."), súbela. Si es una dependencia indirecta, fuérzala en `overrides` de `package.json` bajo el paquete que la trae (por ejemplo `miniflare` con `undici`) y regenera el lock con `npm install --package-lock-only`. En el diff del lock solo debe cambiar esa dependencia.
+- Si no hay versión corregida, pide una aprobación al grupo `forus-corp/ciberseguridad` explicando por qué no aplica. La aprobación se pierde con cada push.
+- No uses `npm audit fix --force` ni bajes versiones de frameworks para cerrar un hallazgo.
+
+Para evitarlo:
+
+- Antes de abrir el MR, corre `npm audit --audit-level=high`. Usa otra base de vulnerabilidades que GitLab, pero detecta la mayoría de los casos de dependencias.
+- `wrangler`, `miniflare` y `@cloudflare/vite-plugin` solo los usa `npm run dev` (vinext) y la imagen de Cloud Run no los incluye. Pasar el desarrollo local a `next dev` y sacarlos de `devDependencies` elimina buena parte de los hallazgos de dependencias.
+
 ## Configuración obligatoria
 
 Crea `.env.cloudrun` desde `cloudrun.env.example` y configura:
@@ -43,7 +57,7 @@ npm run test:security:http
 npm run test:security:assets
 ```
 
-Revisa también `npm audit`: conserva ocho alertas de desarrollo con backport local de braces, detalladas en `docs/security-validation-2026-10-21.md`. La auditoría completa de CI continúa bloqueada por ellas; el parche no constituye una excepción corporativa. No usar `npm audit fix --force` para degradar frameworks sin revisión.
+Ejecuta también `npm audit` para revisar las dependencias de desarrollo. El override de `@typescript-eslint/typescript-estree` fija `minimatch` en `11.0.1`, que corrige [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249), sin degradar Next.js ni ESLint. Se conserva el backport local de braces como protección adicional, con su nombre y versión originales. El informe `docs/security-validation-2026-10-21.md` registra el estado histórico de esa fecha. No usar `npm audit fix --force` para degradar frameworks sin revisión.
 
 ## Despliegue privado
 

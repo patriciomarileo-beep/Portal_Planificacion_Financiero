@@ -20,6 +20,7 @@
     "bigquery:smoke": "node scripts/bigquery-smoke.mjs",
     "db:generate": "drizzle-kit generate",
     "test:security": "node scripts/test-security.mjs",
+    "test:sales-margin": "node --test tests/bigquery-pagination.test.mjs tests/sales-margin-loading.test.mjs",
     "audit:production": "npm audit --omit=dev --audit-level=low",
     "test:security:http": "node scripts/smoke-security.mjs",
     "test:security:assets": "node scripts/check-public-data.mjs",
@@ -67,6 +68,12 @@
     },
     "satori": {
       "fflate": "0.7.5"
+    },
+    "miniflare": {
+      "undici": "7.30.1"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.1"
     }
   }
 }

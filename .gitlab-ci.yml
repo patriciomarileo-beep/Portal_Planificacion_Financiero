@@ -22,6 +22,7 @@ security-regression:
     - npm run test:security:deployment
     - npm run audit:production
     - npm run test:security
+    - npm run test:sales-margin
     - node scripts/test-dollar-history.mjs
     - npm run test:market
     - npm run lint
@@ -29,8 +30,7 @@ security-regression:
     - npm run test:security:http
     - npm run test:security:assets
 
-# This gate deliberately keeps the unpatched upstream braces advisory visible.
-# A local backport does not manufacture a clean SCA report or a FORUS exception.
+# Audit the complete locked dependency tree and retain the scanner report.
 dependency-audit:
   stage: validate
   image: node:22-trixie-slim@sha256:2e40f0b0227d54ea99362e190cc13331f023fc1eef064d3d73d23d9434e8b86f

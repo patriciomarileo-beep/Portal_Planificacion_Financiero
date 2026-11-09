@@ -2,6 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  getSalesMarginSnapshot,
+  loadSalesMargin,
+  SalesMarginRequestError,
+  type SalesMarginPayload as Payload,
+  type SalesMarginRow as ApiRow,
+} from "./sales-margin-data";
+import {
   BarChart3,
   Boxes,
   ChevronDown,
@@ -21,27 +28,6 @@ type View = "summary" | "channel" | "chainBrand" | "brand" | "brandChannel" | "b
 type QuarterFilter = "ANUAL" | "Q1" | "Q2" | "Q3" | "Q4";
 type Metric = { sales: number; marginAmount: number };
 type ScenarioMetrics = Partial<Record<Scenario, Metric>>;
-
-type ApiRow = {
-  month: number;
-  quarter: string;
-  business: string;
-  chain: string;
-  brand: string;
-  class: string;
-  scenario: string;
-  sales: number;
-  marginAmount: number;
-};
-
-type Payload = {
-  rows: ApiRow[];
-  source: string;
-  sourceSheet: string;
-  refreshedAt: string | null;
-  unit: string;
-  error?: string;
-};
 
 type DisplayRow = {
   key: string;
@@ -408,21 +394,16 @@ const variationClass = (value: number | null) => value === null
       ? "negative"
       : "neutral";
 
-const fetchPayload = async () => {
-  const response = await fetch("/api/sales-margin", { cache: "no-store" });
-  const body = await response.json() as Payload;
-  if (!response.ok) throw new Error(body.error || "No fue posible cargar Venta & Margen.");
-  return body;
-};
-
 export default function SalesMargin({
+  sessionScope,
   refreshKey = 0,
   onRefreshComplete,
 }: {
+  sessionScope: string;
   refreshKey?: number;
   onRefreshComplete?: () => void;
 }) {
-  const [payload, setPayload] = useState<Payload | null>(null);
+  const [payload, setPayload] = useState<Payload | null>(() => getSalesMarginSnapshot(sessionScope));
   const [view, setView] = useState<View>("summary");
   const [brandFilter, setBrandFilter] = useState<string[]>([]);
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
@@ -438,24 +419,28 @@ export default function SalesMargin({
     setLoading(true);
     setError("");
     try {
-      setPayload(await fetchPayload());
+      setPayload(await loadSalesMargin(sessionScope, true));
     } catch (loadError) {
+      if (loadError instanceof SalesMarginRequestError && [401, 403].includes(loadError.status)) setPayload(null);
       setError(loadError instanceof Error ? loadError.message : "No fue posible cargar Venta & Margen.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [sessionScope]);
 
   useEffect(() => {
     let active = true;
-    void fetchPayload()
+    void loadSalesMargin(sessionScope)
       .then((body) => { if (active) setPayload(body); })
       .catch((loadError) => {
-        if (active) setError(loadError instanceof Error ? loadError.message : "No fue posible cargar Venta & Margen.");
+        if (active) {
+          if (loadError instanceof SalesMarginRequestError && [401, 403].includes(loadError.status)) setPayload(null);
+          setError(loadError instanceof Error ? loadError.message : "No fue posible cargar Venta & Margen.");
+        }
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [sessionScope]);
 
   useEffect(() => {
     if (refreshKey === handledRefreshKey.current) return;
@@ -561,6 +546,7 @@ export default function SalesMargin({
     setYearFilter(null);
     setQuarterFilter("ANUAL");
   };
+  const initialLoading = loading && !payload;
 
   return <section className="sales-margin-module">
     <header className="sales-margin-hero">
@@ -571,28 +557,29 @@ export default function SalesMargin({
       </div>
       <aside className="sales-margin-hero-meta">
         <b>INFORME EN MM$</b>
-        <small>ACTUALIZACIÓN FUENTE · {loading ? "Consultando…" : refreshedAt}</small>
+        <small>ACTUALIZACIÓN FUENTE · {payload ? refreshedAt : "Consultando…"}</small>
       </aside>
     </header>
 
-    {error ? <div className="sales-margin-state error" role="alert">
+    {error && <div className="sales-margin-state error" role="alert">
       <strong>No pudimos cargar el informe</strong><p>{error}</p><button type="button" onClick={() => void load()}>Reintentar</button>
-    </div> : <>
+    </div>}
+    <>
       <div className="sales-margin-kpis" aria-busy={loading}>
         <article>
           <small>VENTA 2027P</small>
-          <div className="sales-margin-kpi-value"><b>{loading ? "…" : `$${formatSales(metric2027.sales)}`}</b><span>MM$</span></div>
+          <div className="sales-margin-kpi-value"><b>{!payload ? "…" : `$${formatSales(metric2027.sales)}`}</b><span>MM$</span></div>
           <div className={`sales-margin-kpi-variation ${variationClass(salesGrowth)}`}>
             <small>VAR. 27P / 26E</small>
-            <strong>{salesGrowth !== null && (salesGrowth < 0 ? <TrendingDown /> : <TrendingUp />)} {loading ? "…" : formatPercent(salesGrowth)}</strong>
+            <strong>{salesGrowth !== null && (salesGrowth < 0 ? <TrendingDown /> : <TrendingUp />)} {!payload ? "…" : formatPercent(salesGrowth)}</strong>
           </div>
         </article>
         <article>
           <small>MARGEN 2027P</small>
-          <div className="sales-margin-kpi-value"><b>{loading ? "…" : formatPercent(margin2027)}</b><span>MG %</span></div>
+          <div className="sales-margin-kpi-value"><b>{!payload ? "…" : formatPercent(margin2027)}</b><span>MG %</span></div>
           <div className={`sales-margin-kpi-variation ${variationClass(marginGrowth)}`}>
             <small>VAR. 27P / 26E</small>
-            <strong>{marginGrowth !== null && (marginGrowth < 0 ? <TrendingDown /> : <TrendingUp />)} {loading ? "…" : formatPercent(marginGrowth)}</strong>
+            <strong>{marginGrowth !== null && (marginGrowth < 0 ? <TrendingDown /> : <TrendingUp />)} {!payload ? "…" : formatPercent(marginGrowth)}</strong>
           </div>
         </article>
       </div>
@@ -621,8 +608,8 @@ export default function SalesMargin({
           </div>
         </div>
 
-        <div className="sales-margin-table-wrap" aria-live="polite">
-          {loading ? <div className="sales-margin-state"><RefreshCw className="spin" /><strong>Consultando BigQuery…</strong></div> :
+        {loading && <div className="sales-margin-loading-status" role="status"><RefreshCw className="spin" />{payload ? "Actualizando datos… Puedes seguir revisando el informe." : "Cargando datos… Puedes elegir la vista y el período."}</div>}
+        <div className="sales-margin-table-wrap" aria-busy={initialLoading}>
             <table className={`sales-margin-table view-${view}${hasMonthBreakdown ? " period-breakdown" : ""}`}>
               <thead>
                 <tr>
@@ -640,6 +627,10 @@ export default function SalesMargin({
                 </tr>
               </thead>
               <tbody>
+                {initialLoading && Array.from({ length: 7 }, (_, index) => <tr key={`loading-${index}`} aria-hidden="true">
+                  <th><span className="sales-margin-placeholder" /></th>
+                  {Array.from({ length: (hasSecondary ? 1 : 0) + (hasTertiary ? 1 : 0) + visibleScenarios.length * 2 + visibleComparisons.length }, (_, cell) => <td key={cell}><span className="sales-margin-placeholder" /></td>)}
+                </tr>)}
                 {visibleRows.map((row, index) => {
                   const rowSpan = primaryRowSpan(index);
                   const secondarySpan = secondaryRowSpan(index);
@@ -662,14 +653,14 @@ export default function SalesMargin({
                   })}
                 </tr>})}
               </tbody>
-            </table>}
+            </table>
         </div>
-        {!loading && visibleRows.length === 0 && <div className="sales-margin-empty">No hay registros que coincidan con la búsqueda.</div>}
+        {!loading && !error && payload && visibleRows.length === 0 && <div className="sales-margin-empty">No hay registros que coincidan con la búsqueda.</div>}
         <footer>
           <span><b>FUENTE</b> forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_CONSOLIDADA</span>
           <span>Referencia funcional: {payload?.sourceSheet}</span>
         </footer>
       </div>
-    </>}
+    </>
   </section>;
 }

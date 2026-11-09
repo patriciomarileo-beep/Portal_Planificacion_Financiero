@@ -1,6 +1,6 @@
 import { requireAuth } from "../_shared/auth";
 import { errorResponse, readJson, requireSameOrigin } from "../_shared/http";
-import { googleAccessToken, validatedTablePath } from "../_shared/bigquery";
+import { bigQueryQueryUrl, fetchBigQuery, googleAccessToken, validatedTablePath } from "../_shared/bigquery";
 import { getUserRoles, normalizedUserRole } from "../_shared/user-roles";
 
 export const runtime = "nodejs";
@@ -77,7 +77,7 @@ const accessToken = googleAccessToken;
 
 const runQuery = async <T,>(query: string, queryParameters: QueryParameter[] = []) => {
   const token = await accessToken();
-  const response = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${configuredProjectId()}/queries`, {
+  const response = await fetchBigQuery(bigQueryQueryUrl(configuredProjectId()), {
     method: "POST",
     headers: {
       authorization: `Bearer ${token}`,
@@ -99,7 +99,7 @@ const runQueryRows = async (query: string, queryParameters: QueryParameter[] = [
   const token = await accessToken();
   const projectId = configuredProjectId();
   const pageSize = Math.min(Math.max(maxRows, 1), 10000);
-  const response = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries`, {
+  const response = await fetchBigQuery(bigQueryQueryUrl(projectId), {
     method: "POST",
     headers: {
       authorization: `Bearer ${token}`,
@@ -125,10 +125,12 @@ const runQueryRows = async (query: string, queryParameters: QueryParameter[] = [
     const params = new URLSearchParams({
       pageToken,
       maxResults: String(Math.min(10000, maxRows - rows.length)),
+      ...(location ? { location } : {}),
     });
-    if (location) params.set("location", location);
-    const pageResponse = await fetch(
-      `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries/${jobId}?${params.toString()}`,
+    const pageUrl = bigQueryQueryUrl(projectId, jobId);
+    pageUrl.search = params.toString();
+    const pageResponse = await fetchBigQuery(
+      pageUrl,
       { headers: { authorization: `Bearer ${token}` } },
     );
     const page = await pageResponse.json() as BigQueryRowsPayload & { error?: { message?: string } };

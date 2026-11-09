@@ -1,9 +1,4 @@
 import fs from "node:fs";
-import path from "node:path";
-
-const root = process.cwd();
-const sourcePath = path.join(root, "private-data", "assets", "profitability-channels.csv");
-const targetPath = path.join(root, "app", "profitability", "profitability-data.ts");
 
 function parseCsv(text) {
   const rows = [];
@@ -34,11 +29,11 @@ const number = (value = "") => {
 };
 
 const scenarios = new Set(["2025", "2025PE", "2026E", "2026P"]);
-const rows = parseCsv(fs.readFileSync(sourcePath, "utf8")).slice(1).flatMap((cells) => {
+const rows = parseCsv(fs.readFileSync("private-data/assets/profitability-channels.csv", "utf8")).slice(1).flatMap((cells) => {
   if (!scenarios.has(cells[1])) return [];
   return [[cells[0], cells[1], cells[2], Number(cells[3]), cells[4], cells[5], number(cells[6]), number(cells[7]), number(cells[8]), number(cells[9]), number(cells[10])]];
 });
 
 const output = `// Generado desde private-data/assets/profitability-channels.csv. No editar manualmente.\nexport type ProfitabilityDataRow = [string,string,string,number,string,string,number,number,number,number,number];\nexport const profitabilityData: ProfitabilityDataRow[] = ${JSON.stringify(rows)};\n`;
-fs.writeFileSync(targetPath, output);
-console.log(JSON.stringify({ rows: rows.length, target: path.relative(root, targetPath) }));
+fs.writeFileSync("app/profitability/profitability-data.ts", output);
+console.log(JSON.stringify({ rows: rows.length, target: "app/profitability/profitability-data.ts" }));

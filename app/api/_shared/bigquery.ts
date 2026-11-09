@@ -58,6 +58,23 @@ export const tablePath = () => validatedTablePath(process.env.BIGQUERY_TABLE || 
 
 const configuredProjectId = () => process.env.BIGQUERY_PROJECT_ID || splitTable(tablePath()).projectId;
 
+const bigQueryOrigins = new Set(["https://bigquery.googleapis.com"]);
+
+export const bigQueryQueryUrl = (projectId: string, jobId?: string) => {
+  // Only path segments may vary; neither configuration nor job metadata can set the origin.
+  const url = new URL("https://bigquery.googleapis.com");
+  url.pathname = `/bigquery/v2/projects/${encodeURIComponent(projectId)}/queries${jobId ? `/${encodeURIComponent(jobId)}` : ""}`;
+  return url;
+};
+
+export const fetchBigQuery = async (url: URL, options: RequestInit) => {
+  // Validate the destination before attaching credentials and never follow redirects.
+  if (bigQueryOrigins.has(url.origin)) {
+    return fetch(url, { ...options, redirect: "error" });
+  }
+  throw new Error("Destino BigQuery no permitido.");
+};
+
 const serviceAccount = () => {
   const rawJson = process.env.BIGQUERY_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (rawJson) {
@@ -265,7 +282,7 @@ export const runQuery = async <T,>(
   const token = await googleAccessToken();
   const projectId = configuredProjectId();
   const pageSize = Math.min(Math.max(Math.trunc(options.pageSize ?? 10000), 1), 10000);
-  const response = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries`, {
+  const response = await fetchBigQuery(bigQueryQueryUrl(projectId), {
     method: "POST",
     headers: {
       authorization: `Bearer ${token}`,
@@ -298,11 +315,13 @@ export const runQuery = async <T,>(
     const params = new URLSearchParams({
       pageToken,
       maxResults: String(pageSize),
+      // BigQuery region is a query parameter, never an HTTP Location header.
+      ...(location ? { location } : {}),
     });
-    if (location) params.set("location", location);
-
-    const pageResponse = await fetch(
-      `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries/${encodeURIComponent(jobId)}?${params.toString()}`,
+    const pageUrl = bigQueryQueryUrl(projectId, jobId);
+    pageUrl.search = params.toString();
+    const pageResponse = await fetchBigQuery(
+      pageUrl,
       { headers: { authorization: `Bearer ${token}` } },
     );
     const page = await pageResponse.json() as BigQueryRowsPayload & { error?: { message?: string } };

@@ -41,3 +41,17 @@ test("the actual glob consumers continue finding source files", () => {
   assert.deepEqual(micromatch(["app/page.tsx", "app/layout.tsx", "package.json"], ["app/*.{ts,tsx}"]), ["app/page.tsx", "app/layout.tsx"]);
   assert.ok(glob.sync("app/{page,layout}.tsx").includes("app/page.tsx"));
 });
+
+test("the TypeScript parser's glob consumer bounds pattern amplification and preserves matching", () => {
+  const parserRequire = createRequire(require.resolve("@typescript-eslint/typescript-estree"));
+  const { minimatch, Minimatch } = parserRequire("minimatch");
+  assert.equal(minimatch("app/page.tsx", "**/*.{ts,tsx}", { dot: true }), true);
+  assert.equal(minimatch(".hidden.ts", "**/*.{ts,tsx}", { dot: true }), true);
+  assert.equal(minimatch("docs/manual.md", "**/*.{ts,tsx}", { dot: true }), false);
+
+  const compiled = new Minimatch("a/**/../b/".repeat(16) + "end", {
+    optimizationLevel: 2,
+    braceExpandMax: 32,
+  });
+  assert.ok(compiled.set.length > 0 && compiled.set.length <= 32);
+});

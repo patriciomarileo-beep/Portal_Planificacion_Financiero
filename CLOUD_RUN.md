@@ -57,7 +57,7 @@ npm run test:security:http
 npm run test:security:assets
 ```
 
-Revisa también `npm audit`: conserva ocho alertas de desarrollo con backport local de braces, detalladas en `docs/security-validation-2026-10-21.md`. La auditoría completa de CI continúa bloqueada por ellas; el parche no constituye una excepción corporativa. No usar `npm audit fix --force` para degradar frameworks sin revisión.
+Ejecuta también `npm audit` para revisar las dependencias de desarrollo. El override de `@typescript-eslint/typescript-estree` fija `minimatch` en `11.0.1`, que corrige [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249), sin degradar Next.js ni ESLint. Se conserva el backport local de braces como protección adicional, con su nombre y versión originales. El informe `docs/security-validation-2026-10-21.md` registra el estado histórico de esa fecha. No usar `npm audit fix --force` para degradar frameworks sin revisión.
 
 ## Despliegue privado
 

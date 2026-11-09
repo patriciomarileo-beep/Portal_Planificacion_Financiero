@@ -33,4 +33,4 @@ for (const packagePath of Object.keys(lock.packages).filter(path => /(^|\/)node_
 }
 // Validate every file before writing any change. Never download or execute code.
 for (const { target, source } of changes) writeFileSync(target, source, "utf8");
-console.log(`Braces depth guard ${checkOnly ? "verified" : "applied/verified"}: ${packages} installed package(s). Advisory remains visible in npm audit.`);
+console.log(`Braces depth guard ${checkOnly ? "verified" : "applied/verified"}: ${packages} installed package(s). Upstream package identity is preserved for security audits.`);

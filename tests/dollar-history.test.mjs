@@ -102,3 +102,20 @@ test("failure of both providers returns a retryable error without caching a blan
   assert.ok(payload.error.includes("Intenta nuevamente"));
   assert.equal(payload.points, undefined);
 });
+
+test("an external Banco Central series link is rejected and provider requests cannot follow redirects", async () => {
+  const { end } = dollarHistoryWindow(), month = Number(end.slice(5, 7));
+  const requests = [];
+  mock.method(globalThis, "fetch", async (input, options) => {
+    const url = new URL(input);
+    requests.push(url);
+    assert.ok(["https://si3.bcentral.cl", "https://www.sii.cl"].includes(url.origin));
+    assert.equal(options.redirect, "error");
+    if (url.origin === "https://si3.bcentral.cl") return new Response('<a id="hypLnk1_3" href="https://attacker.invalid/Serie.aspx?gcode=PRE_TCO">Ver serie</a>');
+    return new Response(table(row(1, { [month]: "978,56", 11: "960,00", 12: "970,00" })));
+  });
+  const response = await GET(), payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.ok(payload.source.includes("SII"));
+  assert.equal(requests.filter(url => url.origin === "https://si3.bcentral.cl").length, 1);
+});

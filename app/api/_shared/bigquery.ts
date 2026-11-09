@@ -23,6 +23,11 @@ export type BigQueryRowsPayload = {
   };
 };
 
+type RunQueryOptions = {
+  paginate?: boolean;
+  pageSize?: number;
+};
+
 type ServiceAccountCredential = {
   type?: string;
   client_email?: string;
@@ -52,6 +57,23 @@ export const validatedTablePath = (table: string) => {
 export const tablePath = () => validatedTablePath(process.env.BIGQUERY_TABLE || defaultTable);
 
 const configuredProjectId = () => process.env.BIGQUERY_PROJECT_ID || splitTable(tablePath()).projectId;
+
+const bigQueryOrigins = new Set(["https://bigquery.googleapis.com"]);
+
+export const bigQueryQueryUrl = (projectId: string, jobId?: string) => {
+  // Only path segments may vary; neither configuration nor job metadata can set the origin.
+  const url = new URL("https://bigquery.googleapis.com");
+  url.pathname = `/bigquery/v2/projects/${encodeURIComponent(projectId)}/queries${jobId ? `/${encodeURIComponent(jobId)}` : ""}`;
+  return url;
+};
+
+export const fetchBigQuery = async (url: URL, options: RequestInit) => {
+  // Validate the destination before attaching credentials and never follow redirects.
+  if (bigQueryOrigins.has(url.origin)) {
+    return fetch(url, { ...options, redirect: "error" });
+  }
+  throw new Error("Destino BigQuery no permitido.");
+};
 
 const serviceAccount = () => {
   const rawJson = process.env.BIGQUERY_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
@@ -252,9 +274,15 @@ export const googleAccessToken = async (preferAdc = false) => {
   return adcAccessToken();
 };
 
-export const runQuery = async <T,>(query: string, queryParameters: QueryParameter[] = []) => {
+export const runQuery = async <T,>(
+  query: string,
+  queryParameters: QueryParameter[] = [],
+  options: RunQueryOptions = {},
+) => {
   const token = await googleAccessToken();
-  const response = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${configuredProjectId()}/queries`, {
+  const projectId = configuredProjectId();
+  const pageSize = Math.min(Math.max(Math.trunc(options.pageSize ?? 10000), 1), 10000);
+  const response = await fetchBigQuery(bigQueryQueryUrl(projectId), {
     method: "POST",
     headers: {
       authorization: `Bearer ${token}`,
@@ -265,11 +293,49 @@ export const runQuery = async <T,>(query: string, queryParameters: QueryParamete
       useLegacySql: false,
       parameterMode: "NAMED",
       queryParameters,
+      ...(options.paginate ? { maxResults: pageSize } : {}),
     }),
   });
-  const payload = await response.json() as T & { error?: { message?: string } };
+  const payload = await response.json() as T & BigQueryRowsPayload & { error?: { message?: string } };
   if (!response.ok) throw new Error(payload.error?.message || "Error ejecutando consulta BigQuery.");
-  return payload;
+  if (!options.paginate || !payload.pageToken) return payload;
+
+  const jobId = payload.jobReference?.jobId;
+  if (!jobId) throw new Error("BigQuery devolvio una pagina parcial sin jobId para continuar.");
+
+  const rows = [...(payload.rows ?? [])];
+  const location = payload.jobReference?.location;
+  const seenTokens = new Set<string>();
+  let pageToken: string | undefined = payload.pageToken;
+
+  while (pageToken) {
+    if (seenTokens.has(pageToken)) throw new Error("BigQuery repitio un pageToken durante la paginacion.");
+    seenTokens.add(pageToken);
+
+    const params = new URLSearchParams({
+      pageToken,
+      maxResults: String(pageSize),
+      // BigQuery region is a query parameter, never an HTTP Location header.
+      ...(location ? { location } : {}),
+    });
+    const pageUrl = bigQueryQueryUrl(projectId, jobId);
+    pageUrl.search = params.toString();
+    const pageResponse = await fetchBigQuery(
+      pageUrl,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    const page = await pageResponse.json() as BigQueryRowsPayload & { error?: { message?: string } };
+    if (!pageResponse.ok) throw new Error(page.error?.message || "Error leyendo pagina BigQuery.");
+
+    rows.push(...(page.rows ?? []));
+    pageToken = page.pageToken;
+  }
+
+  return {
+    ...payload,
+    rows,
+    pageToken: undefined,
+  };
 };
 
 export const parameter = (name: string, type: string, value: unknown): QueryParameter => ({

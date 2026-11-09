@@ -22,6 +22,7 @@ security-regression:
     - npm run test:security:deployment
     - npm run audit:production
     - npm run test:security
+    - npm run test:sales-margin
     - node scripts/test-dollar-history.mjs
     - npm run test:market
     - npm run lint

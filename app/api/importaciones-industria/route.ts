@@ -16,7 +16,8 @@ const rowsAsObjects = (payload: BigQueryRowsPayload) => (payload.rows ?? []).map
   Object.fromEntries((payload.schema?.fields ?? []).map((field, index) => [field.name, scalar(row.f[index]?.v)])),
 );
 const quoted = (value: string) => `'${value.replace(/'/g, "''")}'`;
-const othersLast = (values: unknown[]) => values.map(String).sort((a, b) => Number(/^(OTROS?|OTRAS?|SIN CLASIFICACI[ÓO]N)$/i.test(a)) - Number(/^(OTROS?|OTRAS?|SIN CLASIFICACI[ÓO]N)$/i.test(b)) || a.localeCompare(b, "es"));
+const otherLabels = new Set(["OTRO", "OTROS", "OTRA", "OTRAS", "SIN CLASIFICACION", "SIN CLASIFICACIÓN"]);
+const othersLast = (values: unknown[]) => values.map(String).sort((a, b) => Number(otherLabels.has(a.toUpperCase())) - Number(otherLabels.has(b.toUpperCase())) || a.localeCompare(b, "es"));
 const caseFromMap = (field: string, map: Record<string, string>, fallback: string) => {
   const groups = new Map<string, string[]>();
   Object.entries(map).forEach(([key, value]) => groups.set(value, [...(groups.get(value) ?? []), key]));

@@ -2,8 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import XLSX from "xlsx";
 
+XLSX.set_fs(fs);
+
 const workbookPath = path.resolve(process.argv[2] ?? "TIENDAS-current.xlsx");
-const outputPath = path.resolve("app/base-consolidada.ts");
 const workbook = XLSX.readFile(workbookPath, { cellDates: false });
 const sheet = workbook.Sheets.BASE_CONSOLIDADA;
 
@@ -56,7 +57,7 @@ const source = `// Snapshot generado desde BASE_CONSOLIDADA: ${snapshotAt}.\n` +
   "export type BaseRow = [number,string,string,string,string,string,number,number,number,number,number,number,number,number,number,number,number,number|null];\n" +
   `export const baseConsolidada: BaseRow[] = ${JSON.stringify(rows)};\n`;
 
-fs.writeFileSync(outputPath, source, "utf8");
+fs.writeFileSync("app/base-consolidada.ts", source, "utf8");
 
 const sales2026 = rows
   .filter((row) => row[0] === 2026 && row[1] === "TOTAL" && row[2] === "ANUAL")

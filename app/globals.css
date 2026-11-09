@@ -4205,10 +4205,10 @@ body {
 .sales-margin-tabs button:hover { color: #126fa4; background: #edf6fb; }
 /* Apariencia de la pestaña actualmente seleccionada. */
 .sales-margin-tabs button.active { border-bottom-color: #0078a8; color: #075d8c; background: #eaf5fa; }
-/* Barra horizontal equivalente a Rentabilidad Consolidado. */
-.sales-margin-toolbar { min-height: 83px; display: grid; grid-template-columns: 180px repeat(3, minmax(150px, 1fr)) 190px auto; align-items: end; gap: 14px; padding: 15px 18px; }
-/* Cadena × marca agrega un cuarto filtro sin reemplazar la dimensión Canal. */
-.sales-margin-toolbar.with-chain-filter { grid-template-columns: 170px repeat(4, minmax(130px, 1fr)) 190px auto; }
+/* Barra horizontal: título, Marca, Canal, Clase, Años, trimestre y acciones. */
+.sales-margin-toolbar { min-height: 83px; display: grid; grid-template-columns: 160px repeat(4, minmax(130px, 1fr)) 190px auto; align-items: end; gap: 12px; padding: 15px 18px; }
+/* Cadena × marca agrega Cadena sin reemplazar Canal ni el filtro de años. */
+.sales-margin-toolbar.with-chain-filter { grid-template-columns: 150px repeat(5, minmax(115px, 1fr)) 190px auto; }
 /* Texto pequeño usado como etiqueta dentro de la barra de herramientas. */
 .sales-margin-toolbar small { display: block; color: #718197; font-size: 8px; font-weight: 800; letter-spacing: .12em; }
 /* Título de la vista activa: Consolidado, Canal, Marca, etc. */

@@ -110,7 +110,7 @@ test("an external Banco Central series link is rejected and provider requests ca
     const url = new URL(input);
     requests.push(url);
     assert.ok(["https://si3.bcentral.cl", "https://www.sii.cl"].includes(url.origin));
-    assert.equal(options.redirect, "error");
+    assert.equal(options.redirect, "manual");
     if (url.origin === "https://si3.bcentral.cl") return new Response('<a id="hypLnk1_3" href="https://attacker.invalid/Serie.aspx?gcode=PRE_TCO">Ver serie</a>');
     return new Response(table(row(1, { [month]: "978,56", 11: "960,00", 12: "970,00" })));
   });

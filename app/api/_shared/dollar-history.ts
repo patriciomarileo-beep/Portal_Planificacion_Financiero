@@ -3,7 +3,9 @@ import { dollarHistoryWindow, parseBcentralDollarSeries, parseMindicadorDollarSe
 const dollarOrigins = new Set(["https://si3.bcentral.cl", "https://www.sii.cl", "https://mindicador.cl"]);
 const fetchDollarProvider = async (url: URL, options: RequestInit & { next?: { revalidate: number } }) => {
   if (dollarOrigins.has(url.origin)) {
-    return fetch(url, { ...options, redirect: "error" });
+    // Vinext rejects `redirect: "error"`; `manual` keeps the request on the
+    // validated provider because callers reject every non-2xx response.
+    return fetch(url, { ...options, redirect: "manual" });
   }
   throw new Error("Unexpected dollar provider URL.");
 };

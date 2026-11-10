@@ -16,6 +16,7 @@ import { GET as salesMargin } from "../app/api/sales-margin/route";
 import { GET as users, PATCH as updateUser } from "../app/api/usuarios/route";
 import { POST as ingest } from "../app/api/ingesta-bigquery/route";
 import { GET as portalData } from "../app/api/portal-data/route";
+import { GET as profitabilityForecast } from "../app/api/profitability-forecast/route";
 import { GET as privateFile } from "../app/data/[...path]/route";
 import { proxy } from "../proxy";
 const originalEnv = { ...process.env };
@@ -77,7 +78,7 @@ test("all sensitive handlers reject anonymous requests before reading source or 
     setup();
     mock.method(globalThis, "fetch", async () => { throw Error("must not call upstream"); });
     const request = new NextRequest("https://portal.example.com/api/importaciones-industria");
-    for (const handler of [imports, cosmetics, countries, consolidatedKpis, salesMargin, users, portalData]) {
+    for (const handler of [imports, cosmetics, countries, consolidatedKpis, salesMargin, profitabilityForecast, users, portalData]) {
         const result = await handler(request);
         assert.equal(result.status, 401);
         assert.equal((await result.json()).error, "Sesión requerida.");
@@ -160,7 +161,7 @@ test("upstream authorization failures never return financial fallbacks or intern
     mock.restoreAll();
     mock.method(GoogleAuth.prototype, "getAccessToken", async () => { throw Error("private-dataset-secret-sentinel"); });
     mock.method(console, "error", () => { });
-    for (const handler of [imports, countries]) {
+    for (const handler of [imports, countries, profitabilityForecast]) {
         const result = await handler(new NextRequest("https://portal.example.com/api/data", { headers: { cookie } }));
         assert.equal(result.status, 500);
         const text = await result.text();
@@ -235,7 +236,7 @@ test("user pagination keeps job metadata inside the authenticated Google endpoin
   mock.method(globalThis, "fetch", async (input, options) => {
     const url = new URL(input);
     assert.equal(url.origin, "https://bigquery.googleapis.com");
-    assert.equal(options.redirect, "error");
+    assert.equal(options.redirect, "manual");
     if (!options.body) {
       pages += 1;
       assert.ok(url.pathname.endsWith(`/queries/${encodeURIComponent(jobId)}`));
@@ -330,7 +331,7 @@ test("COMEX cannot read financial or market endpoints, private files or write pl
   const upstream = database("COMEX");
   const cookie = await createSessionCookie(user);
   const request = new NextRequest("https://portal.example.com/api/data", { headers: { cookie } });
-  for (const handler of [imports, cosmetics, countries, salesMargin, users, portalData]) {
+  for (const handler of [imports, cosmetics, countries, salesMargin, profitabilityForecast, users, portalData]) {
     const response = await handler(request);
     assert.equal(response.status, 403);
     assert.doesNotMatch(await response.text(), /overview|countries|baseConsolidada|roleOptions/);

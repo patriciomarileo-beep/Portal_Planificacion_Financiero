@@ -4,11 +4,10 @@ import { baseConsolidada, baseSnapshotAt } from "../../base-consolidada";
 import { catM2SnapshotStores, catM2SnapshotTotals } from "../../cat-m2-2025";
 import { storeM2 } from "../../store-m2";
 import { storeContractEnd } from "../../store-contract-end";
-import { profitabilityData } from "../../profitability/profitability-data";
 export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
     await requireMenuAuth(request, "forecast");
-    return json({ baseConsolidada, baseSnapshotAt, catM2SnapshotStores, catM2SnapshotTotals, storeM2, storeContractEnd, profitabilityData });
+    return json({ baseConsolidada, baseSnapshotAt, catM2SnapshotStores, catM2SnapshotTotals, storeM2, storeContractEnd });
   } catch (error) { return errorResponse(error, "portal-data"); }
 }

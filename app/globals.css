@@ -3052,16 +3052,11 @@ footer {
 .channel-channel-view table { min-width: 980px; }
 .channel-channel-view th:not(:first-child), .channel-channel-view td:not(:first-child) { text-align: center; }
 .channel-channel-view .channel-total-row td { color: #163b70; background: #eef4fb; border-top: 2px solid #b9cce2; font-weight: 800; }
-.channel-search { width: min(280px, 45%); display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid #d5dfe9; border-radius: 8px; }
-.channel-search svg { width: 17px; color: #6d8099; }
-.channel-search input { width: 100%; min-height: 36px; border: 0; outline: 0; background: transparent; }
 .channel-ranking-table { min-width: 1420px; }
 .channel-ranking-table th:not(:first-child), .channel-ranking-table td:not(:first-child) { text-align: center; }
-.channel-ranking-tools { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .channel-periods { display: flex; padding: 4px; gap: 3px; border-radius: 12px; background: #eef1f5; }
 .channel-periods button { min-width: 48px; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; color: #74849a; background: transparent; font-size: 9px; font-weight: 800; cursor: pointer; }
 .channel-periods button.active { color: #183f76; background: #fff; box-shadow: 0 2px 8px rgba(22, 59, 112, .14); }
-.channel-month-select { height: 38px; padding: 0 30px 0 10px; border: 1px solid #d5dfe9; border-radius: 8px; color: #18355d; background: #fff; font-size: 10px; font-weight: 700; }
 .channel-state { min-height: 420px; display: flex; align-items: center; justify-content: center; gap: 12px; color: #214d84; background: #f4f7fb; }
 .channel-state svg { width: 22px; }
 .channel-state.error { flex-direction: column; color: #a23838; }
@@ -3139,8 +3134,6 @@ footer {
   .channel-ranking { margin: 16px 20px 28px; }
   .channel-channel-view { margin: 16px 20px 0; }
   .channel-panel > header { align-items: flex-start; flex-direction: column; }
-  .channel-search { width: 100%; }
-  .channel-ranking-tools { width: 100%; justify-content: flex-start; }
   .channel-periods { width: 100%; overflow-x: auto; }
   .channel-periods button { flex: 1 0 48px; }
   .country-hero { padding: 30px 20px; align-items: flex-start; flex-direction: column; }
@@ -3616,6 +3609,254 @@ footer {
   }
   .modal-backdrop {
     padding: 10px;
+  }
+}
+
+/* Rentabilidad Forecast: filtros unificados, KPIs interactivos y ranking ordenable. */
+.microsoft-shell .channel-filters {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: nowrap;
+  gap: 12px;
+}
+.microsoft-shell .channel-filter-select {
+  width: 180px;
+  min-width: 150px;
+  flex: 0 0 180px;
+}
+.microsoft-shell .channel-filter-select.brand-filter {
+  min-width: 190px;
+  flex: 1 1 230px;
+}
+.microsoft-shell .channel-filter-select.month-filter {
+  width: 135px;
+  min-width: 125px;
+  flex-basis: 135px;
+}
+.microsoft-shell .channel-filter-select summary {
+  border-color: #dce1e7;
+  border-radius: 3px;
+  background: #fafbfc;
+}
+.microsoft-shell .channel-searchable-options {
+  width: max(240px, 100%);
+}
+.microsoft-shell .channel-searchable-options > button {
+  justify-content: space-between;
+}
+.microsoft-shell .channel-searchable-options > button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.microsoft-shell .channel-searchable-options > button svg {
+  width: 13px;
+  flex: 0 0 13px;
+  color: var(--portal-blue);
+}
+.microsoft-shell .channel-period-control {
+  width: 340px;
+  min-width: 320px;
+  flex: 0 0 340px;
+}
+.microsoft-shell .channel-period-control > small {
+  display: block;
+  margin-bottom: 5px;
+  color: #8793a5;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: .1em;
+}
+.microsoft-shell .channel-period-control .channel-periods {
+  width: 100%;
+  height: 46px;
+  align-items: center;
+  padding: 4px;
+}
+.microsoft-shell .channel-period-control .channel-periods button {
+  min-width: 0;
+  height: 38px;
+  flex: 1 1 0;
+  padding: 0 5px;
+}
+.microsoft-shell .channel-filter-note {
+  min-width: 190px;
+  height: 46px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+}
+
+.microsoft-shell .channel-kpis {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.microsoft-shell .channel-kpi-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #d8e2ed;
+  border-radius: 13px;
+  color: inherit;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(28, 52, 84, .045);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.microsoft-shell .channel-kpi-card:hover {
+  border-color: #9db8d6;
+  transform: translateY(-1px);
+}
+.microsoft-shell .channel-kpi-card.active {
+  border-color: #1e5f9f;
+  box-shadow: 0 0 0 2px rgba(30, 95, 159, .14), 0 8px 24px rgba(28, 52, 84, .08);
+}
+.microsoft-shell .channel-kpi-card > div {
+  display: flex;
+  justify-content: space-between;
+  color: #6d8099;
+}
+.microsoft-shell .channel-kpi-card small {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.microsoft-shell .channel-kpi-card > div svg {
+  width: 20px;
+  color: #2765aa;
+}
+.microsoft-shell .channel-kpi-card strong {
+  display: block;
+  margin: 15px 0 8px;
+  color: #163b70;
+  font-size: clamp(21px, 1.75vw, 29px);
+}
+.microsoft-shell .channel-kpi-card p {
+  margin: 10px 0 0;
+  color: #8b9bb0;
+  font-size: 11px;
+}
+
+.microsoft-shell .channel-eerr tbody tr {
+  cursor: pointer;
+}
+.microsoft-shell .channel-eerr tbody tr:hover td {
+  background: #f4f8fd;
+}
+.microsoft-shell .channel-eerr tbody tr.active td {
+  color: #163b70;
+  background: #eaf2fc;
+  box-shadow: inset 0 1px #c7d9ee, inset 0 -1px #c7d9ee;
+}
+.microsoft-shell .channel-eerr tbody tr.active td:first-child {
+  box-shadow: inset 3px 0 #1e5f9f, inset 0 1px #c7d9ee, inset 0 -1px #c7d9ee;
+  font-weight: 800;
+}
+
+.microsoft-shell .channel-trend {
+  position: relative;
+  overflow: visible;
+  z-index: 2;
+}
+.microsoft-shell .channel-trend-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+.microsoft-shell .channel-trend-tools > span {
+  padding: 7px 10px;
+  color: #1b4b84;
+  background: #edf4fc;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.microsoft-shell .channel-trend .trend-account-filter {
+  width: 190px;
+  min-width: 170px;
+  flex-basis: 190px;
+}
+.microsoft-shell .channel-trend .trend-account-filter summary {
+  height: 42px;
+  border-radius: 3px;
+  background: #fafbfc;
+}
+.microsoft-shell .channel-trend .trend-account-filter .chain-options {
+  right: 0;
+  left: auto;
+}
+
+.microsoft-shell .channel-ranking-table thead th {
+  padding: 0;
+}
+.microsoft-shell .channel-ranking-table thead th > button {
+  width: 100%;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.microsoft-shell .channel-ranking-table thead th:first-child > button {
+  justify-content: flex-start;
+}
+.microsoft-shell .channel-ranking-table thead th > button:hover,
+.microsoft-shell .channel-ranking-table thead th > button.active {
+  color: #174b82;
+  background: #e8f1fb;
+  
+}
+.microsoft-shell .channel-ranking-table thead th > button svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+
+}
+
+@media (max-width: 1180px) {
+  .microsoft-shell .channel-filters {
+    flex-wrap: wrap;
+  }
+  .microsoft-shell .channel-filter-select.brand-filter {
+    flex-grow: 1;
+  }
+  .microsoft-shell .channel-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .microsoft-shell .channel-filter-select,
+  .microsoft-shell .channel-filter-select.brand-filter,
+  .microsoft-shell .channel-filter-select.month-filter,
+  .microsoft-shell .channel-period-control,
+  .microsoft-shell .channel-filter-note {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+  .microsoft-shell .channel-kpis {
+    grid-template-columns: 1fr;
+  }
+  .microsoft-shell .channel-trend-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .microsoft-shell .channel-trend .trend-account-filter {
+    flex: 1 1 auto;
   }
 }
 .grand-total {
@@ -4367,6 +4608,10 @@ body {
 .sales-margin-panel > footer span { max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Resalta la palabra FUENTE dentro del pie. */
 .sales-margin-panel > footer b { color: #1d547d; }
+/* Aviso situado sobre la tabla mientras BigQuery carga o actualiza datos. */
+.sales-margin-loading-status { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 38px; padding: 8px 16px; color: #5e7085; font-size: 11px; line-height: 1.35; text-align: left; }
+/* Mantiene el indicador de carga al lado del mensaje, sin ocupar una fila propia. */
+.sales-margin-loading-status > svg { display: block; flex: 0 0 17px; width: 17px; height: 17px; color: #1678a9; }
 /* Estado genérico de carga: centra icono y mensaje. */
 .sales-margin-state { min-height: 220px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #5e7085; }
 /* Icono utilizado en estados de carga o error. */
@@ -4885,7 +5130,7 @@ body {
 }
 
 /* Buscadores, botones segmentados y acciones de filtro. */
-.microsoft-shell :is(.sales-margin-search, .channel-search, .international-search > div) {
+.microsoft-shell :is(.sales-margin-search, .international-search > div) {
   height: 46px;
   border-color: #dce1e7;
   border-radius: 3px;
@@ -5182,3 +5427,172 @@ body {
     width: calc(100% - 36px);
   }
 }
+
+/* ===========================================================================
+   RENTABILIDAD FORECAST · AJUSTES RESPONSIVOS
+
+   Alinea filtros y contenido sobre el mismo ancho editorial, compacta las
+   tablas en escritorio y mantiene el topbar dentro del viewport.
+   ========================================================================== */
+
+/* El bloque de filtros comparte los mismos bordes verticales que KPIs y tablas. */
+.microsoft-shell .channel-filters {
+  width: min(1340px, calc(100% - 68px));
+  max-width: 1340px;
+  margin: 18px auto 0;
+  padding: 16px 42px;
+  border: 1px solid var(--portal-border);
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+/* Evita que el texto de una marca larga desplace la casilla de selección. */
+.microsoft-shell .channel-searchable-options label span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* En escritorio, las tablas usan porcentajes y se ajustan al panel sin scroll. */
+@media (min-width: 801px) {
+  .microsoft-shell .channel-table-wrap {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .microsoft-shell .channel-panel table,
+  .microsoft-shell .channel-channel-view table,
+  .microsoft-shell .channel-ranking-table {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    table-layout: fixed;
+  }
+
+  .microsoft-shell .channel-panel th,
+  .microsoft-shell .channel-panel td {
+    min-width: 0;
+    padding-right: clamp(3px, .55vw, 10px);
+    padding-left: clamp(3px, .55vw, 10px);
+    overflow-wrap: anywhere;
+  }
+
+  .microsoft-shell .channel-panel th {
+    font-size: clamp(7px, .62vw, 10px);
+    line-height: 1.25;
+    white-space: normal;
+  }
+
+  .microsoft-shell .channel-panel td {
+    font-size: clamp(9px, .72vw, 12px);
+  }
+
+  .microsoft-shell .channel-eerr th:first-child,
+  .microsoft-shell .channel-eerr td:first-child {
+    width: 27%;
+  }
+
+  .microsoft-shell .channel-channel-view th:first-child,
+  .microsoft-shell .channel-channel-view td:first-child {
+    width: 13%;
+  }
+
+  .microsoft-shell .channel-ranking-table th:first-child,
+  .microsoft-shell .channel-ranking-table td:first-child {
+    width: 14%;
+  }
+
+  .microsoft-shell .channel-ranking-table th,
+  .microsoft-shell .channel-ranking-table td {
+    padding-right: clamp(2px, .35vw, 6px);
+    padding-left: clamp(2px, .35vw, 6px);
+    font-size: clamp(8px, .58vw, 11px);
+  }
+
+  .microsoft-shell .channel-ranking-table thead th {
+    font-size: 10px;
+  }
+
+  .microsoft-shell .channel-ranking-table tbody td {
+   font-size: 13px;
+  }
+
+  .microsoft-shell .channel-ranking-table th button {
+    min-width: 0;
+    gap: 3px;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .microsoft-shell .channel-ranking-table th button svg {
+    width: 11px;
+    min-width: 11px;
+  }
+}
+
+/* El topbar siempre mide el ancho visible, sin sumar padding al 100 %. */
+.microsoft-shell .portal-topbar {
+  inset-inline: 0;
+  width: 100%;
+  min-width: 0;
+  max-width: 100vw;
+  box-sizing: border-box;
+  gap: clamp(8px, 1.2vw, 22px);
+  padding-inline: clamp(12px, 3vw, 48px);
+}
+
+.microsoft-shell .portal-brand {
+  min-width: clamp(155px, 16vw, 225px);
+  flex: 0 1 225px;
+}
+
+.microsoft-shell .portal-topnav {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.microsoft-shell :is(.portal-topnav > button, .portal-topnav-group > button) {
+  min-width: 0;
+  padding-inline: clamp(6px, .75vw, 14px);
+  font-size: clamp(11px, .75vw, 13px);
+}
+
+@media (max-width: 1500px) {
+  .microsoft-shell .portal-topbar {
+    gap: 8px;
+    padding-inline: 18px;
+  }
+
+  .microsoft-shell .portal-brand {
+    min-width: clamp(150px, 15vw, 165px);
+  }
+
+  .microsoft-shell :is(.portal-topnav > button, .portal-topnav-group > button) {
+    padding-inline: clamp(5px, .5vw, 7px);
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .microsoft-shell .portal-topbar {
+    width: 100%;
+    padding-inline: 14px;
+  }
+
+  .microsoft-shell .portal-brand {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .microsoft-shell .channel-filters {
+    width: calc(100% - 36px);
+    margin-top: 14px;
+    padding: 14px 20px;
+  }
+}
+
+

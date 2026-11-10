@@ -59,7 +59,6 @@ const ChannelProfitability = dynamic(() => import("./profitability/ChannelProfit
 const CountryProfitability = dynamic(() => import("./profitability/CountryProfitability"), { loading: reportLoading });
 const ToolboxPlanning = dynamic(() => import("./toolbox/ToolboxPlanning"), { loading: reportLoading });
 const StoreSensitivity = dynamic(() => import("./profitability/StoreSensitivity"), { loading: reportLoading });
-const KpiConsolidado = dynamic(() => import("./kpi/KpiConsolidado"), { loading: reportLoading });
 const SalesMargin = dynamic(() => import("./sales-margin/SalesMargin"), { loading: reportLoading });
 
 type Year = 2024 | 2025 | 2026 | 2027;
@@ -221,7 +220,7 @@ const portalGroups: { id: PortalMenu; label: string; description: string; icon: 
     description: "Indicadores clave de gestión financiera y operacional.",
     icon: Building2,
     items: [
-      { id: "kpi-consolidado", label: "KPI Consolidado", enabled: true },
+      { id: "kpi-consolidado", label: "KPI Consolidado" },
     ],
   },
 ];
@@ -1732,6 +1731,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   const [analysisMetric, setAnalysisMetric] = useState<ProfitMetric>("fourWalls");
   const [refreshing, setRefreshing] = useState(false);
   const [salesMarginRefreshKey, setSalesMarginRefreshKey] = useState(0);
+  const [profitabilityRefreshKey, setProfitabilityRefreshKey] = useState(0);
   const visiblePortalGroups = portalGroups.filter(group => canAccessMenu(authUser.role, group.id));
   const canViewHome = canAccessMenu(authUser.role, "home");
   const canViewSalesMargin = canAccessMenu(authUser.role, "sales-margin");
@@ -1745,7 +1745,8 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   const requestedMenu = menuForSection(requestedPortalSection);
   const portalSection = requestedMenu && canAccessMenu(authUser.role, requestedMenu) ? requestedPortalSection : defaultSection;
   const blActive = portalSection === "bl";
-  const needsPrivateData = blActive || ["ecommerce", "marketplace", "wholesale", "consolidada"].includes(portalSection);
+  const profitabilityForecastActive = ["ecommerce", "marketplace", "wholesale", "consolidada"].includes(portalSection);
+  const needsPrivateData = blActive;
   const stores = useMemo(() => blActive && privateData ? buildStores(privateData.baseConsolidada) : [], [blActive, privateData]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [openTopnavGroup, setOpenTopnavGroup] = useState<PortalMenu | null>(null);
@@ -1757,9 +1758,14 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
       setSalesMarginRefreshKey((current) => current + 1);
       return;
     }
+    if (profitabilityForecastActive) {
+      setProfitabilityRefreshKey((current) => current + 1);
+      return;
+    }
     window.setTimeout(() => window.location.reload(), 120);
   };
   const completeSalesMarginRefresh = useCallback(() => setRefreshing(false), []);
+  const completeProfitabilityRefresh = useCallback(() => setRefreshing(false), []);
   const universe = useMemo(() => stores.filter((s) => {
     const matchesChain = selectedChains.length === 0 || selectedChains.includes(s.chain);
     const needles = query
@@ -1853,7 +1859,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
           <button className={activeView === "sensitivity" ? "active" : ""} onClick={() => setView("sensitivity")}>Sensibilidad tiendas</button>
           <button className={activeView === "monitor" ? "active" : ""} onClick={() => setView("monitor")}>Monitor tiendas</button>
         </nav>}
-        {(blActive || portalSection === "sales-margin") && <button className="refresh-button" onClick={refreshView} disabled={refreshing} title="Recargar la última versión disponible"><RefreshCw className={refreshing ? "spin" : ""} /> {refreshing ? "ACTUALIZANDO…" : "ACTUALIZAR"}</button>}
+        {(blActive || portalSection === "sales-margin" || profitabilityForecastActive) && <button className="refresh-button" onClick={refreshView} disabled={refreshing} title="Recargar la última versión disponible"><RefreshCw className={refreshing ? "spin" : ""} /> {refreshing ? "ACTUALIZANDO…" : "ACTUALIZAR"}</button>}
       </header>
       {portalSection === "home" ? <section className="portal-home-page">
         <div className="portal-home-heading">
@@ -1897,7 +1903,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
         {activeView === "annual" ? <Executive selection={selection} universe={universe} quadrantYear={quadrantYear} setQuadrantYear={setQuadrantYear} fwBand={fwBand} setFwBand={setFwBand} analysisMetric={analysisMetric} setAnalysisMetric={setAnalysisMetric} /> : activeView === "detail" ? <Detail selection={selection} /> : activeView === "break-even" ? <BreakEven selection={selection} /> : activeView === "m2" ? <M2Analysis selection={selection} /> : activeView === "sensitivity" ? <StoreSensitivity /> : <StoreMonitor selection={selection} />}
       </div>
       <footer>Planificación Financiera · Forus <span>INFORME EN MM$</span></footer>
-      </> : portalSection === "ecommerce" ? <ChannelProfitability channel="Ecommerce" /> : portalSection === "marketplace" ? <ChannelProfitability channel="Marketplace" /> : portalSection === "wholesale" ? <ChannelProfitability channel="Wholesale" /> : portalSection === "consolidada" ? <ChannelProfitability channel="Consolidado" /> : portalSection === "paises" ? <CountryProfitability /> : portalSection === "kpi-consolidado" ? <KpiConsolidado /> : portalSection === "benchmark-nacional" ? <NationalBenchmark /> : portalSection === "benchmark-internacional" ? <InternationalBenchmark /> : portalSection === "macroeconomia-ipom" ? <MacroeconomicsMarket /> : portalSection === "mercado-retail-cnc" ? <RetailCncMarket /> : portalSection === "importaciones-retail" ? <ImportacionesIndustria key="retail" /> : portalSection === "importaciones-cosmeticos" ? <ImportacionesIndustria key="cosmetics" variant="cosmetics" /> : <section className="construction-page">
+      </> : portalSection === "ecommerce" ? <ChannelProfitability channel="Ecommerce" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "marketplace" ? <ChannelProfitability channel="Marketplace" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "wholesale" ? <ChannelProfitability channel="Wholesale" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "consolidada" ? <ChannelProfitability channel="Consolidado" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "paises" ? <CountryProfitability /> : portalSection === "benchmark-nacional" ? <NationalBenchmark /> : portalSection === "benchmark-internacional" ? <InternationalBenchmark /> : portalSection === "macroeconomia-ipom" ? <MacroeconomicsMarket /> : portalSection === "mercado-retail-cnc" ? <RetailCncMarket /> : portalSection === "importaciones-retail" ? <ImportacionesIndustria key="retail" /> : portalSection === "importaciones-cosmeticos" ? <ImportacionesIndustria key="cosmetics" variant="cosmetics" /> : <section className="construction-page">
         <div className="construction-card">
           <i><Building2 /></i>
           <label>{selectedPortalGroup.label}</label>

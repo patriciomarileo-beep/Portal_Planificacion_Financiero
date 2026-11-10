@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -117,7 +117,9 @@ function SearchableSelect<T extends string>({
   className?: string;
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const optionsId = useId();
   const [optionQuery, setOptionQuery] = useState("");
+  const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
   const selectedLabel = options.find((option) => option.value === value)?.label ?? value;
   const normalizedQuery = optionQuery.trim().toLocaleLowerCase("es");
   const visibleOptions = options.filter((option) =>
@@ -127,17 +129,33 @@ function SearchableSelect<T extends string>({
   const select = (nextValue: T) => {
     onChange(nextValue);
     setOptionQuery("");
+    setActiveOptionIndex(-1);
     if (detailsRef.current) detailsRef.current.open = false;
+  };
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!visibleOptions.length) return;
+      setActiveOptionIndex((currentIndex) => event.key === "ArrowDown"
+        ? currentIndex < 0 ? 0 : (currentIndex + 1) % visibleOptions.length
+        : currentIndex < 0 ? visibleOptions.length - 1 : (currentIndex - 1 + visibleOptions.length) % visibleOptions.length);
+      return;
+    }
+    if (event.key === "Enter" && visibleOptions.length) {
+      event.preventDefault();
+      select(visibleOptions[activeOptionIndex >= 0 && activeOptionIndex < visibleOptions.length ? activeOptionIndex : 0].value);
+    }
   };
 
   return <details ref={detailsRef} data-dropdown name="portal-dropdown" className={`chain-multiselect sales-margin-multiselect channel-filter-select ${className}`.trim()}>
     <summary><span>{label}<strong>{selectedLabel}</strong></span><ChevronDown /></summary>
-    <div className="chain-options sales-margin-multiselect-options channel-searchable-options">
+    <div id={optionsId} className="chain-options sales-margin-multiselect-options channel-searchable-options">
       <div className="sales-margin-option-search">
         <Search aria-hidden="true" />
-        <input value={optionQuery} onChange={(event) => setOptionQuery(event.target.value)} placeholder={`Buscar ${label.toLocaleLowerCase("es")}`} aria-label={`Buscar ${label.toLocaleLowerCase("es")}`} />
+        <input value={optionQuery} onChange={(event) => { setOptionQuery(event.target.value); setActiveOptionIndex(0); }} onKeyDown={handleSearchKeyDown} role="combobox" aria-autocomplete="list" aria-controls={optionsId} aria-expanded="true" aria-label={`Buscar ${label.toLocaleLowerCase("es")}`} placeholder={`Buscar ${label.toLocaleLowerCase("es")}`} />
       </div>
-      {visibleOptions.map((option) => <button type="button" key={option.value} className={option.value === value ? "active" : ""} onClick={() => select(option.value)}>
+      {visibleOptions.map((option, index) => <button type="button" key={option.value} className={`${option.value === value ? "active" : ""}${activeOptionIndex === index ? " keyboard-active" : ""}`} onMouseEnter={() => setActiveOptionIndex(index)} onClick={() => select(option.value)}>
         <span>{option.label}</span>{option.value === value && <Check aria-hidden="true" />}
       </button>)}
       {visibleOptions.length === 0 && <small className="sales-margin-option-empty">Sin coincidencias</small>}
@@ -156,7 +174,9 @@ function SearchableMultiSelect({
   selected: string[];
   onChange: (values: string[]) => void;
 }) {
+  const optionsId = useId();
   const [optionQuery, setOptionQuery] = useState("");
+  const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
   const normalizedQuery = optionQuery.trim().toLocaleLowerCase("es");
   const visibleOptions = options.filter((option) =>
     option.toLocaleLowerCase("es").includes(normalizedQuery),
@@ -172,15 +192,31 @@ function SearchableMultiSelect({
       : [...selected, option],
   );
 
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!visibleOptions.length) return;
+      setActiveOptionIndex((currentIndex) => event.key === "ArrowDown"
+        ? currentIndex < 0 ? 0 : (currentIndex + 1) % visibleOptions.length
+        : currentIndex < 0 ? visibleOptions.length - 1 : (currentIndex - 1 + visibleOptions.length) % visibleOptions.length);
+      return;
+    }
+    if (event.key === "Enter" && visibleOptions.length) {
+      event.preventDefault();
+      const optionIndex = activeOptionIndex >= 0 && activeOptionIndex < visibleOptions.length ? activeOptionIndex : 0;
+      toggle(visibleOptions[optionIndex]);
+    }
+  };
+
   return <details data-dropdown name="portal-dropdown" className="chain-multiselect sales-margin-multiselect channel-filter-select brand-filter">
     <summary><span>{label}<strong>{selectionLabel}</strong></span><ChevronDown /></summary>
-    <div className="chain-options sales-margin-multiselect-options channel-searchable-options">
+    <div id={optionsId} className="chain-options sales-margin-multiselect-options channel-searchable-options">
       <div className="sales-margin-option-search">
         <Search aria-hidden="true" />
-        <input value={optionQuery} onChange={(event) => setOptionQuery(event.target.value)} placeholder="Buscar marca" aria-label="Buscar marca" />
+        <input value={optionQuery} onChange={(event) => { setOptionQuery(event.target.value); setActiveOptionIndex(0); }} onKeyDown={handleSearchKeyDown} role="combobox" aria-autocomplete="list" aria-controls={optionsId} aria-expanded="true" placeholder="Buscar marca" aria-label="Buscar marca" />
       </div>
       <button type="button" className={selected.length === 0 ? "active" : ""} onClick={() => onChange([])}><span>TODAS</span>{selected.length === 0 && <Check aria-hidden="true" />}</button>
-      {visibleOptions.map((option) => <label key={option}>
+      {visibleOptions.map((option, index) => <label key={option} className={activeOptionIndex === index ? "keyboard-active" : ""} onMouseEnter={() => setActiveOptionIndex(index)}>
         <input type="checkbox" checked={selected.includes(option)} onChange={() => toggle(option)} />
         <span>{option}</span>
       </label>)}
@@ -206,6 +242,7 @@ export default function ChannelProfitability({
   const [period, setPeriod] = useState<Period>("ANUAL");
   const [selectedMonth, setSelectedMonth] = useState(1);
   const [selectedBrandsByChannel, setSelectedBrandsByChannel] = useState<Partial<Record<Channel, string[]>>>({});
+  const [focusedBrandsByChannel, setFocusedBrandsByChannel] = useState<Partial<Record<Channel, string | null>>>({});
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>("sales");
   const [rankingSort, setRankingSort] = useState<{ key: RankingSortKey; direction: SortDirection }>({ key: "sales", direction: "desc" });
 
@@ -235,15 +272,30 @@ export default function ChannelProfitability({
 
   const brands = useMemo(() => [...new Set(rows.filter((row) => row.channel === channel && row.brand !== "Consolidado").map((row) => row.brand))].sort(), [rows, channel]);
   const selectedBrands = useMemo(() => (selectedBrandsByChannel[channel] ?? []).filter((brandName) => brands.includes(brandName)), [brands, channel, selectedBrandsByChannel]);
+  const requestedFocusedBrand = focusedBrandsByChannel[channel] ?? null;
+  const focusedBrand = requestedFocusedBrand
+    && brands.includes(requestedFocusedBrand)
+    && (selectedBrands.length === 0 || selectedBrands.includes(requestedFocusedBrand))
+    ? requestedFocusedBrand
+    : null;
   const setSelectedBrands = useCallback((brandNames: string[]) => {
     setSelectedBrandsByChannel((currentSelection) => ({ ...currentSelection, [channel]: brandNames }));
+    setFocusedBrandsByChannel((currentSelection) => ({ ...currentSelection, [channel]: null }));
+  }, [channel]);
+  const selectRankingBrand = useCallback((brandName: string) => {
+    setFocusedBrandsByChannel((currentSelection) => ({
+      ...currentSelection,
+      [channel]: currentSelection[channel] === brandName ? null : brandName,
+    }));
   }, [channel]);
   const scenarioOptions = useMemo(() => scenarios.map((item) => ({ value: item, label: scenarioLabel[item] })), []);
   const monthOptions = useMemo(() => months.map((item, index) => ({ value: String(index + 1), label: item })), []);
   const metricOptions = useMemo(() => metricRows.map(({ key, label }) => ({ value: key, label })), []);
-  const matchesBrand = useCallback((row: SourceRow) => selectedBrands.length === 0
-    ? row.brand === "Consolidado"
-    : selectedBrands.includes(row.brand), [selectedBrands]);
+  const matchesBrand = useCallback((row: SourceRow) => focusedBrand
+    ? row.brand === focusedBrand
+    : selectedBrands.length === 0
+      ? row.brand === "Consolidado"
+      : selectedBrands.includes(row.brand), [focusedBrand, selectedBrands]);
 
   const filterRows = useCallback((year: Scenario) => rows.filter((row) =>
     row.channel === channel && row.year === year && matchesPeriod(row) &&
@@ -326,11 +378,11 @@ export default function ChannelProfitability({
       : key === "name" ? "asc" : "desc",
   }));
 
-  const selectedBrandLabel = selectedBrands.length === 0
+  const selectedBrandLabel = focusedBrand ?? (selectedBrands.length === 0
     ? "TODAS LAS MARCAS"
     : selectedBrands.length === 1
       ? selectedBrands[0]
-      : `${selectedBrands.length} MARCAS`;
+      : `${selectedBrands.length} MARCAS`);
 
   const reportHeader = <header className="channel-hero">
     <div><label>RENTABILIDAD FORECAST · BASE OFICIAL</label><h1>Rentabilidad <em>{channel}</em></h1><p>Estado de resultados por canal, marca y periodo. Sin análisis Four Walls.</p></div>
@@ -406,7 +458,14 @@ export default function ChannelProfitability({
       })}</tr></thead><tbody>
         {ranking.map((item) => {
           const cell = (value: number | null) => <span className={value !== null && value < 0 ? "negative" : "positive"}>{value === null ? "—" : `${value >= 0 ? "+" : ""}${percent(value)}`}</span>;
-          return <tr key={item.name}><td><b>{item.name}</b></td><td>{money(item.sales)}</td><td>{cell(item.salesAnnual)}</td><td>{cell(item.salesBudget)}</td><td>{money(item.margin)}</td><td>{item.marginRate === null ? "—" : percent(item.marginRate)}</td><td className={item.operatingResult < 0 ? "negative" : "positive"}>{money(item.operatingResult)}</td><td>{cell(item.operatingAnnual)}</td><td>{cell(item.operatingBudget)}</td><td className={item.utility < 0 ? "negative" : "positive"}>{money(item.utility)}</td><td>{cell(item.utilityAnnual)}</td><td>{cell(item.utilityBudget)}</td></tr>;
+          const isFocused = focusedBrand === item.name;
+          const handleBrandKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              selectRankingBrand(item.name);
+            }
+          };
+          return <tr key={item.name} className={isFocused ? "channel-selected-brand" : ""} tabIndex={0} aria-selected={isFocused} onClick={() => selectRankingBrand(item.name)} onKeyDown={handleBrandKeyDown}><td><b>{item.name}</b></td><td>{money(item.sales)}</td><td>{cell(item.salesAnnual)}</td><td>{cell(item.salesBudget)}</td><td>{money(item.margin)}</td><td>{item.marginRate === null ? "—" : percent(item.marginRate)}</td><td className={item.operatingResult < 0 ? "negative" : "positive"}>{money(item.operatingResult)}</td><td>{cell(item.operatingAnnual)}</td><td>{cell(item.operatingBudget)}</td><td className={item.utility < 0 ? "negative" : "positive"}>{money(item.utility)}</td><td>{cell(item.utilityAnnual)}</td><td>{cell(item.utilityBudget)}</td></tr>;
         })}
       </tbody></table></div>
     </article>

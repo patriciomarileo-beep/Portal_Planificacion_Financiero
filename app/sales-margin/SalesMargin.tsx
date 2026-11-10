@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   getSalesMarginSnapshot,
   loadSalesMargin,
@@ -115,7 +115,9 @@ function MultiSelectFilter<T extends string>({
   selected: T[];
   onChange: (values: T[]) => void;
 }) {
+  const optionsId = useId();
   const [optionQuery, setOptionQuery] = useState("");
+  const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
   const toggle = (option: T) => onChange(
     selected.includes(option)
       ? selected.filter((value) => value !== option)
@@ -129,16 +131,31 @@ function MultiSelectFilter<T extends string>({
   const visibleOptions = options.filter((option) =>
     option.toLocaleLowerCase("es").includes(optionQuery.trim().toLocaleLowerCase("es")),
   );
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!visibleOptions.length) return;
+      setActiveOptionIndex((currentIndex) => event.key === "ArrowDown"
+        ? currentIndex < 0 ? 0 : (currentIndex + 1) % visibleOptions.length
+        : currentIndex < 0 ? visibleOptions.length - 1 : (currentIndex - 1 + visibleOptions.length) % visibleOptions.length);
+      return;
+    }
+    if (event.key === "Enter" && visibleOptions.length) {
+      event.preventDefault();
+      const optionIndex = activeOptionIndex >= 0 && activeOptionIndex < visibleOptions.length ? activeOptionIndex : 0;
+      toggle(visibleOptions[optionIndex]);
+    }
+  };
 
   return <details data-dropdown name="portal-dropdown" className="chain-multiselect sales-margin-multiselect">
     <summary><span>{label}<strong>{selectionLabel}</strong></span><ChevronDown /></summary>
-    <div className="chain-options sales-margin-multiselect-options">
+    <div id={optionsId} className="chain-options sales-margin-multiselect-options">
       <div className="sales-margin-option-search">
         <Search aria-hidden="true" />
-        <input value={optionQuery} onChange={(event) => setOptionQuery(event.target.value)} placeholder={`Buscar ${label.toLocaleLowerCase("es")}`} aria-label={`Buscar ${label.toLocaleLowerCase("es")}`} />
+        <input value={optionQuery} onChange={(event) => { setOptionQuery(event.target.value); setActiveOptionIndex(0); }} onKeyDown={handleSearchKeyDown} role="combobox" aria-autocomplete="list" aria-controls={optionsId} aria-expanded="true" placeholder={`Buscar ${label.toLocaleLowerCase("es")}`} aria-label={`Buscar ${label.toLocaleLowerCase("es")}`} />
       </div>
       <button type="button" className={selected.length === 0 ? "active" : ""} onClick={() => onChange([])}>{allLabel}</button>
-      {visibleOptions.map((option) => <label key={option}>
+      {visibleOptions.map((option, index) => <label key={option} className={activeOptionIndex === index ? "keyboard-active" : ""} onMouseEnter={() => setActiveOptionIndex(index)}>
         <input type="checkbox" checked={selected.includes(option)} onChange={() => toggle(option)} />
         {option}
       </label>)}
@@ -508,6 +525,18 @@ export default function SalesMargin({
   const hasMonthBreakdown = quarterFilter !== "ANUAL";
   const hasSecondary = view === "channel" || view === "chainBrand" || view === "brandChannel" || view === "brandClass" || (hasMonthBreakdown && view === "brand");
   const hasTertiary = hasMonthBreakdown && (view === "chainBrand" || view === "brandChannel" || view === "brandClass");
+  const visibleDataColumnCount = visibleScenarios.length * 2 + visibleComparisons.length;
+  const needsExpandedYearLayout = visibleDataColumnCount > 14;
+  const expandedTableMinWidth = (() => {
+    const primaryWidth = view === "summary" ? 100 : 140;
+    const secondaryWidth = hasSecondary ? 100 : 0;
+    const tertiaryWidth = hasTertiary ? 70 : 0;
+    return primaryWidth
+      + secondaryWidth
+      + tertiaryWidth
+      + visibleScenarios.length * 120
+      + visibleComparisons.length * 72;
+  })();
   const primaryLabel = view === "summary" ? "Período" : view === "channel" ? "Canal" : view === "chainBrand" ? "Cadena" : "Marca";
   const secondaryLabel = view === "channel" || (view === "brand" && hasMonthBreakdown) ? "Período" : view === "chainBrand" ? "Marca" : view === "brandChannel" ? "Canal" : "Clase";
   const mergePrimaryCells = view === "channel" || view === "chainBrand" || view === "brandChannel" || view === "brandClass" || (hasMonthBreakdown && view === "brand");
@@ -567,7 +596,7 @@ export default function SalesMargin({
     <>
       <div className="sales-margin-kpis" aria-busy={loading}>
         <article>
-          <small>VENTA 2027P</small>
+          <div className="sales-margin-kpi-head"><small>VENTA 2027P</small><BarChart3 /></div>
           <div className="sales-margin-kpi-value"><b>{!payload ? "…" : `$${formatSales(metric2027.sales)}`}</b><span>MM$</span></div>
           <div className={`sales-margin-kpi-variation ${variationClass(salesGrowth)}`}>
             <small>VAR. 27P / 26E</small>
@@ -575,7 +604,7 @@ export default function SalesMargin({
           </div>
         </article>
         <article>
-          <small>MARGEN 2027P</small>
+          <div className="sales-margin-kpi-head"><small>MARGEN 2027P</small><BarChart3 /></div>
           <div className="sales-margin-kpi-value"><b>{!payload ? "…" : formatPercent(margin2027)}</b><span>MG %</span></div>
           <div className={`sales-margin-kpi-variation ${variationClass(marginGrowth)}`}>
             <small>VAR. 27P / 26E</small>
@@ -610,7 +639,10 @@ export default function SalesMargin({
 
         {loading && <div className="sales-margin-loading-status" role="status"><RefreshCw className="spin" />{payload ? "Actualizando datos… Puedes seguir revisando el informe." : "Cargando datos… Puedes elegir la vista y el período."}</div>}
         <div className="sales-margin-table-wrap" aria-busy={initialLoading}>
-            <table className={`sales-margin-table view-${view}${hasMonthBreakdown ? " period-breakdown" : ""}`}>
+            <table
+              className={`sales-margin-table view-${view}${hasMonthBreakdown ? " period-breakdown" : ""}${needsExpandedYearLayout ? " expanded-years" : ""}`}
+              style={needsExpandedYearLayout ? { minWidth: expandedTableMinWidth } : undefined}
+            >
               <thead>
                 <tr>
                   <th rowSpan={2}>{primaryLabel}</th>
@@ -621,7 +653,7 @@ export default function SalesMargin({
                 </tr>
                 <tr>
                   {visibleScenarios.flatMap(({ key }) => [
-                    <th key={`${key}-sales`} className="subhead">Venta</th>,
+                    <th key={`${key}-sales`} className="subhead">Ventas</th>,
                     <th key={`${key}-margin`} className="subhead">Mg %</th>,
                   ])}
                 </tr>

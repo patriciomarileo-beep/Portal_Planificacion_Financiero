@@ -2642,7 +2642,7 @@ footer {
   border-radius: 6px;
   background: #f8fafc;
   color: #8793a5;
-  font-size: 8px;
+  font-size: 10px;
   list-style: none;
   cursor: pointer;
   position: relative;
@@ -5592,6 +5592,127 @@ body {
     width: calc(100% - 36px);
     margin-top: 14px;
     padding: 14px 20px;
+  }
+}
+
+/* Venta & Margen: reserva espacio real cuando el filtro muestra años extra. */
+.microsoft-shell .sales-margin-table.expanded-years {
+  --sales-margin-primary-width: 140px;
+  --sales-margin-secondary-width: 100px;
+  --sales-margin-period-width: 70px;
+  --sales-margin-metric-width: 60px;
+  --sales-margin-comparison-width: 72px;
+  width: 100%;
+}
+
+/* Consolidado necesita una única dimensión inicial más compacta. */
+.microsoft-shell .sales-margin-table.expanded-years.view-summary {
+  --sales-margin-primary-width: 100px;
+}
+
+/* Resalta la opción recorrida con las flechas dentro de filtros buscables. */
+.microsoft-shell .chain-options :is(button, label).keyboard-active {
+  color: #174b82;
+  background: #e8f1fb;
+  outline: 2px solid rgba(23, 75, 130, .18);
+  outline-offset: -2px;
+}
+
+/* El ranking funciona como selector de marca para todo el informe del canal. */
+.microsoft-shell .channel-ranking tbody tr {
+  cursor: pointer;
+  transition: background-color .16s ease, box-shadow .16s ease;
+}
+.microsoft-shell .channel-ranking tbody tr:hover td,
+.microsoft-shell .channel-ranking tbody tr:focus-visible td {
+  background: #f3f8fd;
+}
+.microsoft-shell .channel-ranking tbody tr.channel-selected-brand td {
+  background: #e8f3fd;
+  box-shadow: inset 0 1px #bdd5ec, inset 0 -1px #bdd5ec;
+}
+.microsoft-shell .channel-ranking tbody tr.channel-selected-brand td:first-child {
+  box-shadow: inset 4px 0 #176c96, inset 0 1px #bdd5ec, inset 0 -1px #bdd5ec;
+}
+
+/* Venta & Margen usa la misma retícula y tarjeta visual de channel-kpis. */
+.microsoft-shell .sales-margin-kpis {
+  width: min(1340px, calc(100% - 68px));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 auto;
+  padding: 28px 42px 0;
+  box-sizing: border-box;
+}
+.microsoft-shell .sales-margin-kpis article {
+  min-width: 0;
+  min-height: 0;
+  padding: 20px;
+  border: 1px solid #d8e2ed;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(28, 52, 84, .045);
+}
+.microsoft-shell .sales-margin-kpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #6d8099;
+}
+.microsoft-shell .sales-margin-kpi-head > small {
+  color: #6d8099;
+  font-size: 10px;
+  letter-spacing: .1em;
+}
+.microsoft-shell .sales-margin-kpi-head > svg {
+  width: 20px;
+  color: #2765aa;
+}
+.microsoft-shell .sales-margin-kpi-value {
+  margin: 15px 0 8px;
+}
+.microsoft-shell .sales-margin-kpis article b {
+  color: #163b70;
+  font-size: clamp(21px, 1.75vw, 29px);
+  font-weight: 700;
+}
+.microsoft-shell .sales-margin-kpi-value > span {
+  color: #8b9bb0;
+  font-size: 11px;
+}
+
+/* Patrón trimestral único: corresponde al selector utilizado en B&L. */
+.microsoft-shell .quarter-filter {
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: #f0f2f5;
+}
+.microsoft-shell .quarter-filter button {
+  min-width: 38px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 7px;
+  color: #8a95a5;
+  background: transparent;
+  font-size: 8px;
+  font-weight: 800;
+}
+.microsoft-shell .quarter-filter button.active {
+  color: #173c73;
+  background: #fff;
+  box-shadow: 0 2px 7px #1c385322;
+}
+
+@media (max-width: 700px) {
+  .microsoft-shell .sales-margin-kpis {
+    width: calc(100% - 36px);
+    grid-template-columns: 1fr;
+    padding: 20px 0 0;
   }
 }
 

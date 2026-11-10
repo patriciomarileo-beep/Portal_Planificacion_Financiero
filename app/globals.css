@@ -5641,7 +5641,7 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin: 0 auto;
-  padding: 28px 42px 0;
+  padding: 28px 42px;
   box-sizing: border-box;
 }
 .microsoft-shell .sales-margin-kpis article {
@@ -5676,6 +5676,23 @@ body {
   font-size: clamp(21px, 1.75vw, 29px);
   font-weight: 700;
 }
+
+.microsoft-shell
+.sales-margin-kpis article
+.sales-margin-kpi-value b {
+  font-size: clamp(23px, 2vw, 31px);
+}
+
+
+.microsoft-shell .imports-periods.quarter-filter {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.microsoft-shell .imports-periods.quarter-filter button {
+  flex: 0 0 auto;
+}
+
 .microsoft-shell .sales-margin-kpi-value > span {
   color: #8b9bb0;
   font-size: 11px;
@@ -5717,3 +5734,26 @@ body {
 }
 
 
+
+/* Rentabilidad Forecast: aspecto trimestral B&L */
+.microsoft-shell .channel-period-control
+.channel-periods.quarter-filter {
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: #f0f2f5;
+}
+
+.microsoft-shell .channel-period-control
+.channel-periods.quarter-filter button {
+  border-radius: 7px;
+  color: #8a95a5;
+  background: transparent;
+}
+
+.microsoft-shell .channel-period-control
+.channel-periods.quarter-filter button.active {
+  color: #173c73;
+  background: #fff;
+  box-shadow: 0 2px 7px #1c385322;
+}

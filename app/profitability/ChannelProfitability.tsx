@@ -130,10 +130,42 @@ function SearchableSelect<T extends string>({
     onChange(nextValue);
     setOptionQuery("");
     setActiveOptionIndex(-1);
-    if (detailsRef.current) detailsRef.current.open = false;
+
+    if (detailsRef.current){
+      detailsRef.current.open = false;
+      detailsRef.current
+        .querySelector("summary")
+        ?.focus();
+    } 
   };
 
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    
+  if (event.key === "Escape") {
+    event.preventDefault();
+
+    const details = event.currentTarget.closest("details");
+
+    if (details) {
+      details.open = false;
+      details.querySelector("summary")?.focus();
+    }
+
+    setActiveOptionIndex(-1);
+    return;
+  }
+
+  if (event.key === "Home" || event.key === "End") {
+    if (!visibleOptions.length) return;
+
+    event.preventDefault();
+    setActiveOptionIndex(
+      event.key === "Home" ? 0 : visibleOptions.length - 1
+    );
+    return;
+  }
+
+
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       if (!visibleOptions.length) return;
@@ -148,6 +180,24 @@ function SearchableSelect<T extends string>({
     }
   };
 
+
+  useEffect(() => {
+    if (activeOptionIndex < 0) return;
+ 
+    const active = document
+      .getElementById(optionsId)
+      ?.querySelector<HTMLElement>(
+        "[data-keyboard-option].keyboard-active"
+      );
+
+    active?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+      behavior: "auto",
+    });
+  }, [activeOptionIndex, optionsId, optionQuery]);
+
+
   return <details ref={detailsRef} data-dropdown name="portal-dropdown" className={`chain-multiselect sales-margin-multiselect channel-filter-select ${className}`.trim()}>
     <summary><span>{label}<strong>{selectedLabel}</strong></span><ChevronDown /></summary>
     <div id={optionsId} className="chain-options sales-margin-multiselect-options channel-searchable-options">
@@ -155,9 +205,19 @@ function SearchableSelect<T extends string>({
         <Search aria-hidden="true" />
         <input value={optionQuery} onChange={(event) => { setOptionQuery(event.target.value); setActiveOptionIndex(0); }} onKeyDown={handleSearchKeyDown} role="combobox" aria-autocomplete="list" aria-controls={optionsId} aria-expanded="true" aria-label={`Buscar ${label.toLocaleLowerCase("es")}`} placeholder={`Buscar ${label.toLocaleLowerCase("es")}`} />
       </div>
-      {visibleOptions.map((option, index) => <button type="button" key={option.value} className={`${option.value === value ? "active" : ""}${activeOptionIndex === index ? " keyboard-active" : ""}`} onMouseEnter={() => setActiveOptionIndex(index)} onClick={() => select(option.value)}>
+
+      {visibleOptions.map((option, index) =>  (
+        <button
+          type="button"
+          key={option.value}
+          data-keyboard-option
+          className={`${option.value === value ? "active" : ""}${activeOptionIndex === index ? " keyboard-active" : ""}`}
+          onMouseEnter={() => setActiveOptionIndex(index)}
+          onClick={() => select(option.value)}
+        >
         <span>{option.label}</span>{option.value === value && <Check aria-hidden="true" />}
-      </button>)}
+      </button>
+      ))}
       {visibleOptions.length === 0 && <small className="sales-margin-option-empty">Sin coincidencias</small>}
     </div>
   </details>;
@@ -193,20 +253,62 @@ function SearchableMultiSelect({
   );
 
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-      if (!visibleOptions.length) return;
-      setActiveOptionIndex((currentIndex) => event.key === "ArrowDown"
-        ? currentIndex < 0 ? 0 : (currentIndex + 1) % visibleOptions.length
-        : currentIndex < 0 ? visibleOptions.length - 1 : (currentIndex - 1 + visibleOptions.length) % visibleOptions.length);
-      return;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+
+    const details = event.currentTarget.closest("details");
+
+    if (details) {
+      details.open = false;
+      details.querySelector("summary")?.focus();
     }
-    if (event.key === "Enter" && visibleOptions.length) {
+
+    setActiveOptionIndex(-1);
+    return;
+  }
+
+  if (event.key === "Home" || event.key === "End") {
+    if (!visibleOptions.length) return;
+
+    event.preventDefault();
+    setActiveOptionIndex(
+      event.key === "Home" ? 0 : visibleOptions.length - 1
+    );
+    return;
+  }
+
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    if (!visibleOptions.length) return;
+    setActiveOptionIndex((currentIndex) => event.key === "ArrowDown"
+      ? currentIndex < 0 ? 0 : (currentIndex + 1) % visibleOptions.length
+      : currentIndex < 0 ? visibleOptions.length - 1 : (currentIndex - 1 + visibleOptions.length) % visibleOptions.length);
+    return;
+  }
+  if (event.key === "Enter" && visibleOptions.length) {
       event.preventDefault();
       const optionIndex = activeOptionIndex >= 0 && activeOptionIndex < visibleOptions.length ? activeOptionIndex : 0;
       toggle(visibleOptions[optionIndex]);
     }
   };
+
+  useEffect(() => {
+    if (activeOptionIndex < 0) return;
+
+    const active = document
+      .getElementById(optionsId)
+      ?.querySelector<HTMLElement>(
+        "[data-keyboard-option].keyboard-active"
+    );
+
+    active?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+      behavior: "auto",
+    });
+  }, [activeOptionIndex, optionsId, optionQuery]);
+
 
   return <details data-dropdown name="portal-dropdown" className="chain-multiselect sales-margin-multiselect channel-filter-select brand-filter">
     <summary><span>{label}<strong>{selectionLabel}</strong></span><ChevronDown /></summary>
@@ -216,7 +318,12 @@ function SearchableMultiSelect({
         <input value={optionQuery} onChange={(event) => { setOptionQuery(event.target.value); setActiveOptionIndex(0); }} onKeyDown={handleSearchKeyDown} role="combobox" aria-autocomplete="list" aria-controls={optionsId} aria-expanded="true" placeholder="Buscar marca" aria-label="Buscar marca" />
       </div>
       <button type="button" className={selected.length === 0 ? "active" : ""} onClick={() => onChange([])}><span>TODAS</span>{selected.length === 0 && <Check aria-hidden="true" />}</button>
-      {visibleOptions.map((option, index) => <label key={option} className={activeOptionIndex === index ? "keyboard-active" : ""} onMouseEnter={() => setActiveOptionIndex(index)}>
+      {visibleOptions.map((option, index) => <label
+        key={option}
+        data-keyboard-option
+        className={activeOptionIndex === index ? "keyboard-active" : ""}
+        onMouseEnter={() => setActiveOptionIndex(index)}
+      >
         <input type="checkbox" checked={selected.includes(option)} onChange={() => toggle(option)} />
         <span>{option}</span>
       </label>)}
@@ -405,7 +512,7 @@ export default function ChannelProfitability({
       <SearchableSelect label="ESCENARIO" value={scenario} options={scenarioOptions} onChange={setScenario} className="scenario-filter" />
       <div className="channel-period-control">
         <small>PERIODO</small>
-        <div className="channel-periods">{periods.map((item) => <button type="button" key={item} className={period === item ? "active" : ""} onClick={() => setPeriod(item)}>{item}</button>)}</div>
+        <div className="channel-periods quarter-filter">{periods.map((item) => <button type="button" key={item} className={period === item ? "active" : ""} onClick={() => setPeriod(item)}>{item}</button>)}</div>
       </div>
       {period === "MES" && <SearchableSelect label="MES" value={String(selectedMonth)} options={monthOptions} onChange={(value) => setSelectedMonth(Number(value))} className="month-filter" />}
       <SearchableMultiSelect label="MARCA" options={brands} selected={selectedBrands} onChange={setSelectedBrands} />

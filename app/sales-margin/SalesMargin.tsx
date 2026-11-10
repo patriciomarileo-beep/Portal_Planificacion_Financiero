@@ -132,6 +132,32 @@ function MultiSelectFilter<T extends string>({
     option.toLocaleLowerCase("es").includes(optionQuery.trim().toLocaleLowerCase("es")),
   );
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+
+    
+    if (event.key === "Escape") {
+      event.preventDefault();
+
+      const details = event.currentTarget.closest("details");
+
+      if (details) {
+        details.open = false;
+        details.querySelector("summary")?.focus();
+      }
+
+      setActiveOptionIndex(-1);
+      return;
+    }
+
+    if (event.key === "Home" || event.key === "End") {
+      if (!visibleOptions.length) return;
+
+      event.preventDefault();
+      setActiveOptionIndex(
+        event.key === "Home" ? 0 : visibleOptions.length - 1
+      );
+    return;
+    }
+
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       if (!visibleOptions.length) return;
@@ -147,6 +173,22 @@ function MultiSelectFilter<T extends string>({
     }
   };
 
+  useEffect(() => {
+    if (activeOptionIndex < 0) return;
+
+  const active = document
+    .getElementById(optionsId)
+    ?.querySelector<HTMLElement>(
+      "[data-keyboard-option].keyboard-active"
+    );
+
+    active?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+      behavior: "auto",
+    });
+  }, [activeOptionIndex, optionsId, optionQuery]);
+
   return <details data-dropdown name="portal-dropdown" className="chain-multiselect sales-margin-multiselect">
     <summary><span>{label}<strong>{selectionLabel}</strong></span><ChevronDown /></summary>
     <div id={optionsId} className="chain-options sales-margin-multiselect-options">
@@ -155,7 +197,14 @@ function MultiSelectFilter<T extends string>({
         <input value={optionQuery} onChange={(event) => { setOptionQuery(event.target.value); setActiveOptionIndex(0); }} onKeyDown={handleSearchKeyDown} role="combobox" aria-autocomplete="list" aria-controls={optionsId} aria-expanded="true" placeholder={`Buscar ${label.toLocaleLowerCase("es")}`} aria-label={`Buscar ${label.toLocaleLowerCase("es")}`} />
       </div>
       <button type="button" className={selected.length === 0 ? "active" : ""} onClick={() => onChange([])}>{allLabel}</button>
-      {visibleOptions.map((option, index) => <label key={option} className={activeOptionIndex === index ? "keyboard-active" : ""} onMouseEnter={() => setActiveOptionIndex(index)}>
+      
+      {visibleOptions.map((option, index) => <label
+        key={option}
+        data-keyboard-option
+        className={activeOptionIndex === index ? "keyboard-active" : ""}
+        onMouseEnter={() => setActiveOptionIndex(index)}
+      >
+
         <input type="checkbox" checked={selected.includes(option)} onChange={() => toggle(option)} />
         {option}
       </label>)}

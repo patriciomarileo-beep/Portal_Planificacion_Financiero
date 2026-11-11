@@ -68,9 +68,10 @@ export const bigQueryQueryUrl = (projectId: string, jobId?: string) => {
 };
 
 export const fetchBigQuery = async (url: URL, options: RequestInit) => {
-  // Validate the destination before attaching credentials and never follow redirects.
+  // Validate the destination before attaching credentials. `manual` prevents
+  // following redirects and is supported by both Node and the Vinext runtime.
   if (bigQueryOrigins.has(url.origin)) {
-    return fetch(url, { ...options, redirect: "error" });
+    return fetch(url, { ...options, redirect: "manual" });
   }
   throw new Error("Destino BigQuery no permitido.");
 };
@@ -176,7 +177,11 @@ const serviceAccountAccessToken = async ({ clientEmail, privateKey }: { clientEm
   const header = { alg: "RS256", typ: "JWT" };
   const claim = {
     iss: clientEmail,
-    scope: "https://www.googleapis.com/auth/bigquery",
+    scope: [
+      "https://www.googleapis.com/auth/bigquery",
+      "https://www.googleapis.com/auth/spreadsheets.readonly",
+      "https://www.googleapis.com/auth/drive.readonly",
+    ].join(" "),
     aud: "https://oauth2.googleapis.com/token",
     exp: now + 3600,
     iat: now,
@@ -253,7 +258,11 @@ export const googleAccessToken = async (preferAdc = false) => {
     // Use the attached service account / Workload Identity, never serialized user ADC.
     productionAuth ??= new GoogleAuth({
       projectId: configuredProjectId(),
-      scopes: ["https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/spreadsheets.readonly"],
+      scopes: [
+        "https://www.googleapis.com/auth/cloud-platform",
+        "https://www.googleapis.com/auth/spreadsheets.readonly",
+        "https://www.googleapis.com/auth/drive.readonly",
+      ],
     });
     const token = await productionAuth.getAccessToken();
     if (!token) throw new Error("Cloud credentials unavailable.");
@@ -263,7 +272,16 @@ export const googleAccessToken = async (preferAdc = false) => {
   const authMode = (process.env.BIGQUERY_AUTH_MODE || "").toLowerCase();
   // Los modos explícitos deben prevalecer sobre BIGQUERY_ACCESS_TOKEN, porque
   // ese token es sólo un respaldo temporal y expira aproximadamente en una hora.
-  if (authMode === "local-adc") return adcAccessToken(true);
+  if (authMode === "local-adc") {
+    try {
+      return await adcAccessToken(true);
+    } catch (error) {
+      // Vinext's local worker cannot always read the host ADC file. The dev
+      // launcher injects a short-lived token and renews it every 45 minutes.
+      if (process.env.BIGQUERY_ACCESS_TOKEN) return process.env.BIGQUERY_ACCESS_TOKEN;
+      throw error;
+    }
+  }
   if (authMode === "adc") return adcAccessToken();
 
   if (process.env.BIGQUERY_ACCESS_TOKEN) return process.env.BIGQUERY_ACCESS_TOKEN;

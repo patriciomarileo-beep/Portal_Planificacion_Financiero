@@ -4447,10 +4447,10 @@ body {
 .sales-margin-tabs button:hover { color: #126fa4; background: #edf6fb; }
 /* Apariencia de la pestaña actualmente seleccionada. */
 .sales-margin-tabs button.active { border-bottom-color: #0078a8; color: #075d8c; background: #eaf5fa; }
-/* Barra horizontal: título, Marca, Canal, Clase, Años, trimestre y acciones. */
-.sales-margin-toolbar { min-height: 83px; display: grid; grid-template-columns: 160px repeat(4, minmax(130px, 1fr)) 190px auto; align-items: end; gap: 12px; padding: 15px 18px; }
+/* Barra horizontal: título, filtros compactos, trimestre y acciones. */
+.sales-margin-toolbar { min-height: 83px; display: grid; grid-template-columns: 160px repeat(4, minmax(0, 180px)) 180px minmax(0, 1fr); align-items: end; gap: 12px; padding: 15px 18px; }
 /* Cadena × marca agrega Cadena sin reemplazar Canal ni el filtro de años. */
-.sales-margin-toolbar.with-chain-filter { grid-template-columns: 150px repeat(5, minmax(115px, 1fr)) 190px auto; }
+.sales-margin-toolbar.with-chain-filter { grid-template-columns: 150px repeat(5, minmax(0, 165px)) 180px minmax(0, 1fr); }
 /* Texto pequeño usado como etiqueta dentro de la barra de herramientas. */
 .sales-margin-toolbar small { display: block; color: #718197; font-size: 8px; font-weight: 800; letter-spacing: .12em; }
 /* Título de la vista activa: Consolidado, Canal, Marca, etc. */
@@ -4459,9 +4459,9 @@ body {
 .sales-margin-toolbar-title { min-width: 0; }
 /* La última columna agrupa limpiar, buscar y actualizar sin romper la fila. */
 .sales-margin-toolbar-right { min-width: 0; display: flex; align-items: stretch; justify-content: flex-end; gap: 8px; }
-/* Multiselección reutiliza el patrón de CADENA de B&L dentro de la grilla. */
-.sales-margin-multiselect { width: 100%; min-width: 0; flex: none; }
-.sales-margin-multiselect-options { width: max(240px, 100%); }
+/* Multiselección compacta: limita el ancho del control y de su panel flotante. */
+.sales-margin-toolbar details[data-dropdown].sales-margin-multiselect { width: 100%; max-width: 180px; min-width: 0; flex: none; justify-self: start; }
+.sales-margin-multiselect-options { width: 210px; min-width: 100%; max-width: min(210px, calc(100vw - 32px)); }
 .sales-margin-multiselect-options label {
   display: grid;
   grid-template-columns: 15px minmax(0, 1fr);
@@ -5725,6 +5725,61 @@ body {
   color: #173c73;
   background: #fff;
   box-shadow: 0 2px 7px #1c385322;
+}
+
+/* Venta & Margen: iguala el selector trimestral a la altura de los dropdowns. */
+.microsoft-shell .sales-margin-toolbar .sales-margin-quarter-filter {
+  width: 180px;
+  min-width: 180px;
+  max-width: 180px;
+  height: 46px;
+  display: grid;
+  grid-template-columns: 44px repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 2px;
+  padding: 4px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+/* Cada opción ocupa su celda sin imponer el mínimo global de 38 px. */
+.microsoft-shell .sales-margin-toolbar .sales-margin-quarter-filter button {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 3px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .microsoft-shell .sales-margin-toolbar details[data-dropdown].sales-margin-multiselect {
+    max-width: 180px;
+  }
+
+  .microsoft-shell .sales-margin-toolbar .sales-margin-quarter-filter {
+    width: 180px;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 800px) {
+  .microsoft-shell .sales-margin-toolbar details[data-dropdown].sales-margin-multiselect,
+  .microsoft-shell .sales-margin-toolbar .sales-margin-quarter-filter {
+    width: 100%;
+    max-width: none;
+  }
+
+  .microsoft-shell .sales-margin-toolbar .sales-margin-quarter-filter {
+    grid-template-columns: minmax(44px, 1.25fr) repeat(4, minmax(0, 1fr));
+  }
+
+  .microsoft-shell .sales-margin-multiselect-options {
+    width: 100%;
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 700px) {

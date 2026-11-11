@@ -38,7 +38,7 @@ test("runQuery follows BigQuery page tokens when pagination is enabled", async (
     assert.match(requests[1].input, /location=us-east4/);
     for (const request of requests) {
       assert.equal(new URL(request.input).origin, "https://bigquery.googleapis.com");
-      assert.equal(request.init.redirect, "error");
+      assert.equal(request.init.redirect, "manual");
     }
   } finally {
     globalThis.fetch = originalFetch;
@@ -61,7 +61,7 @@ test("configuration and pagination metadata cannot replace the Google origin or 
     assert.equal(url.username, "");
     assert.equal(url.password, "");
     assert.equal(url.hash, "");
-    assert.equal(init.redirect, "error");
+    assert.equal(init.redirect, "manual");
     assert.match(url.pathname, new RegExp("^/bigquery/v2/projects/"));
     if (requests.length === 1) return Response.json({
       rows: [], pageToken, jobReference: { jobId, location },
@@ -115,7 +115,7 @@ test("calls without pagination preserve the original query body and response", a
   let requests = 0;
   globalThis.fetch = async (_input, options) => {
     requests += 1;
-    assert.equal(options.redirect, "error");
+    assert.equal(options.redirect, "manual");
     assert.equal("maxResults" in JSON.parse(options.body), false);
     return Response.json(payload);
   };

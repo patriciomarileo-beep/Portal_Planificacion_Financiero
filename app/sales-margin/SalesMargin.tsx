@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   getSalesMarginSnapshot,
   loadSalesMargin,
   SalesMarginRequestError,
-  type SalesMarginRow as ApiRow,
   type SalesMarginPayload as Payload,
+  type SalesMarginRow as ApiRow,
 } from "./sales-margin-data";
 import {
   BarChart3,
@@ -22,7 +22,8 @@ import {
   X,
 } from "lucide-react";
 
-type Scenario = "2024" | "2025" | "2026P" | "2026" | "2027P";
+type Scenario = "2020" | "2021" | "2022" | "2023" | "2024" | "2025" | "2026" | "2026P" | "2026E" | "2027P" | "2027M" | "2027E" | "2028P" | "2028E";
+type ScenarioLabel = Scenario;
 type View = "summary" | "channel" | "chainBrand" | "brand" | "brandChannel" | "brandClass";
 type QuarterFilter = "ANUAL" | "Q1" | "Q2" | "Q3" | "Q4";
 type Metric = { sales: number; marginAmount: number };
@@ -37,19 +38,42 @@ type DisplayRow = {
   total?: boolean;
 };
 
-const scenarios: { key: Scenario; label: string }[] = [
+const scenarios: { key: Scenario; label: ScenarioLabel }[] = [
+  { key: "2020", label: "2020" },
+  { key: "2021", label: "2021" },
+  { key: "2022", label: "2022" },
+  { key: "2023", label: "2023" },
   { key: "2024", label: "2024" },
   { key: "2025", label: "2025" },
+  { key: "2026", label: "2026" },
   { key: "2026P", label: "2026P" },
-  { key: "2026", label: "2026E" },
+  { key: "2026E", label: "2026E" },
   { key: "2027P", label: "2027P" },
+  { key: "2027M", label: "2027M" },
+  { key: "2027E", label: "2027E" },
+  { key: "2028P", label: "2028P" },
+  { key: "2028E", label: "2028E" },
 ];
 
+const yearOptions = scenarios.map(({ label }) => label);
+
+const currentDefaultYears: ScenarioLabel[] = ["2024", "2025", "2026P", "2026E", "2027P", "2027M"];
+const nextDefaultYears: ScenarioLabel[] = ["2025", "2026", "2027P", "2027M", "2027E", "2028P", "2028E"];
+
 const comparisons: { label: string; current: Scenario; previous: Scenario }[] = [
+  { label: "21/20", current: "2021", previous: "2020" },
+  { label: "22/21", current: "2022", previous: "2021" },
+  { label: "23/22", current: "2023", previous: "2022" },
+  { label: "24/23", current: "2024", previous: "2023" },
   { label: "25/24", current: "2025", previous: "2024" },
-  { label: "26E/25", current: "2026", previous: "2025" },
-  { label: "26E/26P", current: "2026", previous: "2026P" },
-  { label: "27P/26E", current: "2027P", previous: "2026" },
+  { label: "26/25", current: "2026", previous: "2025" },
+  { label: "26E/25", current: "2026E", previous: "2025" },
+  { label: "26E/26P", current: "2026E", previous: "2026P" },
+  { label: "27P/26", current: "2027P", previous: "2026" },
+  { label: "27P/26E", current: "2027P", previous: "2026E" },
+  { label: "27E/27P", current: "2027E", previous: "2027P" },
+  { label: "28P/27E", current: "2028P", previous: "2027E" },
+  { label: "28E/28P", current: "2028E", previous: "2028P" },
 ];
 
 // Oculta temporalmente la vista sin eliminar su lógica ni sus estilos.
@@ -77,7 +101,7 @@ const quarterMonths: Record<Exclude<QuarterFilter, "ANUAL">, number[]> = {
   Q4: [10, 11, 12],
 };
 
-function MultiSelectFilter({
+function MultiSelectFilter<T extends string>({
   label,
   plural,
   allLabel,
@@ -88,12 +112,14 @@ function MultiSelectFilter({
   label: string;
   plural: string;
   allLabel: string;
-  options: string[];
-  selected: string[];
-  onChange: (values: string[]) => void;
+  options: T[];
+  selected: T[];
+  onChange: (values: T[]) => void;
 }) {
+  const optionsId = useId();
   const [optionQuery, setOptionQuery] = useState("");
-  const toggle = (option: string) => onChange(
+  const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
+  const toggle = (option: T) => onChange(
     selected.includes(option)
       ? selected.filter((value) => value !== option)
       : [...selected, option],
@@ -106,16 +132,80 @@ function MultiSelectFilter({
   const visibleOptions = options.filter((option) =>
     option.toLocaleLowerCase("es").includes(optionQuery.trim().toLocaleLowerCase("es")),
   );
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+
+    
+    if (event.key === "Escape") {
+      event.preventDefault();
+
+      const details = event.currentTarget.closest("details");
+
+      if (details) {
+        details.open = false;
+        details.querySelector("summary")?.focus();
+      }
+
+      setActiveOptionIndex(-1);
+      return;
+    }
+
+    if (event.key === "Home" || event.key === "End") {
+      if (!visibleOptions.length) return;
+
+      event.preventDefault();
+      setActiveOptionIndex(
+        event.key === "Home" ? 0 : visibleOptions.length - 1
+      );
+    return;
+    }
+
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!visibleOptions.length) return;
+      setActiveOptionIndex((currentIndex) => event.key === "ArrowDown"
+        ? currentIndex < 0 ? 0 : (currentIndex + 1) % visibleOptions.length
+        : currentIndex < 0 ? visibleOptions.length - 1 : (currentIndex - 1 + visibleOptions.length) % visibleOptions.length);
+      return;
+    }
+    if (event.key === "Enter" && visibleOptions.length) {
+      event.preventDefault();
+      const optionIndex = activeOptionIndex >= 0 && activeOptionIndex < visibleOptions.length ? activeOptionIndex : 0;
+      toggle(visibleOptions[optionIndex]);
+    }
+  };
+
+  useEffect(() => {
+    if (activeOptionIndex < 0) return;
+
+  const active = document
+    .getElementById(optionsId)
+    ?.querySelector<HTMLElement>(
+      "[data-keyboard-option].keyboard-active"
+    );
+
+    active?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+      behavior: "auto",
+    });
+  }, [activeOptionIndex, optionsId, optionQuery]);
 
   return <details data-dropdown name="portal-dropdown" className="chain-multiselect sales-margin-multiselect">
     <summary><span>{label}<strong>{selectionLabel}</strong></span><ChevronDown /></summary>
-    <div className="chain-options sales-margin-multiselect-options">
+    <div id={optionsId} className="chain-options sales-margin-multiselect-options">
       <div className="sales-margin-option-search">
         <Search aria-hidden="true" />
-        <input value={optionQuery} onChange={(event) => setOptionQuery(event.target.value)} placeholder={`Buscar ${label.toLocaleLowerCase("es")}`} aria-label={`Buscar ${label.toLocaleLowerCase("es")}`} />
+        <input value={optionQuery} onChange={(event) => { setOptionQuery(event.target.value); setActiveOptionIndex(0); }} onKeyDown={handleSearchKeyDown} role="combobox" aria-autocomplete="list" aria-controls={optionsId} aria-expanded="true" placeholder={`Buscar ${label.toLocaleLowerCase("es")}`} aria-label={`Buscar ${label.toLocaleLowerCase("es")}`} />
       </div>
       <button type="button" className={selected.length === 0 ? "active" : ""} onClick={() => onChange([])}>{allLabel}</button>
-      {visibleOptions.map((option) => <label key={option}>
+      
+      {visibleOptions.map((option, index) => <label
+        key={option}
+        data-keyboard-option
+        className={activeOptionIndex === index ? "keyboard-active" : ""}
+        onMouseEnter={() => setActiveOptionIndex(index)}
+      >
+
         <input type="checkbox" checked={selected.includes(option)} onChange={() => toggle(option)} />
         {option}
       </label>)}
@@ -386,6 +476,7 @@ export default function SalesMargin({
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [chainFilter, setChainFilter] = useState<string[]>([]);
   const [classFilter, setClassFilter] = useState<string[]>([]);
+  const [yearFilter, setYearFilter] = useState<ScenarioLabel[] | null>(null);
   const [quarterFilter, setQuarterFilter] = useState<QuarterFilter>("ANUAL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -446,12 +537,32 @@ export default function SalesMargin({
     [filteredSourceRows, view, quarterFilter],
   );
   const visibleRows = allRows;
+  const defaultYearFilter = useMemo(
+    () => (payload?.rows ?? []).some(({ scenario }) => scenario === "2028P" || scenario === "2028E")
+      ? nextDefaultYears
+      : currentDefaultYears,
+    [payload],
+  );
+  const effectiveYearFilter = yearFilter ?? defaultYearFilter;
+  const visibleScenarios = useMemo(
+    () => effectiveYearFilter.length === 0
+      ? scenarios
+      : scenarios.filter(({ label }) => effectiveYearFilter.includes(label)),
+    [effectiveYearFilter],
+  );
+  const visibleComparisons = useMemo(() => {
+    if (effectiveYearFilter.length === 0) return comparisons;
+    const visibleScenarioKeys = new Set(visibleScenarios.map(({ key }) => key));
+    return comparisons.filter(({ current, previous }) =>
+      visibleScenarioKeys.has(current) && visibleScenarioKeys.has(previous)
+    );
+  }, [effectiveYearFilter, visibleScenarios]);
   const totalMetrics = useMemo(() => {
     const rows = groupedRows(filteredSourceRows, () => "TOTAL");
     return rows[0]?.metrics ?? {};
   }, [filteredSourceRows]);
   const metric2027 = totalMetrics["2027P"] ?? zeroMetric();
-  const metric2026 = totalMetrics["2026"] ?? zeroMetric();
+  const metric2026 = totalMetrics["2026E"] ?? zeroMetric();
   const salesGrowth = variation(metric2027, metric2026);
   const margin2027 = marginPercent(metric2027);
   const margin2026 = marginPercent(metric2026);
@@ -464,6 +575,18 @@ export default function SalesMargin({
   const hasMonthBreakdown = quarterFilter !== "ANUAL";
   const hasSecondary = view === "channel" || view === "chainBrand" || view === "brandChannel" || view === "brandClass" || (hasMonthBreakdown && view === "brand");
   const hasTertiary = hasMonthBreakdown && (view === "chainBrand" || view === "brandChannel" || view === "brandClass");
+  const visibleDataColumnCount = visibleScenarios.length * 2 + visibleComparisons.length;
+  const needsExpandedYearLayout = visibleDataColumnCount > 14;
+  const expandedTableMinWidth = (() => {
+    const primaryWidth = view === "summary" ? 100 : 140;
+    const secondaryWidth = hasSecondary ? 100 : 0;
+    const tertiaryWidth = hasTertiary ? 70 : 0;
+    return primaryWidth
+      + secondaryWidth
+      + tertiaryWidth
+      + visibleScenarios.length * 120
+      + visibleComparisons.length * 72;
+  })();
   const primaryLabel = view === "summary" ? "Período" : view === "channel" ? "Canal" : view === "chainBrand" ? "Cadena" : "Marca";
   const secondaryLabel = view === "channel" || (view === "brand" && hasMonthBreakdown) ? "Período" : view === "chainBrand" ? "Marca" : view === "brandChannel" ? "Canal" : "Clase";
   const mergePrimaryCells = view === "channel" || view === "chainBrand" || view === "brandChannel" || view === "brandClass" || (hasMonthBreakdown && view === "brand");
@@ -492,12 +615,14 @@ export default function SalesMargin({
     + channelFilter.length
     + (view === "chainBrand" ? chainFilter.length : 0)
     + classFilter.length
+    + (yearFilter === null ? 0 : Math.max(yearFilter.length, 1))
     + (quarterFilter === "ANUAL" ? 0 : 1);
   const clearFilters = () => {
     setBrandFilter([]);
     setChannelFilter([]);
     setChainFilter([]);
     setClassFilter([]);
+    setYearFilter(null);
     setQuarterFilter("ANUAL");
   };
   const initialLoading = loading && !payload;
@@ -521,7 +646,7 @@ export default function SalesMargin({
     <>
       <div className="sales-margin-kpis" aria-busy={loading}>
         <article>
-          <small>VENTA 2027P</small>
+          <div className="sales-margin-kpi-head"><small>VENTA 2027P</small><BarChart3 /></div>
           <div className="sales-margin-kpi-value"><b>{!payload ? "…" : `$${formatSales(metric2027.sales)}`}</b><span>MM$</span></div>
           <div className={`sales-margin-kpi-variation ${variationClass(salesGrowth)}`}>
             <small>VAR. 27P / 26E</small>
@@ -529,7 +654,7 @@ export default function SalesMargin({
           </div>
         </article>
         <article>
-          <small>MARGEN 2027P</small>
+          <div className="sales-margin-kpi-head"><small>MARGEN 2027P</small><BarChart3 /></div>
           <div className="sales-margin-kpi-value"><b>{!payload ? "…" : formatPercent(margin2027)}</b><span>MG %</span></div>
           <div className={`sales-margin-kpi-variation ${variationClass(marginGrowth)}`}>
             <small>VAR. 27P / 26E</small>
@@ -553,6 +678,7 @@ export default function SalesMargin({
           <MultiSelectFilter label="CANAL" plural="CANALES" allLabel="TODOS" options={filterOptions.channels} selected={channelFilter} onChange={setChannelFilter} />
           {view === "chainBrand" && <MultiSelectFilter label="CADENA" plural="CADENAS" allLabel="TODAS" options={filterOptions.chains} selected={chainFilter} onChange={setChainFilter} />}
           <MultiSelectFilter label="CLASE" plural="CLASES" allLabel="TODAS" options={filterOptions.classes} selected={classFilter} onChange={setClassFilter} />
+          <MultiSelectFilter label="AÑO" plural="AÑOS" allLabel="TODOS" options={yearOptions} selected={effectiveYearFilter} onChange={setYearFilter} />
           <div className="quarter-filter sales-margin-quarter-filter" aria-label="Trimestre de Venta y Margen">
             {quarters.map((quarter) => <button type="button" key={quarter} className={quarterFilter === quarter ? "active" : ""} onClick={() => setQuarterFilter(quarter)}>{quarter}</button>)}
           </div>
@@ -563,18 +689,21 @@ export default function SalesMargin({
 
         {loading && <div className="sales-margin-loading-status" role="status"><RefreshCw className="spin" />{payload ? "Actualizando datos… Puedes seguir revisando el informe." : "Cargando datos… Puedes elegir la vista y el período."}</div>}
         <div className="sales-margin-table-wrap" aria-busy={initialLoading}>
-            <table className={`sales-margin-table view-${view}${hasMonthBreakdown ? " period-breakdown" : ""}`}>
+            <table
+              className={`sales-margin-table view-${view}${hasMonthBreakdown ? " period-breakdown" : ""}${needsExpandedYearLayout ? " expanded-years" : ""}`}
+              style={needsExpandedYearLayout ? { minWidth: expandedTableMinWidth } : undefined}
+            >
               <thead>
                 <tr>
                   <th rowSpan={2}>{primaryLabel}</th>
                   {hasSecondary && <th rowSpan={2} className={hasMonthBreakdown && (view === "channel" || view === "brand") ? "period-dimension" : ""}>{secondaryLabel}</th>}
                   {hasTertiary && <th rowSpan={2} className="period-dimension">Período</th>}
-                  {scenarios.map(({ key, label }) => <th key={key} colSpan={2} className={`scenario scenario-${key.replace("_", "-")}`}>{label}</th>)}
-                  {comparisons.map((item) => <th key={item.label} rowSpan={2} className="comparison">{item.label}<small>Var. venta</small></th>)}
+                  {visibleScenarios.map(({ key, label }) => <th key={key} colSpan={2} className={`scenario scenario-${key.replace("_", "-")}`}>{label}</th>)}
+                  {visibleComparisons.map((item) => <th key={item.label} rowSpan={2} className="comparison">{item.label}<small>Var. venta</small></th>)}
                 </tr>
                 <tr>
-                  {scenarios.flatMap(({ key }) => [
-                    <th key={`${key}-sales`} className="subhead">Venta</th>,
+                  {visibleScenarios.flatMap(({ key }) => [
+                    <th key={`${key}-sales`} className="subhead">Ventas</th>,
                     <th key={`${key}-margin`} className="subhead">Mg %</th>,
                   ])}
                 </tr>
@@ -582,7 +711,7 @@ export default function SalesMargin({
               <tbody>
                 {initialLoading && Array.from({ length: 7 }, (_, index) => <tr key={`loading-${index}`} aria-hidden="true">
                   <th><span className="sales-margin-placeholder" /></th>
-                  {Array.from({ length: (hasSecondary ? 1 : 0) + (hasTertiary ? 1 : 0) + scenarios.length * 2 + comparisons.length }, (_, cell) => <td key={cell}><span className="sales-margin-placeholder" /></td>)}
+                  {Array.from({ length: (hasSecondary ? 1 : 0) + (hasTertiary ? 1 : 0) + visibleScenarios.length * 2 + visibleComparisons.length }, (_, cell) => <td key={cell}><span className="sales-margin-placeholder" /></td>)}
                 </tr>)}
                 {visibleRows.map((row, index) => {
                   const rowSpan = primaryRowSpan(index);
@@ -591,15 +720,17 @@ export default function SalesMargin({
                   {rowSpan > 0 && <th scope={mergePrimaryCells ? "rowgroup" : "row"} rowSpan={rowSpan}>{row.primary}</th>}
                   {hasSecondary && secondarySpan > 0 && <td rowSpan={secondarySpan} className={`dimension${hasMonthBreakdown && (view === "channel" || view === "brand") ? " period-dimension" : ""}`}>{row.secondary || "—"}</td>}
                   {hasTertiary && <td className="dimension period-dimension">{row.tertiary || "—"}</td>}
-                  {scenarios.flatMap(({ key }) => {
-                    const metric = row.metrics[key] ?? zeroMetric();
+                  {visibleScenarios.flatMap(({ key }) => {
+                    const metric = row.metrics[key];
                     return [
-                      <td key={`${key}-sales`} className="number">{formatSales(metric.sales)}</td>,
-                      <td key={`${key}-margin`} className="number margin">{formatPercent(marginPercent(metric))}</td>,
+                      <td key={`${key}-sales`} className="number">{metric ? formatSales(metric.sales) : "—"}</td>,
+                      <td key={`${key}-margin`} className="number margin">{metric ? formatPercent(marginPercent(metric)) : "—"}</td>,
                     ];
                   })}
-                  {comparisons.map((item) => {
-                    const value = variation(row.metrics[item.current] ?? zeroMetric(), row.metrics[item.previous] ?? zeroMetric());
+                  {visibleComparisons.map((item) => {
+                    const current = row.metrics[item.current];
+                    const previous = row.metrics[item.previous];
+                    const value = current && previous ? variation(current, previous) : null;
                     return <td key={item.label} className={`number variance ${variationClass(value)}`}>{formatPercent(value)}</td>;
                   })}
                 </tr>})}
@@ -608,7 +739,7 @@ export default function SalesMargin({
         </div>
         {!loading && !error && payload && visibleRows.length === 0 && <div className="sales-margin-empty">No hay registros que coincidan con la búsqueda.</div>}
         <footer>
-          <span><b>FUENTE</b> forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_CONSOLIDADA</span>
+          <span><b>FUENTE</b> {payload?.source ?? "forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_CONSOLIDADA_TOOLBOX_CL"}</span>
           <span>Referencia funcional: {payload?.sourceSheet}</span>
         </footer>
       </div>

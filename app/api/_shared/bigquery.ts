@@ -179,6 +179,7 @@ const serviceAccountAccessToken = async ({ clientEmail, privateKey }: { clientEm
     iss: clientEmail,
     scope: [
       "https://www.googleapis.com/auth/bigquery",
+      "https://www.googleapis.com/auth/spreadsheets.readonly",
       "https://www.googleapis.com/auth/drive.readonly",
     ].join(" "),
     aud: "https://oauth2.googleapis.com/token",

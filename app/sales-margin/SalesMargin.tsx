@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 
-type Scenario = "2020" | "2021" | "2022" | "2023" | "2024" | "2025" | "2026" | "2026P" | "2026E" | "2027P" | "2027E" | "2028P" | "2028E";
+type Scenario = "2020" | "2021" | "2022" | "2023" | "2024" | "2025" | "2026" | "2026P" | "2026E" | "2027P" | "2027M" | "2027E" | "2028P" | "2028E";
 type ScenarioLabel = Scenario;
 type View = "summary" | "channel" | "chainBrand" | "brand" | "brandChannel" | "brandClass";
 type QuarterFilter = "ANUAL" | "Q1" | "Q2" | "Q3" | "Q4";
@@ -49,6 +49,7 @@ const scenarios: { key: Scenario; label: ScenarioLabel }[] = [
   { key: "2026P", label: "2026P" },
   { key: "2026E", label: "2026E" },
   { key: "2027P", label: "2027P" },
+  { key: "2027M", label: "2027M" },
   { key: "2027E", label: "2027E" },
   { key: "2028P", label: "2028P" },
   { key: "2028E", label: "2028E" },
@@ -56,8 +57,8 @@ const scenarios: { key: Scenario; label: ScenarioLabel }[] = [
 
 const yearOptions = scenarios.map(({ label }) => label);
 
-const currentDefaultYears: ScenarioLabel[] = ["2024", "2025", "2026P", "2026E", "2027P"];
-const nextDefaultYears: ScenarioLabel[] = ["2025", "2026", "2027P", "2027E", "2028P", "2028E"];
+const currentDefaultYears: ScenarioLabel[] = ["2024", "2025", "2026P", "2026E", "2027P", "2027M"];
+const nextDefaultYears: ScenarioLabel[] = ["2025", "2026", "2027P", "2027M", "2027E", "2028P", "2028E"];
 
 const comparisons: { label: string; current: Scenario; previous: Scenario }[] = [
   { label: "21/20", current: "2021", previous: "2020" },
@@ -738,7 +739,7 @@ export default function SalesMargin({
         </div>
         {!loading && !error && payload && visibleRows.length === 0 && <div className="sales-margin-empty">No hay registros que coincidan con la búsqueda.</div>}
         <footer>
-          <span><b>FUENTE</b> forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_CONSOLIDADA</span>
+          <span><b>FUENTE</b> {payload?.source ?? "forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_CONSOLIDADA_TOOLBOX_CL"}</span>
           <span>Referencia funcional: {payload?.sourceSheet}</span>
         </footer>
       </div>

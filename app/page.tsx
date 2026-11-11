@@ -1722,7 +1722,13 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
 }) {
   const privateData = useContext(PrivateDataContext);
   const baseSnapshotAt = privateData?.baseSnapshotAt ?? "";
-  const snapshotLabel = `${baseSnapshotAt.slice(8, 10)}-${baseSnapshotAt.slice(5, 7)}-${baseSnapshotAt.slice(0, 4)} · ${baseSnapshotAt.slice(11, 16)}`;
+  const snapshotLabel = baseSnapshotAt
+    ? new Intl.DateTimeFormat("es-CL", {
+        timeZone: "America/Santiago",
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(new Date(baseSnapshotAt))
+    : "—";
   const [view, setView] = useState<"annual" | "detail" | "m2" | "monitor" | "break-even" | "sensitivity">("annual");
   const [selectedChains, setSelectedChains] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -1750,6 +1756,15 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   const stores = useMemo(() => blActive && privateData ? buildStores(privateData.baseConsolidada) : [], [blActive, privateData]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [openTopnavGroup, setOpenTopnavGroup] = useState<PortalMenu | null>(null);
+  const workspaceRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      workspaceRef.current?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [portalSection]);
 
 
   const refreshView = () => {
@@ -1848,7 +1863,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
         </nav>
         <UserMenu user={authUser} onLogout={onLogout} />
       </header>
-      <main className="portal-workspace">
+      <main ref={workspaceRef} className="portal-workspace">
       <header className={`portal-reportbar ${portalSection === "home" ? "home" : ""}`}>
         <div className="portal-context"><small>{portalSection === "home" ? "Portal Financiero" : portalSection === "users" ? "Administración" : portalSection === "toolbox" || portalSection === "sales-margin" ? "Planificación Financiera" : selectedPortalGroup.label}</small><b>{selectedPortalItem.label}</b></div>
         {blActive && <nav>
@@ -1868,6 +1883,10 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
         </div>
         <div className="portal-section-heading"><div><label>EXPLORA EL PORTAL</label><h2>Todo lo que necesitas, en un solo lugar</h2></div><p>Accede a los informes disponibles y conoce los próximos desarrollos.</p></div>
         <div className="portal-legend-grid">
+            {canViewSalesMargin && <article className="portal-legend-card sales-margin-home-card">
+              <div className="portal-legend-head"><span><CircleDollarSign /></span><div><small>PLANIFICACIÓN FINANCIERA</small><h2>Venta &amp; Margen</h2><p>Ventas, margen y variaciones por período, canal, marca y clase.</p></div></div>
+              <div className="portal-legend-links"><button type="button" className="available" onClick={() => setPortalSection("sales-margin")}><span><b>Abrir Venta &amp; Margen</b><small>Disponible</small></span><ChevronRight /></button></div>
+            </article>}
             {canUseToolbox && <article className="portal-legend-card toolbox-home-card">
               <div className="portal-legend-head"><span><PackageCheck /></span><div><small>HERRAMIENTA DE PLANIFICACIÓN</small><h2>Toolbox AP</h2><p>Planificación financiera, carga de bases y herramientas operativas del área.</p></div></div>
               <div className="portal-legend-links"><button type="button" className="available" onClick={() => setPortalSection("toolbox")}><span><b>Abrir Toolbox AP</b><small>Disponible</small></span><ChevronRight /></button></div>
@@ -1884,7 +1903,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
         {reportsError ? <><AlertTriangle /><h2>No pudimos cargar este informe</h2><p>{reportsError}</p><button type="button" onClick={onRetryReports}>Reintentar</button></> : <><RefreshCw className="spin" /><h2>Preparando tu informe</h2><p>Puedes seguir navegando mientras termina la carga.</p></>}
       </section> : portalSection === "users" && canManageUsers ? <div className="content"><UsuariosAdmin /></div> : portalSection === "toolbox" ? <ToolboxPlanning /> : blActive ? <><section className="hero">
         <div><label>PLANIFICACIÓN FINANCIERA · PRESUPUESTO 2027P</label><h1>Rentabilidad de tiendas.</h1><p>EERR Retail y riesgo Four Walls por tienda.</p></div>
-        <span className="unit-badge"><b>INFORME EN MM$</b><small>ACTUALIZADO {snapshotLabel}</small></span>
+        <span className="unit-badge"><b>INFORME EN MM$</b><small>CONSULTADO  {snapshotLabel}</small></span>
       </section>
       <section className="filters">
         <b><Filter /> Segmentar vista</b>

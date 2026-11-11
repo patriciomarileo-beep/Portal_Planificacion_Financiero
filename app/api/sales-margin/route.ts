@@ -46,6 +46,7 @@ const query = `WITH source AS (
      OR (ANO_2='2026E' AND ORIGEN_DATO='REAL')
      OR (ANO_2='2026FR' AND ORIGEN_DATO='FORECAST')
      OR (ANO_2='2027P' AND ORIGEN_DATO='PRESUPUESTO')
+     OR (ANO_2='2027M' AND ORIGEN_DATO='PRESUPUESTO')
      OR (ANO_2='2027E' AND ORIGEN_DATO='NY_ESTIMADO')
      OR (ANO_2='2028P' AND ORIGEN_DATO='PRESUPUESTO')
      OR (ANO_2='2028E' AND ORIGEN_DATO='NY_ESTIMADO')
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
         marginAmount: Number(row.margin_amount ?? 0),
       })),
       source: sourceTable,
-      sourceSheet: "Presupuesto_Ventas_2027 · Ventas_consolidadas / Venta_Canales_HP_RKF / Datos",
+      sourceSheet: "Data Lake · TB_CONSOLIDADA_TOOLBOX_CL · 2027M: PRESUPUESTO",
       refreshedAt: records[0]?.refreshed_at ?? null,
       unit: "MM$",
     };

@@ -4232,6 +4232,7 @@ body {
 .microsoft-shell .portal-legend-card:nth-child(2) .portal-legend-head { background: linear-gradient(145deg, #e7f3ff, #f8fbff); }
 .microsoft-shell .portal-legend-card:nth-child(3) .portal-legend-head { background: linear-gradient(145deg, #f4ecff, #fbf9ff); }
 .microsoft-shell .portal-legend-card:nth-child(4) .portal-legend-head { background: linear-gradient(145deg, #fff2e5, #fffaf4); }
+.microsoft-shell .sales-margin-home-card .portal-legend-head { background: linear-gradient(145deg, #e7f3ff, #f8fbff); }
 .microsoft-shell .toolbox-home-card .portal-legend-head { background: linear-gradient(145deg, #eaf6f1, #f8fcfa); }
 .portal-legend-head > span { width: 44px; height: 44px; display: grid; place-items: center; margin-bottom: 20px; background: #fff; color: #0067b8; box-shadow: 0 4px 13px rgba(0,0,0,.08); }
 .portal-legend-head > span svg { width: 22px; }
@@ -4563,8 +4564,9 @@ body {
 .sales-margin-table thead .scenario-2026P { background: #81642b; }
 /* Color del encabezado del escenario estimado 2026E. */
 .sales-margin-table thead .scenario-2026 { background: #176c96; }
-/* Color del encabezado del escenario presupuesto 2027P. */
-.sales-margin-table thead .scenario-2027P { background: #14765c; }
+/* Color de los encabezados de escenarios 2027 provenientes de PRESUPUESTO. */
+.sales-margin-table thead .scenario-2027P,
+.sales-margin-table thead .scenario-2027M { background: #14765c; }
 /* Ancho y padding de las columnas comparativas. */
 .sales-margin-table thead .comparison,
 .sales-margin-table td.variance { width: 54px; min-width: 54px; max-width: 54px; padding-right: 4px; padding-left: 4px; }

@@ -26,8 +26,8 @@ const rowsAsObjects = (payload: BigQueryRowsPayload) => (payload.rows ?? []).map
 const query = `WITH source AS (
   SELECT
     CASE
-      WHEN ANO_2='2026E' AND ORIGEN_DATO='REAL' THEN '2026E'
-      WHEN ANO_2='2026FR' AND ORIGEN_DATO='FORECAST' THEN '2026E'
+      WHEN ANO_2='2026E' AND ORIGEN_DATO='REAL' THEN '2026'
+      WHEN ANO_2='2026FR' AND ORIGEN_DATO='FORECAST' THEN '2026'
       ELSE ANO_2
     END scenario,
     MES month,
@@ -40,16 +40,11 @@ const query = `WITH source AS (
     MARGEN_CONTABILIDAD margin_amount,
     FECHA_EJECUCION refreshed_at
   FROM \`${sourceTable}\`
-  WHERE (ANO_2 IN ('2020','2021','2022','2023','2024','2025') AND ORIGEN_DATO='REAL')
-     OR (ANO_2='2026' AND ORIGEN_DATO='REAL')
+  WHERE (ANO_2 IN ('2024','2025') AND ORIGEN_DATO='REAL')
      OR (ANO_2='2026P' AND ORIGEN_DATO='PRESUPUESTO')
      OR (ANO_2='2026E' AND ORIGEN_DATO='REAL')
      OR (ANO_2='2026FR' AND ORIGEN_DATO='FORECAST')
      OR (ANO_2='2027P' AND ORIGEN_DATO='PRESUPUESTO')
-     OR (ANO_2='2027M' AND ORIGEN_DATO='PRESUPUESTO')
-     OR (ANO_2='2027E' AND ORIGEN_DATO='NY_ESTIMADO')
-     OR (ANO_2='2028P' AND ORIGEN_DATO='PRESUPUESTO')
-     OR (ANO_2='2028E' AND ORIGEN_DATO='NY_ESTIMADO')
 )
 SELECT month, quarter, business, chain, brand, class, scenario,
   SUM(sales_amount)/1000000 sales,
@@ -84,7 +79,7 @@ export async function GET(request: NextRequest) {
         marginAmount: Number(row.margin_amount ?? 0),
       })),
       source: sourceTable,
-      sourceSheet: "Data Lake · TB_CONSOLIDADA_TOOLBOX_CL · 2027M: PRESUPUESTO",
+      sourceSheet: "Presupuesto_Ventas_2027 · Ventas_consolidadas / Venta_Canales_HP_RKF / Datos",
       refreshedAt: records[0]?.refreshed_at ?? null,
       unit: "MM$",
     };

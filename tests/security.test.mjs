@@ -11,12 +11,10 @@ import { POST as googleLogin } from "../app/api/auth/google/route";
 import { GET as imports } from "../app/api/importaciones-industria/route";
 import { GET as cosmetics } from "../app/api/importaciones-cosmeticos/route";
 import { GET as countries } from "../app/api/country-profitability/route";
-import { GET as consolidatedKpis } from "../app/api/kpi-consolidado/route";
 import { GET as salesMargin } from "../app/api/sales-margin/route";
 import { GET as users, PATCH as updateUser } from "../app/api/usuarios/route";
 import { POST as ingest } from "../app/api/ingesta-bigquery/route";
 import { GET as portalData } from "../app/api/portal-data/route";
-import { GET as profitabilityForecast } from "../app/api/profitability-forecast/route";
 import { GET as privateFile } from "../app/data/[...path]/route";
 import { proxy } from "../proxy";
 const originalEnv = { ...process.env };
@@ -30,7 +28,6 @@ const catalogRoles = ["SIN ROL", "ADMINISTRADOR", "ANALISTA FINANCIERO", "PLANIF
 const database = (role = "ADMINISTRADOR", active = true, roles = catalogRoles) => {
     mock.method(GoogleAuth.prototype, "getAccessToken", async () => "test-access-token");
     return mock.method(globalThis, "fetch", async (_url, options) => {
-        if (String(_url).startsWith("https://www.googleapis.com/oauth2/v1/certs?")) return Response.json({ "rotated-key": "test-certificate" });
         const query = JSON.parse(options.body).query;
         if (query.includes("ft_cl_planificacion_TB_ROLES_PLT_FINAN")) return Response.json({ rows: roles.map(v => ({ f: [{ v }] })) });
         if (query.startsWith("SELECT id_persona")) return Response.json({ rows: active ? [{ f: ["42", "María", "Muñoz", "", role].map(v => ({ v })) }] : [] });
@@ -78,7 +75,7 @@ test("all sensitive handlers reject anonymous requests before reading source or 
     setup();
     mock.method(globalThis, "fetch", async () => { throw Error("must not call upstream"); });
     const request = new NextRequest("https://portal.example.com/api/importaciones-industria");
-    for (const handler of [imports, cosmetics, countries, consolidatedKpis, salesMargin, profitabilityForecast, users, portalData]) {
+    for (const handler of [imports, cosmetics, countries, salesMargin, users, portalData]) {
         const result = await handler(request);
         assert.equal(result.status, 401);
         assert.equal((await result.json()).error, "Sesión requerida.");
@@ -116,23 +113,6 @@ test("Google verifier gets our audience and verified Workspace account is requir
     mock.method(OAuth2Client.prototype, "verifyIdToken", async () => ({ getPayload: () => ({ sub: "google-user", email: user.email, email_verified: true }) }));
     assert.equal((await googleLogin(post("/api/auth/google", { credential: "x".repeat(50) }))).status, 403);
 });
-test("Google verifier refreshes cached certificates once after a signing-key rotation", async () => {
-    setup();
-    database();
-    const verify = mock.method(OAuth2Client.prototype, "verifyIdToken", async () => {
-        throw Error('No pem found for envelope: {"kid":"rotated-key"}');
-    });
-    const verifyWithFreshCertificates = mock.method(OAuth2Client.prototype, "verifySignedJwtWithCertsAsync", async (_credential, certificates, audience, issuers) => {
-        assert.equal(certificates["rotated-key"], "test-certificate");
-        assert.equal(audience, process.env.GOOGLE_OAUTH_CLIENT_ID);
-        assert.deepEqual(issuers, ["accounts.google.com", "https://accounts.google.com", "googleapis.com"]);
-        return { getPayload: () => ({ sub: "google-user", email: user.email, email_verified: true, hd: "forus.cl" }) };
-    });
-    const result = await googleLogin(post("/api/auth/google", { credential: "x".repeat(50) }));
-    assert.equal(result.status, 200);
-    assert.equal(verify.mock.callCount(), 1);
-    assert.equal(verifyWithFreshCertificates.mock.callCount(), 1);
-});
 test("wrong audience, issuer, expired or invalid signatures rejected by verifier cannot issue a session", async () => {
     setup();
     mock.method(OAuth2Client.prototype, "verifyIdToken", async () => { throw Error("invalid token sentinel"); });
@@ -161,7 +141,7 @@ test("upstream authorization failures never return financial fallbacks or intern
     mock.restoreAll();
     mock.method(GoogleAuth.prototype, "getAccessToken", async () => { throw Error("private-dataset-secret-sentinel"); });
     mock.method(console, "error", () => { });
-    for (const handler of [imports, countries, profitabilityForecast]) {
+    for (const handler of [imports, countries]) {
         const result = await handler(new NextRequest("https://portal.example.com/api/data", { headers: { cookie } }));
         assert.equal(result.status, 500);
         const text = await result.text();
@@ -236,7 +216,7 @@ test("user pagination keeps job metadata inside the authenticated Google endpoin
   mock.method(globalThis, "fetch", async (input, options) => {
     const url = new URL(input);
     assert.equal(url.origin, "https://bigquery.googleapis.com");
-    assert.equal(options.redirect, "manual");
+    assert.equal(options.redirect, "error");
     if (!options.body) {
       pages += 1;
       assert.ok(url.pathname.endsWith(`/queries/${encodeURIComponent(jobId)}`));
@@ -331,7 +311,7 @@ test("COMEX cannot read financial or market endpoints, private files or write pl
   const upstream = database("COMEX");
   const cookie = await createSessionCookie(user);
   const request = new NextRequest("https://portal.example.com/api/data", { headers: { cookie } });
-  for (const handler of [imports, cosmetics, countries, salesMargin, profitabilityForecast, users, portalData]) {
+  for (const handler of [imports, cosmetics, countries, salesMargin, users, portalData]) {
     const response = await handler(request);
     assert.equal(response.status, 403);
     assert.doesNotMatch(await response.text(), /overview|countries|baseConsolidada|roleOptions/);

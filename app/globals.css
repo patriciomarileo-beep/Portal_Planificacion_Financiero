@@ -2257,7 +2257,7 @@ footer {
   color: #fff;
   box-shadow: 0 2px 7px #173c7330;
 }
-.quarter-filter button {
+.quarter-filter > button {
   min-width: 38px;
   padding: 7px 9px;
   border: 0;
@@ -2267,7 +2267,7 @@ footer {
   font-size: 8px;
   font-weight: 800;
 }
-.quarter-filter button.active {
+.quarter-filter > button.active {
   background: #fff;
   color: #173c73;
   box-shadow: 0 2px 7px #1c385322;
@@ -2320,6 +2320,29 @@ footer {
   padding: 3px 5px;
   color: #245da8;
 }
+.month-options-search {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 6px 0 4px;
+  padding: 0 7px;
+  border: 1px solid #dce3ea;
+  border-radius: 4px;
+  background: #f8fafc;
+}
+.month-options-search svg { width: 13px; color: #738399; }
+.month-options-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: #304158;
+  background: transparent;
+  font-size: 9px;
+}
+.month-options label.keyboard-active { background: #edf4ff; box-shadow: inset 2px 0 #245da8; }
+.month-options-empty { display: block; padding: 12px 7px; color: #8793a5; font-size: 9px; text-align: center; }
 .month-options label {
   display: flex;
   align-items: center;
@@ -3052,11 +3075,11 @@ footer {
 .channel-channel-view table { min-width: 980px; }
 .channel-channel-view th:not(:first-child), .channel-channel-view td:not(:first-child) { text-align: center; }
 .channel-channel-view .channel-total-row td { color: #163b70; background: #eef4fb; border-top: 2px solid #b9cce2; font-weight: 800; }
-.channel-ranking-table { min-width: 1420px; }
+.channel-ranking-table { min-width: 1320px; }
 .channel-ranking-table th:not(:first-child), .channel-ranking-table td:not(:first-child) { text-align: center; }
 .channel-periods { display: flex; padding: 4px; gap: 3px; border-radius: 12px; background: #eef1f5; }
-.channel-periods button { min-width: 48px; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; color: #74849a; background: transparent; font-size: 9px; font-weight: 800; cursor: pointer; }
-.channel-periods button.active { color: #183f76; background: #fff; box-shadow: 0 2px 8px rgba(22, 59, 112, .14); }
+.channel-periods > button { min-width: 48px; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; color: #74849a; background: transparent; font-size: 9px; font-weight: 800; cursor: pointer; }
+.channel-periods > button.active { color: #183f76; background: #fff; box-shadow: 0 2px 8px rgba(22, 59, 112, .14); }
 .channel-state { min-height: 420px; display: flex; align-items: center; justify-content: center; gap: 12px; color: #214d84; background: #f4f7fb; }
 .channel-state svg { width: 22px; }
 .channel-state.error { flex-direction: column; color: #a23838; }
@@ -3135,7 +3158,7 @@ footer {
   .channel-channel-view { margin: 16px 20px 0; }
   .channel-panel > header { align-items: flex-start; flex-direction: column; }
   .channel-periods { width: 100%; overflow-x: auto; }
-  .channel-periods button { flex: 1 0 48px; }
+  .channel-periods > button { flex: 1 0 48px; }
   .country-hero { padding: 30px 20px; align-items: flex-start; flex-direction: column; }
   .country-toolbar { padding: 14px 20px; align-items: stretch; flex-direction: column; }
   .country-kpis { padding: 18px 20px 0; grid-template-columns: 1fr; }
@@ -3674,7 +3697,7 @@ footer {
   align-items: center;
   padding: 4px;
 }
-.microsoft-shell .channel-period-control .channel-periods button {
+.microsoft-shell .channel-period-control .channel-periods > button {
   min-width: 0;
   height: 38px;
   flex: 1 1 0;
@@ -4042,6 +4065,17 @@ body {
 .portal-topnav-group:hover > button { background: #f2f2f2; }
 .portal-topnav > button.active,
 .portal-topnav-group > button.active { color: #0067b8; box-shadow: inset 0 -3px #0067b8; }
+.portal-topnav > button.upcoming { gap: 6px; color: #5f6874; }
+.portal-topnav > button.upcoming small {
+  padding: 3px 6px;
+  border-radius: 10px;
+  color: #8b5a08;
+  background: #fff1d6;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
 .portal-topnav-group { position: relative; }
 .portal-topnav-group > button > svg:first-child { display: none; }
 .portal-topnav-group > button > svg:last-child { width: 13px; }
@@ -4448,9 +4482,9 @@ body {
 /* Apariencia de la pestaña actualmente seleccionada. */
 .sales-margin-tabs button.active { border-bottom-color: #0078a8; color: #075d8c; background: #eaf5fa; }
 /* Barra horizontal: título, filtros compactos, trimestre y acciones. */
-.sales-margin-toolbar { min-height: 83px; display: grid; grid-template-columns: 160px repeat(4, minmax(0, 180px)) 180px minmax(0, 1fr); align-items: end; gap: 12px; padding: 15px 18px; }
+.sales-margin-toolbar { min-height: 83px; display: grid; grid-template-columns: 160px repeat(4, minmax(0, 180px)) 220px minmax(0, 1fr); align-items: end; gap: 12px; padding: 15px 18px; }
 /* Cadena × marca agrega Cadena sin reemplazar Canal ni el filtro de años. */
-.sales-margin-toolbar.with-chain-filter { grid-template-columns: 150px repeat(5, minmax(0, 165px)) 180px minmax(0, 1fr); }
+.sales-margin-toolbar.with-chain-filter { grid-template-columns: 150px repeat(5, minmax(0, 165px)) 220px minmax(0, 1fr); }
 /* Texto pequeño usado como etiqueta dentro de la barra de herramientas. */
 .sales-margin-toolbar small { display: block; color: #718197; font-size: 8px; font-weight: 800; letter-spacing: .12em; }
 /* Título de la vista activa: Consolidado, Canal, Marca, etc. */
@@ -4515,7 +4549,7 @@ body {
   border-radius: 3px;
 }
 /* Reparte el ancho útil entre ANUAL y los cuatro trimestres sin desbordar. */
-.sales-margin-quarter-filter button {
+.sales-margin-quarter-filter > button {
   min-width: 0;
   flex: 1 1 0;
   padding-right: 4px;
@@ -4563,7 +4597,7 @@ body {
 /* Color del encabezado del escenario presupuesto 2026P. */
 .sales-margin-table thead .scenario-2026P { background: #81642b; }
 /* Color del encabezado del escenario estimado 2026E. */
-.sales-margin-table thead .scenario-2026 { background: #176c96; }
+.sales-margin-table thead .scenario-2026E { background: #176c96; }
 /* Color de los encabezados de escenarios 2027 provenientes de PRESUPUESTO. */
 .sales-margin-table thead .scenario-2027P,
 .sales-margin-table thead .scenario-2027M { background: #14765c; }
@@ -5711,7 +5745,7 @@ body {
   border-radius: 9px;
   background: #f0f2f5;
 }
-.microsoft-shell .quarter-filter button {
+.microsoft-shell .quarter-filter > button {
   min-width: 38px;
   padding: 7px 9px;
   border: 0;
@@ -5721,7 +5755,7 @@ body {
   font-size: 8px;
   font-weight: 800;
 }
-.microsoft-shell .quarter-filter button.active {
+.microsoft-shell .quarter-filter > button.active {
   color: #173c73;
   background: #fff;
   box-shadow: 0 2px 7px #1c385322;
@@ -5729,28 +5763,39 @@ body {
 
 /* Venta & Margen: iguala el selector trimestral a la altura de los dropdowns. */
 .microsoft-shell .sales-margin-toolbar .sales-margin-quarter-filter {
-  width: 180px;
-  min-width: 180px;
-  max-width: 180px;
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
   height: 46px;
   display: grid;
-  grid-template-columns: 44px repeat(4, minmax(0, 1fr));
+  grid-template-columns: 44px repeat(4, minmax(0, 1fr)) 38px;
   align-items: stretch;
   justify-content: stretch;
   gap: 2px;
   padding: 4px;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 3px;
 }
 
 /* Cada opción ocupa su celda sin imponer el mínimo global de 38 px. */
-.microsoft-shell .sales-margin-toolbar .sales-margin-quarter-filter button {
+.microsoft-shell .sales-margin-toolbar .sales-margin-quarter-filter > button {
   width: 100%;
   min-width: 0;
   height: 38px;
   padding: 0 3px;
   overflow: hidden;
   white-space: nowrap;
+}
+.microsoft-shell .sales-margin-toolbar .sales-margin-quarter-filter .month-period-filter {
+  min-width: 0;
+}
+.microsoft-shell .sales-margin-toolbar .sales-margin-quarter-filter .month-period-filter > summary {
+  min-width: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
 }
 
 @media (max-width: 1180px) {
@@ -5759,7 +5804,7 @@ body {
   }
 
   .microsoft-shell .sales-margin-toolbar .sales-margin-quarter-filter {
-    width: 180px;
+    width: 220px;
     min-width: 0;
     max-width: 100%;
   }
@@ -5773,7 +5818,7 @@ body {
   }
 
   .microsoft-shell .sales-margin-toolbar .sales-margin-quarter-filter {
-    grid-template-columns: minmax(44px, 1.25fr) repeat(4, minmax(0, 1fr));
+    grid-template-columns: minmax(44px, 1.25fr) repeat(4, minmax(0, 1fr)) minmax(38px, 1fr);
   }
 
   .microsoft-shell .sales-margin-multiselect-options {
@@ -5802,15 +5847,273 @@ body {
 }
 
 .microsoft-shell .channel-period-control
-.channel-periods.quarter-filter button {
+.channel-periods.quarter-filter > button {
   border-radius: 7px;
   color: #8a95a5;
   background: transparent;
 }
 
 .microsoft-shell .channel-period-control
-.channel-periods.quarter-filter button.active {
+.channel-periods.quarter-filter > button.active {
   color: #173c73;
   background: #fff;
   box-shadow: 0 2px 7px #1c385322;
+}
+
+/* MES ocupa una sexta celda con las mismas dimensiones que ANUAL y Q1-Q4. */
+.microsoft-shell .channel-period-control
+.channel-periods.quarter-filter > .month-period-filter {
+  min-width: 0;
+  height: 38px;
+  flex: 1 1 0;
+}
+
+.microsoft-shell .channel-period-control
+.channel-periods.quarter-filter > .month-period-filter > summary {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 5px;
+  border-radius: 7px;
+  color: #8a95a5;
+  background: transparent;
+}
+
+.microsoft-shell .channel-period-control
+.channel-periods.quarter-filter > .month-period-filter.active > summary {
+  color: #173c73;
+  background: #fff;
+  box-shadow: 0 2px 7px #1c385322;
+}
+
+@media (max-width: 800px) {
+  .microsoft-shell .channel-period-control
+  .channel-periods.quarter-filter > .month-period-filter {
+    flex: 1 0 48px;
+  }
+}
+
+/* Los filtros se alinean con el área útil de las tarjetas y usan controles compactos. */
+@media (min-width: 901px) {
+  .microsoft-shell .channel-filters {
+    width: min(1256px, calc(100% - 152px));
+    max-width: 1256px;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+
+  .microsoft-shell .channel-filters .channel-filter-select {
+    width: 140px;
+    min-width: 120px;
+    flex: 0 0 140px;
+  }
+
+  .microsoft-shell .channel-filters .channel-filter-select.scenario-filter {
+    width: 130px;
+    flex-basis: 130px;
+  }
+
+  .microsoft-shell .channel-filters .channel-filter-select.brand-filter {
+    min-width: 150px;
+    flex: 1 1 180px;
+  }
+
+  .microsoft-shell .channel-filters .channel-period-control {
+    width: 260px;
+    min-width: 245px;
+    flex: 0 0 260px;
+  }
+
+  .microsoft-shell .channel-filters .channel-filter-note {
+    width: 145px;
+    min-width: 140px;
+    flex: 0 0 145px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}
+
+/* Rentabilidad Consolidada: selector y matriz comparativa de hasta tres años. */
+.microsoft-shell .channel-channel-tools {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.microsoft-shell .channel-channel-view {
+  overflow: visible;
+}
+
+.microsoft-shell .channel-channel-tools > span {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 3px;
+  color: var(--portal-navy);
+  background: #edf4fc;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.microsoft-shell .channel-annual-filter {
+  width: 210px;
+  min-width: 190px;
+  flex: 0 0 210px;
+}
+
+.microsoft-shell .channel-annual-filter summary {
+  border-color: #dce1e7;
+  border-radius: 3px;
+  background: #fafbfc;
+}
+
+.microsoft-shell .channel-annual-filter summary strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.microsoft-shell .channel-annual-options {
+  right: 0;
+  left: auto;
+  width: 240px;
+}
+
+.microsoft-shell .channel-annual-options .channel-annual-limit {
+  display: block;
+  padding: 5px 8px 4px;
+  color: #8793a5;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+/* Neutraliza los estilos de label del header y replica exactamente el filtro Marca. */
+.microsoft-shell .channel-panel header .channel-annual-options label {
+  width: 100%;
+  height: auto;
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  align-items: center;
+  justify-content: start;
+  column-gap: 8px;
+  padding: 7px 8px;
+  color: #304158;
+  font-size: 9px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: normal;
+  text-align: left;
+  text-transform: none;
+}
+
+.microsoft-shell .channel-panel header .channel-annual-options input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  justify-self: center;
+}
+
+.microsoft-shell .channel-panel header .channel-annual-options label span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.microsoft-shell .channel-annual-options label.limit-disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.microsoft-shell .channel-annual-options label.limit-disabled:hover {
+  background: transparent;
+}
+
+.microsoft-shell .channel-channel-view .channel-comparison-table {
+  table-layout: fixed;
+}
+
+.microsoft-shell .channel-channel-view .channel-comparison-table th,
+.microsoft-shell .channel-channel-view .channel-comparison-table td {
+  padding: 8px 5px;
+}
+
+.microsoft-shell .channel-channel-view .channel-comparison-table th:first-child,
+.microsoft-shell .channel-channel-view .channel-comparison-table td:first-child {
+  width: 11%;
+  padding-left: 10px;
+}
+
+.microsoft-shell .channel-channel-view .channel-comparison-table .channel-year-group {
+  border-left: 1px solid #dbe3ed;
+  border-bottom: 1px solid #dbe3ed;
+  color: #274a7d;
+  font-size: 10px;
+}
+
+.microsoft-shell .channel-channel-view .channel-comparison-table thead tr:nth-child(2) th:nth-child(4n + 1),
+.microsoft-shell .channel-channel-view .channel-comparison-table tbody td:nth-child(4n + 2) {
+  border-left: 1px solid #dbe3ed;
+}
+
+.microsoft-shell .channel-channel-view .channel-comparison-table thead tr:nth-child(2) th {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  font-size: 8px;
+}
+
+.microsoft-shell .channel-channel-view .channel-comparison-cell b {
+  color: #29435f;
+  font-size: clamp(9px, .68vw, 11px);
+  white-space: nowrap;
+}
+
+.microsoft-shell .channel-channel-view .channel-comparison-cell small {
+  margin-top: 2px;
+  font-size: clamp(7px, .52vw, 9px);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.microsoft-shell .channel-channel-view .channel-total-row .channel-comparison-cell b {
+  color: #163b70;
+}
+
+@media (max-width: 900px) {
+  .microsoft-shell .channel-channel-view > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .microsoft-shell .channel-channel-tools {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 700px) {
+  .microsoft-shell .channel-channel-tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .microsoft-shell .channel-annual-filter {
+    width: 100%;
+    min-width: 0;
+    flex: none;
+  }
+
+  .microsoft-shell .channel-annual-options {
+    right: auto;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+  }
 }

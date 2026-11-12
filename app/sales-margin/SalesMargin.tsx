@@ -4,6 +4,8 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import {
   getSalesMarginSnapshot,
   loadSalesMargin,
+  salesMarginDefaultYears,
+  salesMarginYearOptions,
   SalesMarginRequestError,
   type SalesMarginPayload as Payload,
   type SalesMarginRow as ApiRow,
@@ -21,11 +23,12 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import MonthPeriodFilter, { type MonthPeriod } from "../components/MonthPeriodFilter";
 
-type Scenario = "2020" | "2021" | "2022" | "2023" | "2024" | "2025" | "2026" | "2026P" | "2026E" | "2027P" | "2027M" | "2027E" | "2028P" | "2028E";
+type Scenario = typeof salesMarginYearOptions[number];
 type ScenarioLabel = Scenario;
 type View = "summary" | "channel" | "chainBrand" | "brand" | "brandChannel" | "brandClass";
-type QuarterFilter = "ANUAL" | "Q1" | "Q2" | "Q3" | "Q4";
+type QuarterFilter = MonthPeriod;
 type Metric = { sales: number; marginAmount: number };
 type ScenarioMetrics = Partial<Record<Scenario, Metric>>;
 
@@ -38,27 +41,12 @@ type DisplayRow = {
   total?: boolean;
 };
 
-const scenarios: { key: Scenario; label: ScenarioLabel }[] = [
-  { key: "2020", label: "2020" },
-  { key: "2021", label: "2021" },
-  { key: "2022", label: "2022" },
-  { key: "2023", label: "2023" },
-  { key: "2024", label: "2024" },
-  { key: "2025", label: "2025" },
-  { key: "2026", label: "2026" },
-  { key: "2026P", label: "2026P" },
-  { key: "2026E", label: "2026E" },
-  { key: "2027P", label: "2027P" },
-  { key: "2027M", label: "2027M" },
-  { key: "2027E", label: "2027E" },
-  { key: "2028P", label: "2028P" },
-  { key: "2028E", label: "2028E" },
-];
+const scenarios: { key: Scenario; label: ScenarioLabel }[] = salesMarginYearOptions.map((key) => ({ key, label: key }));
 
 const yearOptions = scenarios.map(({ label }) => label);
 
-const currentDefaultYears: ScenarioLabel[] = ["2024", "2025", "2026P", "2026E", "2027P", "2027M"];
-const nextDefaultYears: ScenarioLabel[] = ["2025", "2026", "2027P", "2027M", "2027E", "2028P", "2028E"];
+const currentDefaultYears: ScenarioLabel[] = [...salesMarginDefaultYears];
+const nextDefaultYears: ScenarioLabel[] = ["2025", "2026P", "2026E", "2027P", "2027M", "2027E", "2028P", "2028E"];
 
 const comparisons: { label: string; current: Scenario; previous: Scenario }[] = [
   { label: "21/20", current: "2021", previous: "2020" },
@@ -66,10 +54,8 @@ const comparisons: { label: string; current: Scenario; previous: Scenario }[] = 
   { label: "23/22", current: "2023", previous: "2022" },
   { label: "24/23", current: "2024", previous: "2023" },
   { label: "25/24", current: "2025", previous: "2024" },
-  { label: "26/25", current: "2026", previous: "2025" },
   { label: "26E/25", current: "2026E", previous: "2025" },
   { label: "26E/26P", current: "2026E", previous: "2026P" },
-  { label: "27P/26", current: "2027P", previous: "2026" },
   { label: "27P/26E", current: "2027P", previous: "2026E" },
   { label: "27E/27P", current: "2027E", previous: "2027P" },
   { label: "28P/27E", current: "2028P", previous: "2027E" },
@@ -92,13 +78,15 @@ const visibleTabs = SHOW_CHAIN_BRAND_VIEW
   ? tabs
   : tabs.filter((tab) => tab.id !== "chainBrand");
 
-const quarters: QuarterFilter[] = ["ANUAL", "Q1", "Q2", "Q3", "Q4"];
 const monthLabels = ["", "ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+const monthOptions = monthLabels.slice(1).map((label, index) => ({ value: index + 1, label }));
+const allMonths = monthOptions.map(({ value }) => value);
 const quarterMonths: Record<Exclude<QuarterFilter, "ANUAL">, number[]> = {
   Q1: [1, 2, 3],
   Q2: [4, 5, 6],
   Q3: [7, 8, 9],
   Q4: [10, 11, 12],
+  MES: [],
 };
 
 function MultiSelectFilter<T extends string>({
@@ -273,11 +261,18 @@ const indexRows = (rows: ApiRow[], keyOf: (row: ApiRow) => string) => {
   return index;
 };
 
-const buildDisplayRows = (rows: ApiRow[], view: View, quarterFilter: QuarterFilter = "ANUAL"): DisplayRow[] => {
+const buildDisplayRows = (
+  rows: ApiRow[],
+  view: View,
+  quarterFilter: QuarterFilter = "ANUAL",
+  selectedMonths: number[] = allMonths,
+): DisplayRow[] => {
   if (rows.length === 0) return [];
 
   if (quarterFilter !== "ANUAL") {
-    const activeMonths = quarterMonths[quarterFilter];
+    const activeMonths = quarterFilter === "MES"
+      ? [...selectedMonths].sort((left, right) => left - right)
+      : quarterMonths[quarterFilter];
     const activeMonthSet = new Set(activeMonths);
     const periodRows = (
       sourceRows: ApiRow[],
@@ -478,26 +473,35 @@ export default function SalesMargin({
   const [classFilter, setClassFilter] = useState<string[]>([]);
   const [yearFilter, setYearFilter] = useState<ScenarioLabel[] | null>(null);
   const [quarterFilter, setQuarterFilter] = useState<QuarterFilter>("ANUAL");
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonths);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const handledRefreshKey = useRef(refreshKey);
+  const defaultYearFilter = useMemo(
+    () => (payload?.rows ?? []).some(({ scenario }) => scenario === "2028P" || scenario === "2028E")
+      ? nextDefaultYears
+      : currentDefaultYears,
+    [payload],
+  );
+  const effectiveYearFilter = yearFilter ?? defaultYearFilter;
+  const requestedYears = effectiveYearFilter.length === 0 ? yearOptions : effectiveYearFilter;
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      setPayload(await loadSalesMargin(sessionScope, true));
+      setPayload(await loadSalesMargin(sessionScope, true, requestedYears));
     } catch (loadError) {
       if (loadError instanceof SalesMarginRequestError && [401, 403].includes(loadError.status)) setPayload(null);
       setError(loadError instanceof Error ? loadError.message : "No fue posible cargar Venta & Margen.");
     } finally {
       setLoading(false);
     }
-  }, [sessionScope]);
+  }, [requestedYears, sessionScope]);
 
   useEffect(() => {
     let active = true;
-    void loadSalesMargin(sessionScope)
+    void loadSalesMargin(sessionScope, false, requestedYears)
       .then((body) => { if (active) setPayload(body); })
       .catch((loadError) => {
         if (active) {
@@ -507,7 +511,7 @@ export default function SalesMargin({
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [sessionScope]);
+  }, [requestedYears, sessionScope]);
 
   useEffect(() => {
     if (refreshKey === handledRefreshKey.current) return;
@@ -530,20 +534,14 @@ export default function SalesMargin({
     && (channelFilter.length === 0 || channelFilter.includes(row.business))
     && (view !== "chainBrand" || (Boolean(row.chain) && (chainFilter.length === 0 || chainFilter.includes(row.chain))))
     && (classFilter.length === 0 || classFilter.includes(row.class))
-    && (quarterFilter === "ANUAL" || row.quarter === quarterFilter)
-  ), [payload, view, brandFilter, channelFilter, chainFilter, classFilter, quarterFilter]);
+    && (quarterFilter === "ANUAL"
+      || (quarterFilter === "MES" ? selectedMonths.includes(row.month) : row.quarter === quarterFilter))
+  ), [payload, view, brandFilter, channelFilter, chainFilter, classFilter, quarterFilter, selectedMonths]);
   const allRows = useMemo(
-    () => buildDisplayRows(filteredSourceRows, view, quarterFilter),
-    [filteredSourceRows, view, quarterFilter],
+    () => buildDisplayRows(filteredSourceRows, view, quarterFilter, selectedMonths),
+    [filteredSourceRows, view, quarterFilter, selectedMonths],
   );
   const visibleRows = allRows;
-  const defaultYearFilter = useMemo(
-    () => (payload?.rows ?? []).some(({ scenario }) => scenario === "2028P" || scenario === "2028E")
-      ? nextDefaultYears
-      : currentDefaultYears,
-    [payload],
-  );
-  const effectiveYearFilter = yearFilter ?? defaultYearFilter;
   const visibleScenarios = useMemo(
     () => effectiveYearFilter.length === 0
       ? scenarios
@@ -617,6 +615,11 @@ export default function SalesMargin({
     + classFilter.length
     + (yearFilter === null ? 0 : Math.max(yearFilter.length, 1))
     + (quarterFilter === "ANUAL" ? 0 : 1);
+  const changeYearFilter = (years: ScenarioLabel[]) => {
+    setLoading(true);
+    setError("");
+    setYearFilter(years);
+  };
   const clearFilters = () => {
     setBrandFilter([]);
     setChannelFilter([]);
@@ -624,6 +627,7 @@ export default function SalesMargin({
     setClassFilter([]);
     setYearFilter(null);
     setQuarterFilter("ANUAL");
+    setSelectedMonths(allMonths);
   };
   const initialLoading = loading && !payload;
 
@@ -678,10 +682,16 @@ export default function SalesMargin({
           <MultiSelectFilter label="CANAL" plural="CANALES" allLabel="TODOS" options={filterOptions.channels} selected={channelFilter} onChange={setChannelFilter} />
           {view === "chainBrand" && <MultiSelectFilter label="CADENA" plural="CADENAS" allLabel="TODAS" options={filterOptions.chains} selected={chainFilter} onChange={setChainFilter} />}
           <MultiSelectFilter label="CLASE" plural="CLASES" allLabel="TODAS" options={filterOptions.classes} selected={classFilter} onChange={setClassFilter} />
-          <MultiSelectFilter label="AÑO" plural="AÑOS" allLabel="TODOS" options={yearOptions} selected={effectiveYearFilter} onChange={setYearFilter} />
-          <div className="quarter-filter sales-margin-quarter-filter" aria-label="Trimestre de Venta y Margen">
-            {quarters.map((quarter) => <button type="button" key={quarter} className={quarterFilter === quarter ? "active" : ""} onClick={() => setQuarterFilter(quarter)}>{quarter}</button>)}
-          </div>
+          <MultiSelectFilter label="AÑO" plural="AÑOS" allLabel="TODOS" options={yearOptions} selected={effectiveYearFilter} onChange={changeYearFilter} />
+          <MonthPeriodFilter
+            period={quarterFilter}
+            onPeriodChange={setQuarterFilter}
+            months={monthOptions}
+            selectedMonths={selectedMonths}
+            onSelectedMonthsChange={setSelectedMonths}
+            ariaLabel="Período de Venta y Margen"
+            className="sales-margin-quarter-filter"
+          />
           <div className="sales-margin-toolbar-right">
             {activeFilterCount > 0 && <button className="sales-margin-clear" type="button" onClick={clearFilters} title="Limpiar filtros"><X /> {activeFilterCount}</button>}
           </div>

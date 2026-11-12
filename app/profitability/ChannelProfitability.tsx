@@ -30,12 +30,13 @@ import {
   type ProfitabilityForecastPayload,
   type ProfitabilityForecastRow,
 } from "./profitability-types";
+import MonthPeriodFilter, { type MonthPeriod } from "../components/MonthPeriodFilter";
 
 type Channel = "Ecommerce" | "Marketplace" | "Wholesale" | "Consolidado";
 type Scenario = ForecastScenario;
-type Period = "ANUAL" | "Q1" | "Q2" | "Q3" | "Q4" | "MES";
+type Period = MonthPeriod;
 type MetricKey = "sales" | "margin" | "operatingCost" | "operatingResult" | "utility";
-type RankingSortKey = "name" | "sales" | "salesAnnual" | "salesBudget" | "margin" | "marginRate" | "operatingResult" | "operatingAnnual" | "operatingBudget" | "utility" | "utilityAnnual" | "utilityBudget";
+type RankingSortKey = "name" | "sales" | "salesAnnual" | "salesBudget" | "margin" | "marginAnnual" | "marginBudget" | "operatingResult" | "operatingAnnual" | "operatingBudget" | "utility" | "utilityAnnual" | "utilityBudget";
 type SortDirection = "asc" | "desc";
 
 type SourceRow = ProfitabilityForecastRow;
@@ -43,9 +44,10 @@ type SourceRow = ProfitabilityForecastRow;
 type Totals = Record<MetricKey, number>;
 
 const scenarios: Scenario[] = [...forecastScenarios];
-const periods: Period[] = ["ANUAL", "Q1", "Q2", "Q3", "Q4", "MES"];
 const businessChannels = ["Brick&Life", "Ecommerce", "Wholesale", "Marketplace"] as const;
 const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const monthOptions = months.map((label, index) => ({ value: index + 1, label }));
+const allMonths = monthOptions.map(({ value }) => value);
 const metricRows: { key: MetricKey; label: string }[] = [
   { key: "sales", label: "Ventas" },
   { key: "margin", label: "Margen" },
@@ -60,7 +62,8 @@ const rankingColumns: { key: RankingSortKey; label: string }[] = [
   { key: "salesAnnual", label: "Var. A.A." },
   { key: "salesBudget", label: "Var. ppto." },
   { key: "margin", label: "Margen" },
-  { key: "marginRate", label: "Margen %" },
+  { key: "marginAnnual", label: "Var. A.A." },
+  { key: "marginBudget", label: "Var. ppto." },
   { key: "operatingResult", label: "ROP" },
   { key: "operatingAnnual", label: "Var. A.A." },
   { key: "operatingBudget", label: "Var. ppto." },
@@ -101,6 +104,107 @@ function Variation({ value }: { value: number | null }) {
   return <span className={`channel-var ${positive ? "positive" : "negative"}`}>
     {positive ? <TrendingUp /> : <TrendingDown />}{positive ? "+" : ""}{percent(value)} A.A.
   </span>;
+}
+
+function AnnualComparisonFilter({
+  selected,
+  onChange,
+}: {
+  selected: Scenario[];
+  onChange: (years: Scenario[]) => void;
+}) {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const optionsId = useId();
+  const [optionQuery, setOptionQuery] = useState("");
+  const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
+  const normalizedQuery = optionQuery.trim().toLocaleLowerCase("es");
+  const visibleYears = scenarios.filter((year) =>
+    scenarioLabel[year].toLocaleLowerCase("es").includes(normalizedQuery),
+  );
+  const selectionLabel = selected.length === 1
+    ? scenarioLabel[selected[0]]
+    : `${selected.length} AÑOS`;
+
+  const toggleYear = (year: Scenario) => {
+    if (selected.includes(year)) {
+      if (selected.length === 1) return;
+      onChange(selected.filter((item) => item !== year));
+      return;
+    }
+    if (selected.length >= 3) return;
+    onChange(scenarios.filter((item) => selected.includes(item) || item === year));
+  };
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      detailsRef.current?.removeAttribute("open");
+      detailsRef.current?.querySelector("summary")?.focus();
+      setActiveOptionIndex(-1);
+      return;
+    }
+    if (event.key === "Home" || event.key === "End") {
+      if (!visibleYears.length) return;
+      event.preventDefault();
+      setActiveOptionIndex(event.key === "Home" ? 0 : visibleYears.length - 1);
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (!visibleYears.length) return;
+      event.preventDefault();
+      setActiveOptionIndex((currentIndex) => event.key === "ArrowDown"
+        ? currentIndex < 0 ? 0 : (currentIndex + 1) % visibleYears.length
+        : currentIndex < 0 ? visibleYears.length - 1 : (currentIndex - 1 + visibleYears.length) % visibleYears.length);
+      return;
+    }
+    if (event.key === "Enter" && visibleYears.length) {
+      event.preventDefault();
+      const optionIndex = activeOptionIndex >= 0 && activeOptionIndex < visibleYears.length ? activeOptionIndex : 0;
+      toggleYear(visibleYears[optionIndex]);
+    }
+  };
+
+  useEffect(() => {
+    if (activeOptionIndex < 0) return;
+    document.getElementById(optionsId)
+      ?.querySelector<HTMLElement>("[data-keyboard-option].keyboard-active")
+      ?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
+  }, [activeOptionIndex, optionQuery, optionsId]);
+
+  return <details ref={detailsRef} data-dropdown name="portal-dropdown" className="chain-multiselect sales-margin-multiselect channel-filter-select channel-annual-filter">
+    <summary><span>COMPARATIVO ANUAL<strong>{selectionLabel}</strong></span><ChevronDown /></summary>
+    <div id={optionsId} className="chain-options sales-margin-multiselect-options channel-searchable-options channel-annual-options">
+      <div className="sales-margin-option-search">
+        <Search aria-hidden="true" />
+        <input
+          value={optionQuery}
+          onChange={(event) => { setOptionQuery(event.target.value); setActiveOptionIndex(0); }}
+          onKeyDown={handleSearchKeyDown}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-controls={optionsId}
+          aria-expanded="true"
+          placeholder="Buscar año"
+          aria-label="Buscar año"
+        />
+      </div>
+      <small className="channel-annual-limit">SELECCIONA HASTA 3 AÑOS</small>
+      {visibleYears.map((year, index) => {
+        const active = selected.includes(year);
+        const disabled = active ? selected.length === 1 : selected.length >= 3;
+        return <label
+          key={year}
+          data-keyboard-option
+          className={`${activeOptionIndex === index ? "keyboard-active" : ""}${disabled ? " limit-disabled" : ""}`.trim()}
+          onMouseEnter={() => setActiveOptionIndex(index)}
+        >
+          <input type="checkbox" checked={active} disabled={disabled} onChange={() => toggleYear(year)} />
+          <span>{scenarioLabel[year]}</span>
+        </label>;
+      })}
+      {visibleYears.length === 0 && <small className="sales-margin-option-empty">Sin coincidencias</small>}
+    </div>
+  </details>;
 }
 
 function SearchableSelect<T extends string>({
@@ -347,11 +451,12 @@ export default function ChannelProfitability({
   const [retryKey, setRetryKey] = useState(0);
   const [scenario, setScenario] = useState<Scenario>("2026E");
   const [period, setPeriod] = useState<Period>("ANUAL");
-  const [selectedMonth, setSelectedMonth] = useState(1);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonths);
   const [selectedBrandsByChannel, setSelectedBrandsByChannel] = useState<Partial<Record<Channel, string[]>>>({});
   const [focusedBrandsByChannel, setFocusedBrandsByChannel] = useState<Partial<Record<Channel, string | null>>>({});
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>("sales");
   const [rankingSort, setRankingSort] = useState<{ key: RankingSortKey; direction: SortDirection }>({ key: "sales", direction: "desc" });
+  const [comparisonYears, setComparisonYears] = useState<Scenario[]>(["2025", "2026E", "2027P"]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -375,7 +480,7 @@ export default function ChannelProfitability({
     return () => controller.abort();
   }, [onRefreshComplete, refreshKey, retryKey]);
 
-  const matchesPeriod = useCallback((row: SourceRow) => period === "ANUAL" || (period === "MES" ? row.month === selectedMonth : row.quarter === period), [period, selectedMonth]);
+  const matchesPeriod = useCallback((row: SourceRow) => period === "ANUAL" || (period === "MES" ? selectedMonths.includes(row.month) : row.quarter === period), [period, selectedMonths]);
 
   const brands = useMemo(() => [...new Set(rows.filter((row) => row.channel === channel && row.brand !== "Consolidado").map((row) => row.brand))].sort(), [rows, channel]);
   const selectedBrands = useMemo(() => (selectedBrandsByChannel[channel] ?? []).filter((brandName) => brands.includes(brandName)), [brands, channel, selectedBrandsByChannel]);
@@ -396,7 +501,6 @@ export default function ChannelProfitability({
     }));
   }, [channel]);
   const scenarioOptions = useMemo(() => scenarios.map((item) => ({ value: item, label: scenarioLabel[item] })), []);
-  const monthOptions = useMemo(() => months.map((item, index) => ({ value: String(index + 1), label: item })), []);
   const metricOptions = useMemo(() => metricRows.map(({ key, label }) => ({ value: key, label })), []);
   const matchesBrand = useCallback((row: SourceRow) => focusedBrand
     ? row.brand === focusedBrand
@@ -420,13 +524,16 @@ export default function ChannelProfitability({
   const channelMatrix = useMemo(() => {
     if (channel !== "Consolidado") return [];
     return [...businessChannels, "Consolidado"].map((name) => {
-      const select = (year: Scenario | null) => year ? sumRows(rows.filter((row) =>
+      const select = (year: Scenario) => sumRows(rows.filter((row) =>
         row.channel === name && row.year === year && matchesPeriod(row) &&
         matchesBrand(row)
-      )) : zeroTotals();
-      return { name: name === "Consolidado" ? "Total" : name, current: select(scenario), previous: select(comparisonScenario) };
+      ));
+      return {
+        name: name === "Consolidado" ? "Total" : name,
+        annual: comparisonYears.map((year) => ({ year, totals: select(year) })),
+      };
     });
-  }, [rows, channel, scenario, comparisonScenario, matchesPeriod, matchesBrand]);
+  }, [rows, channel, comparisonYears, matchesPeriod, matchesBrand]);
 
   const monthly = useMemo(() => months.map((name, index) => {
     const selectMonth = (year: Scenario | null) => year ? sumRows(rows.filter((row) => row.channel === channel && row.year === year && row.month === index + 1 && matchesBrand(row))) : zeroTotals();
@@ -448,7 +555,8 @@ export default function ChannelProfitability({
           budget,
           salesAnnual: variation(selected.sales, prior.sales),
           salesBudget: variation(selected.sales, budget.sales),
-          marginRate: selected.sales ? selected.margin / selected.sales * 100 : null,
+          marginAnnual: variation(selected.margin, prior.margin),
+          marginBudget: variation(selected.margin, budget.margin),
           operatingAnnual: variation(selected.operatingResult, prior.operatingResult),
           operatingBudget: variation(selected.operatingResult, budget.operatingResult),
           utilityAnnual: variation(selected.utility, prior.utility),
@@ -490,6 +598,7 @@ export default function ChannelProfitability({
     : selectedBrands.length === 1
       ? selectedBrands[0]
       : `${selectedBrands.length} MARCAS`);
+  const displayedBrandSelection = focusedBrand ? [focusedBrand] : selectedBrands;
 
   const reportHeader = <header className="channel-hero">
     <div><label>RENTABILIDAD FORECAST · BASE OFICIAL</label><h1>Rentabilidad <em>{channel}</em></h1><p>Estado de resultados por canal, marca y periodo. Sin análisis Four Walls.</p></div>
@@ -508,14 +617,21 @@ export default function ChannelProfitability({
   return <section className="channel-profitability">
     {reportHeader}
 
-    <section className={`channel-filters ${period === "MES" ? "with-month" : ""}`}>
+    <section className="channel-filters">
       <SearchableSelect label="ESCENARIO" value={scenario} options={scenarioOptions} onChange={setScenario} className="scenario-filter" />
       <div className="channel-period-control">
         <small>PERIODO</small>
-        <div className="channel-periods quarter-filter">{periods.map((item) => <button type="button" key={item} className={period === item ? "active" : ""} onClick={() => setPeriod(item)}>{item}</button>)}</div>
+        <MonthPeriodFilter
+          period={period}
+          onPeriodChange={setPeriod}
+          months={monthOptions}
+          selectedMonths={selectedMonths}
+          onSelectedMonthsChange={setSelectedMonths}
+          ariaLabel="Período de Rentabilidad Forecast"
+          className="channel-periods"
+        />
       </div>
-      {period === "MES" && <SearchableSelect label="MES" value={String(selectedMonth)} options={monthOptions} onChange={(value) => setSelectedMonth(Number(value))} className="month-filter" />}
-      <SearchableMultiSelect label="MARCA" options={brands} selected={selectedBrands} onChange={setSelectedBrands} />
+      <SearchableMultiSelect label="MARCA" options={brands} selected={displayedBrandSelection} onChange={setSelectedBrands} />
       <div className="channel-filter-note"><CircleDollarSign /><span><small>LECTURA ACTUAL</small><b>{scenarioLabel[scenario]} · {period}</b></span></div>
     </section>
 
@@ -544,15 +660,38 @@ export default function ChannelProfitability({
     </section>
 
     {channel === "Consolidado" && <article className="channel-panel channel-channel-view">
-      <header><div><label>COMPORTAMIENTO POR CANAL</label><h2>Cuadro Consolidado</h2></div><span>{selectedBrandLabel}</span></header>
-      <div className="channel-table-wrap"><table><thead><tr><th>Canal</th><th>Venta</th><th>Var. ventas</th><th>Margen</th><th>Margen %</th><th>ROP</th><th>Var. resultado</th><th>Utilidad neta</th><th>Var. utilidad</th></tr></thead><tbody>
-        {channelMatrix.map(({ name, current: item, previous: base }) => {
-          const salesVar = comparisonScenario ? variation(item.sales, base.sales) : null;
-          const resultVar = comparisonScenario ? variation(item.operatingResult, base.operatingResult) : null;
-          const utilityVar = comparisonScenario ? variation(item.utility, base.utility) : null;
-          const variationCell = (value: number | null) => <span className={value !== null && value < 0 ? "negative" : "positive"}>{value === null ? "—" : `${value >= 0 ? "+" : ""}${percent(value)}`}</span>;
-          return <tr key={name} className={name === "Total" ? "channel-total-row" : ""}><td><b>{name}</b></td><td>{money(item.sales)}</td><td>{variationCell(salesVar)}</td><td>{money(item.margin)}</td><td>{item.sales ? percent(item.margin / item.sales * 100) : "—"}</td><td>{money(item.operatingResult)}</td><td>{variationCell(resultVar)}</td><td>{money(item.utility)}</td><td>{variationCell(utilityVar)}</td></tr>;
-        })}
+      <header>
+        <div><label>COMPORTAMIENTO POR CANAL</label><h2>Cuadro Consolidado</h2></div>
+        <div className="channel-channel-tools">
+          <AnnualComparisonFilter selected={comparisonYears} onChange={setComparisonYears} />
+          <span>{selectedBrandLabel}</span>
+        </div>
+      </header>
+      <div className="channel-table-wrap"><table className="channel-comparison-table"><thead>
+        <tr><th rowSpan={2}>Canal</th>{comparisonYears.map((year) => <th className="channel-year-group" colSpan={4} key={year}>{scenarioLabel[year]}</th>)}</tr>
+        <tr>{comparisonYears.flatMap((year) => [
+          <th key={`${year}-sales`}>Venta</th>,
+          <th key={`${year}-margin`}>Margen</th>,
+          <th key={`${year}-rop`}>ROP</th>,
+          <th key={`${year}-utility`}>Utilidad</th>,
+        ])}</tr>
+      </thead><tbody>
+        {channelMatrix.map(({ name, annual }) => <tr key={name} className={name === "Total" ? "channel-total-row" : ""}>
+          <td><b>{name}</b></td>
+          {annual.flatMap(({ year, totals }, index) => {
+            const base = index > 0 ? annual[index - 1] : null;
+            const inlineVariation = (value: number, baseValue: number) => {
+              const result = variation(value, baseValue);
+              return <small className={result !== null && result < 0 ? "negative" : "positive"}>{result === null ? "Sin base" : `${result >= 0 ? "+" : ""}${percent(result)}`} vs {base ? scenarioLabel[base.year] : ""}</small>;
+            };
+            return [
+              <td className="channel-comparison-cell" key={`${year}-sales`}><b>{money(totals.sales)}</b>{base && inlineVariation(totals.sales, base.totals.sales)}</td>,
+              <td className="channel-comparison-cell" key={`${year}-margin`}><b>{money(totals.margin)}</b><small>{totals.sales ? percent(totals.margin / totals.sales * 100) : "—"}</small></td>,
+              <td className="channel-comparison-cell" key={`${year}-rop`}><b>{money(totals.operatingResult)}</b>{base && inlineVariation(totals.operatingResult, base.totals.operatingResult)}</td>,
+              <td className="channel-comparison-cell" key={`${year}-utility`}><b>{money(totals.utility)}</b>{base && inlineVariation(totals.utility, base.totals.utility)}</td>,
+            ];
+          })}
+        </tr>)}
       </tbody></table></div>
     </article>}
 
@@ -572,7 +711,7 @@ export default function ChannelProfitability({
               selectRankingBrand(item.name);
             }
           };
-          return <tr key={item.name} className={isFocused ? "channel-selected-brand" : ""} tabIndex={0} aria-selected={isFocused} onClick={() => selectRankingBrand(item.name)} onKeyDown={handleBrandKeyDown}><td><b>{item.name}</b></td><td>{money(item.sales)}</td><td>{cell(item.salesAnnual)}</td><td>{cell(item.salesBudget)}</td><td>{money(item.margin)}</td><td>{item.marginRate === null ? "—" : percent(item.marginRate)}</td><td className={item.operatingResult < 0 ? "negative" : "positive"}>{money(item.operatingResult)}</td><td>{cell(item.operatingAnnual)}</td><td>{cell(item.operatingBudget)}</td><td className={item.utility < 0 ? "negative" : "positive"}>{money(item.utility)}</td><td>{cell(item.utilityAnnual)}</td><td>{cell(item.utilityBudget)}</td></tr>;
+          return <tr key={item.name} className={isFocused ? "channel-selected-brand" : ""} tabIndex={0} aria-selected={isFocused} onClick={() => selectRankingBrand(item.name)} onKeyDown={handleBrandKeyDown}><td><b>{item.name}</b></td><td>{money(item.sales)}</td><td>{cell(item.salesAnnual)}</td><td>{cell(item.salesBudget)}</td><td>{money(item.margin)}</td><td>{cell(item.marginAnnual)}</td><td>{cell(item.marginBudget)}</td><td className={item.operatingResult < 0 ? "negative" : "positive"}>{money(item.operatingResult)}</td><td>{cell(item.operatingAnnual)}</td><td>{cell(item.operatingBudget)}</td><td className={item.utility < 0 ? "negative" : "positive"}>{money(item.utility)}</td><td>{cell(item.utilityAnnual)}</td><td>{cell(item.utilityBudget)}</td></tr>;
         })}
       </tbody></table></div>
     </article>

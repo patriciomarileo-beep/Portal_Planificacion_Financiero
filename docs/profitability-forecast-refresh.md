@@ -1,54 +1,22 @@
 # Actualización de Rentabilidad Forecast
 
-## Resumen del estado actual
+## Arquitectura
 
 El portal consulta exclusivamente la tabla nativa:
 
 `forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_FORECAST_ANUAL_MARCA_CANAL`
 
-La tabla contiene 5.760 registros y fue materializada el 10 de noviembre de 2026 a las 09:38, hora de Santiago. Su descripción en BigQuery indica que el origen funcional es la tabla externa de Google Sheets.
-
-No existe en este repositorio un proceso programado que vuelva a materializar la tabla nativa. En el historial visible para la cuenta actual, su creación corresponde a una carga puntual mediante `CREATE TABLE AS SELECT`. Por lo tanto, no se puede afirmar que exista una periodicidad automática activa.
-
-La revisión de trabajos de todos los usuarios del proyecto requiere el permiso `bigquery.jobs.listAll`, que la cuenta actual no posee. Un administrador de BigQuery debe confirmar si existe una transferencia programada administrada fuera de este repositorio.
-
-## Origen de los datos
-
-La tabla externa es:
-
-`forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_EXT_FORECAST_ANUAL_MARCA_CANAL`
-
-Configuración observada:
-
-- Tipo: tabla externa de Google Sheets.
-- Hoja y rango: `base!C:L`.
-- Encabezado omitido: una fila.
-- Columnas: `ANO_2`, `QUARTER`, `MES`, `NEGOCIO_DETALLE`, `MARCA`, `VENTA_NETA`, `MARGEN`, `COSTO_OPERACIONAL`, `ROP` y `UTILIDAD_NETA`.
-- La tabla externa sólo funciona como origen; el portal no la consulta directamente.
-
-## Materialización nativa observada
-
-La carga registrada creó la tabla nativa desde una tabla intermedia fechada:
-
-`ft_cl_planificacion_TB_FORECAST_ANUAL_MARCA_CANAL_STAGING_20261110`
-
-La sentencia copió las diez columnas sin cálculos adicionales. Antes de crear la tabla definitiva se validaron:
-
-- cantidad total de registros;
-- unicidad de la llave `ANO_2 | MES | NEGOCIO_DETALLE | MARCA`;
-- dimensiones nulas;
-- escenarios disponibles;
-- canales disponibles.
-
-El flujo observado fue:
+La sincronización implementada mantiene separada la lectura de Google Sheets de la ejecución del portal:
 
 ```text
 Google Sheets, rango base!C:L
         ↓
 Tabla externa TB_EXT_FORECAST_ANUAL_MARCA_CANAL
         ↓
-Tabla staging fechada y validaciones
+Procedimiento sp_refresh_forecast_anual_marca_canal
         ↓
+Instantánea temporal + validaciones
+        ↓ transacción atómica
 Tabla nativa TB_FORECAST_ANUAL_MARCA_CANAL
         ↓
 API /api/profitability-forecast
@@ -56,37 +24,135 @@ API /api/profitability-forecast
 Ecommerce, Marketplace, Wholesale y Consolidado
 ```
 
-## Lectura realizada por el portal
+El procedimiento se encuentra en [`sql/refresh-profitability-forecast.sql`](../sql/refresh-profitability-forecast.sql) y la instalación idempotente de la consulta programada en [`scripts/deploy-profitability-forecast-refresh.mjs`](../scripts/deploy-profitability-forecast-refresh.mjs).
 
-La API ejecuta una consulta paginada sobre la tabla nativa y limita los resultados a:
+## Fuente externa
 
-- escenarios `2025`, `2026E`, `2026P` y `2027P`;
-- canales `Brick&Life`, `Ecommerce`, `Marketplace`, `Wholesale` y `Consolidado`.
+La tabla externa es:
 
-Los campos financieros se convierten a `FLOAT64`. Luego, el servidor valida escenarios, canales, meses, trimestres, dimensiones obligatorias y duplicados antes de responder a la interfaz.
+`forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_EXT_FORECAST_ANUAL_MARCA_CANAL`
 
-La respuesta queda en una caché de memoria durante cinco minutos. El botón **Actualizar** agrega el parámetro `refresh` para omitir esa caché y volver a consultar la tabla nativa.
+Configuración comprobada el 12 de noviembre de 2026:
 
-Importante: esta actualización del portal **no sincroniza Google Sheets con BigQuery**. Si la tabla nativa no fue materializada nuevamente, el usuario recibirá los mismos registros.
+- tipo: tabla externa de Google Sheets;
+- hoja y rango: `base!C:L`;
+- encabezado omitido: una fila;
+- ubicación: `us-east4`;
+- columnas: `ANO_2`, `QUARTER`, `MES`, `NEGOCIO_DETALLE`, `MARCA`, `VENTA_NETA`, `MARGEN`, `COSTO_OPERACIONAL`, `ROP` y `UTILIDAD_NETA`.
 
-## Periodicidad actual
+## Controles antes de publicar
 
-| Etapa | Periodicidad comprobada |
-| --- | --- |
-| Edición de Google Sheets | Depende del propietario de la hoja |
-| Lectura de la tabla externa | Bajo demanda cuando una consulta accede a ella |
-| Copia externa → staging → nativa | Sin programación comprobada; última carga puntual observada el 10-11-2026 |
-| Caché del portal | Cinco minutos |
-| Botón Actualizar | Bajo demanda; sólo vuelve a consultar la tabla nativa |
+Cada ejecución crea una tabla temporal `source_snapshot`, visible únicamente durante el trabajo actual, y valida:
 
-## Recomendación para automatizar
+1. que la fuente no esté vacía;
+2. la unicidad de `ANO_2 | MES | NEGOCIO_DETALLE | MARCA`;
+3. dimensiones nulas o vacías;
+4. meses entre 1 y 12 y coherencia entre mes y trimestre;
+5. medidas nulas, infinitas o `NaN`;
+6. presencia de los escenarios `2025`, `2026E`, `2026P` y `2027P`;
+7. presencia de `Brick&Life`, `Ecommerce`, `Marketplace`, `Wholesale` y `Consolidado`;
+8. que la cantidad de filas no disminuya más de 20% respecto de la tabla publicada.
 
-Crear una consulta programada de BigQuery en `us-east4` que:
+Si una validación falla, la tabla nativa conserva todos sus registros anteriores. Cuando las validaciones son correctas, `TRUNCATE` e `INSERT` se ejecutan dentro de una transacción de BigQuery, evitando estados parciales.
 
-1. copie la tabla externa a una tabla staging;
-2. ejecute las validaciones de llave, dimensiones y escenarios;
-3. reemplace la tabla nativa sólo cuando las validaciones sean correctas;
-4. registre fecha, cantidad de filas y resultado de la ejecución;
-5. mantenga la tabla nativa anterior cuando la hoja o la validación fallen.
+No se mantienen tablas persistentes de staging ni auditoría. Cualquier error de lectura, validación o publicación hace fallar la ejecución programada. BigQuery Data Transfer Service envía entonces un correo al propietario de esa configuración; el destinatario no se configura de forma independiente.
 
-Una ejecución diaria, posterior a la actualización funcional de la hoja, es suficiente mientras el forecast no requiera disponibilidad intradía. La periodicidad definitiva debe ser acordada con el dueño de la fuente.
+## Programación
+
+La configuración predeterminada ejecuta la sincronización cada cinco minutos, que es el intervalo mínimo permitido por las Scheduled Queries de BigQuery. BigQuery no permite programarla cada un minuto.
+
+Variables disponibles:
+
+```dotenv
+FORECAST_REFRESH_PROJECT=forus-analitica-test-datalake
+FORECAST_REFRESH_LOCATION=us-east4
+FORECAST_REFRESH_AUTH_MODE=user
+FORECAST_REFRESH_SCHEDULE=every 5 minutes
+FORECAST_REFRESH_DISPLAY_NAME=Portal financiero - Carga directa Forecast anual marca canal
+```
+
+Para modificar la frecuencia, cambia solamente `FORECAST_REFRESH_SCHEDULE`. Algunos ejemplos válidos son:
+
+```dotenv
+# Cada 5 minutos, mínimo admitido
+FORECAST_REFRESH_SCHEDULE=every 5 minutes
+
+# Cada 15 minutos
+FORECAST_REFRESH_SCHEDULE=every 15 minutes
+
+# Cada hora
+FORECAST_REFRESH_SCHEDULE=every 60 minutes
+
+# Una vez al día a las 10:07 UTC
+FORECAST_REFRESH_SCHEDULE=every day 10:07
+```
+
+El valor puede definirse en `.env.cloudrun`. Después de modificarlo, vuelve a ejecutar `npm run deploy:profitability-forecast-refresh`; el instalador actualizará la programación existente sin crear otra.
+
+## Credenciales temporales del usuario
+
+Con `FORECAST_REFRESH_AUTH_MODE=user`, la consulta programada se crea con las credenciales de la persona que ejecuta el instalador. No se requiere una cuenta de servicio, pero el usuario debe conservar acceso a la hoja y a BigQuery.
+
+Esta modalidad es temporal: si la cuenta se deshabilita, pierde permisos o requiere renovar sus credenciales, la sincronización puede detenerse.
+
+## Permisos requeridos
+
+El usuario que ejecutará temporalmente la consulta programada debe tener:
+
+- acceso de lector a la hoja de Google Sheets;
+- `bigquery.jobs.create` en el proyecto de ejecución;
+- lectura de la tabla externa;
+- lectura de la tabla externa y escritura sobre la tabla nativa;
+- acceso de lectura/ejecución al procedimiento;
+- permisos para administrar Scheduled Queries de BigQuery.
+
+La tabla temporal se administra dentro del trabajo de BigQuery y desaparece al terminar. El procedimiento se crea o reemplaza durante la instalación.
+
+BigQuery Data Transfer Service debe estar habilitado.
+
+## Instalación
+
+Primero se puede revisar la configuración sin modificar Google Cloud:
+
+```powershell
+npm run deploy:profitability-forecast-refresh -- --dry-run
+```
+
+Después de autenticar `gcloud`/`bq` con una cuenta administradora en la configuración aislada del proyecto:
+
+```powershell
+$env:CLOUDSDK_CONFIG = (Resolve-Path -LiteralPath .gcloud).Path
+gcloud.cmd auth login --enable-gdrive-access
+npm run deploy:profitability-forecast-refresh
+```
+
+Para instalar y además ejecutar una sincronización inicial con las credenciales del instalador:
+
+```powershell
+npm run deploy:profitability-forecast-refresh -- --run-now
+```
+
+Al crear una programación nueva, BigQuery dispara por sí mismo la primera ejecución. En ese caso, `--run-now` no genera una segunda ejecución para evitar escrituras concurrentes. Si la programación ya existía, `--run-now` sí ejecuta una sincronización inmediata.
+
+El instalador actualiza la consulta programada existente cuando encuentra el mismo nombre, evitando crear programaciones duplicadas.
+
+El instalador también activa `emailPreferences.enableFailureEmail`. El correo se envía únicamente cuando una ejecución falla y llega a la cuenta propietaria de la consulta programada.
+
+Cuando exista una cuenta de servicio definitiva, cambia la configuración a:
+
+```dotenv
+FORECAST_REFRESH_AUTH_MODE=service-account
+FORECAST_REFRESH_SERVICE_ACCOUNT=CUENTA_CONFIRMADA
+```
+
+## Lectura del portal
+
+La API consulta la tabla nativa y mantiene una caché de cinco minutos. El botón **Actualizar** omite esa caché y vuelve a consultar BigQuery, pero no ejecuta el procedimiento de sincronización.
+
+## Estado de despliegue
+
+La consulta programada anterior, `Portal financiero - Forecast anual marca canal`, fue eliminada el 12 de noviembre de 2026. También se retiró del código la dependencia de las tablas persistentes `STAGING` y `AUDIT`.
+
+La reemplaza `Portal financiero - Carga directa Forecast anual marca canal`, identificada como `projects/625822889440/locations/us-east4/transferConfigs/6b091f10-0000-20e7-b9b6-14223bb2841a`. Se ejecuta cada cinco minutos y tiene habilitado `emailPreferences.enableFailureEmail`.
+
+La primera ejecución directa terminó en estado `SUCCEEDED`. Las tablas auxiliares ya no existen y la tabla nativa conserva 5.760 filas y 5.760 claves únicas.

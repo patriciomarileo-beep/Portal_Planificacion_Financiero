@@ -15,6 +15,7 @@ const payload = {
     { month: 1, quarter: "Q1", business: "BRICK & LIFE", chain: "", brand: "MARCA", class: "CALZADO", scenario: "2027M", sales: 23456, marginAmount: 10000 },
   ],
   source: "test-table", sourceSheet: "test-sheet", refreshedAt: "2026-11-09", unit: "MM$",
+  years: ["2024", "2025", "2026P", "2026E", "2027P", "2027M"],
 };
 afterEach(() => { clearSalesMarginData(); mock.restoreAll(); });
 
@@ -23,6 +24,55 @@ test("2027M is queried only from PRESUPUESTO in the Toolbox consolidated table",
   assert.match(route, /ft_cl_planificacion_TB_CONSOLIDADA_TOOLBOX_CL/);
   assert.match(route, /ANO_2='2027M' AND ORIGEN_DATO='PRESUPUESTO'/);
   assert.doesNotMatch(route, /ANO_2='2027M' AND ORIGEN_DATO='(?!PRESUPUESTO)[^']+'/);
+});
+
+test("2026E combines REAL and FORECAST without exposing an empty 2026 scenario", () => {
+  const route = readFileSync(new URL("../app/api/sales-margin/route.ts", import.meta.url), "utf8");
+  const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
+  assert.match(route, /WHEN ANO_2='2026E' AND ORIGEN_DATO='REAL' THEN '2026E'/);
+  assert.match(route, /WHEN ANO_2='2026FR' AND ORIGEN_DATO='FORECAST' THEN '2026E'/);
+  assert.doesNotMatch(route, /ANO_2='2026' AND ORIGEN_DATO='REAL'/);
+  assert.doesNotMatch(report, /\{ key: "2026", label: "2026" \}/);
+  assert.doesNotMatch(report, /(?:current|previous): "2026"/);
+});
+
+test("brands below five million and OTRO are consolidated as OTRAS", () => {
+  const route = readFileSync(new URL("../app/api/sales-margin/route.ts", import.meta.url), "utf8");
+  assert.match(route, /SUM\(COALESCE\(sales_amount, 0\)\) total_sales/);
+  assert.match(route, /UPPER\(TRIM\(source\.brand\)\) IN \('OTRO', 'OTRAS'\) THEN 'OTRAS'/);
+  assert.match(route, /brand_totals\.total_sales < 5000000 THEN 'OTRAS'/);
+  assert.match(route, /ELSE source\.brand/);
+  assert.match(route, /FROM classified/);
+});
+
+test("the initial query loads only visible years and omits the hidden chain dimension", () => {
+  const route = readFileSync(new URL("../app/api/sales-margin/route.ts", import.meta.url), "utf8");
+  assert.match(route, /const defaultYears = \["2024", "2025", "2026P", "2026E", "2027P", "2027M"\]/);
+  assert.match(route, /WHERE scenario IN \(\$\{years\.map/);
+  assert.match(route, /SELECT month, quarter, business, brand, class, scenario,/);
+  assert.doesNotMatch(route, /SELECT month, quarter, business, chain, brand, class, scenario,/);
+});
+
+test("selecting an optional year fetches and merges only the missing year", async () => {
+  const requests = [];
+  const fetch = mock.method(globalThis, "fetch", async (input) => {
+    const url = new URL(String(input), "http://localhost");
+    const years = url.searchParams.get("years").split(",");
+    requests.push(years);
+    return Response.json({
+      ...payload,
+      years,
+      rows: years.map((scenario) => ({ ...payload.rows[0], scenario })),
+    });
+  });
+  const defaults = ["2024", "2025", "2026P", "2026E", "2027P", "2027M"];
+  await loadSalesMargin("user-a", false, defaults);
+  const expanded = await loadSalesMargin("user-a", false, [...defaults, "2020"]);
+  assert.deepEqual(requests, [defaults, ["2020"]]);
+  assert.deepEqual(expanded.years, ["2020", ...defaults]);
+  assert.equal(expanded.rows.some((row) => row.scenario === "2020"), true);
+  await loadSalesMargin("user-a", false, [...defaults, "2020"]);
+  assert.equal(fetch.mock.callCount(), 2);
 });
 
 test("the report displays its navigation and table before the data request finishes", async () => {

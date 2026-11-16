@@ -49,6 +49,7 @@ import { PrivateDataContext, usePrivateData, type PrivateData } from "./private-
 import { storeClassification, type StoreClassification } from "./store-classification";
 import { canAccessMenu, type PortalMenu } from "./menu-access";
 import { clearSalesMarginData, loadSalesMargin } from "./sales-margin/sales-margin-data";
+import MonthPeriodFilter, { type MonthPeriod } from "./components/MonthPeriodFilter";
 const reportLoading = () => <div className="portal-data-status" role="status"><RefreshCw className="spin" /><p>Cargando informe…</p></div>;
 const NationalBenchmark = dynamic(() => import("./market/NationalBenchmark"), { loading: reportLoading });
 const InternationalBenchmark = dynamic(() => import("./market/InternationalBenchmark"), { loading: reportLoading });
@@ -57,7 +58,6 @@ const MacroeconomicsMarket = dynamic(() => import("./market/MacroeconomicsMarket
 const RetailCncMarket = dynamic(() => import("./market/RetailCncMarket"), { loading: reportLoading });
 const ChannelProfitability = dynamic(() => import("./profitability/ChannelProfitability"), { loading: reportLoading });
 const CountryProfitability = dynamic(() => import("./profitability/CountryProfitability"), { loading: reportLoading });
-const ToolboxPlanning = dynamic(() => import("./toolbox/ToolboxPlanning"), { loading: reportLoading });
 const StoreSensitivity = dynamic(() => import("./profitability/StoreSensitivity"), { loading: reportLoading });
 const SalesMargin = dynamic(() => import("./sales-margin/SalesMargin"), { loading: reportLoading });
 
@@ -65,7 +65,7 @@ type Year = 2024 | 2025 | 2026 | 2027;
 type FwBand = "negative" | "low" | "high" | null;
 type ProfitMetric = "fourWalls" | "utility";
 type Quarter = "ANUAL" | "Q1" | "Q2" | "Q3" | "Q4";
-type ReportPeriod = Quarter | "MES";
+type ReportPeriod = MonthPeriod;
 type ClassificationFilter = "TOTAL" | StoreClassification;
 type MonitorFilter = "TOTAL" | "CHAIN_OTHER" | "DUPLICATE" | "ACTIVE_YEAR" | "NO_CONTRACT" | "NO_M2" | "SSS_YEAR" | "NS_YEAR" | "REMODELED";
 type PortalSection = {
@@ -163,6 +163,7 @@ const monthOrder = [
   "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
 ];
+const monthPeriodOptions = monthOrder.map((month) => ({ value: month, label: month }));
 const monthShort: Record<string, string> = {
   ENERO: "Ene", FEBRERO: "Feb", MARZO: "Mar", ABRIL: "Abr",
   MAYO: "May", JUNIO: "Jun", JULIO: "Jul", AGOSTO: "Ago",
@@ -433,7 +434,6 @@ function Executive({
   const [period, setPeriod] = useState<ReportPeriod>("ANUAL");
   const [classification, setClassification] = useState<ClassificationFilter>("TOTAL");
   const [selectedMonths, setSelectedMonths] = useState<string[]>(monthOrder);
-  const monthFilterRef = useRef<HTMLDetailsElement>(null);
 
   const displayedYears: Year[] = period === "ANUAL" && classification === "TOTAL" ? years : [2026, 2027];
   const activeMonths = period === "ANUAL"
@@ -450,12 +450,6 @@ function Executive({
     if (period === "ANUAL" && classification === "TOTAL") return store.annual[year];
     if (year !== 2026 && year !== 2027) return emptyMetric();
     return metricForMonths(store, year, activeMonths);
-  };
-  const toggleMonth = (month: string) => {
-    setPeriod("MES");
-    setSelectedMonths((current) => current.includes(month)
-      ? current.filter((item) => item !== month)
-      : [...current, month]);
   };
   const total = (ss: StoreRow[], y: Year) =>
     ss.reduce((a, s) => addMetric(a, storeMetric(s, y)), emptyMetric());
@@ -543,23 +537,14 @@ function Executive({
                 <button key={item} className={classification === item ? "active" : ""} onClick={() => setClassification(item)}>{item}</button>
               ))}
             </div>
-            <div className="quarter-filter" aria-label="Periodo del informe">
-              {(["ANUAL", "Q1", "Q2", "Q3", "Q4"] as Quarter[]).map((item) => (
-                <button key={item} className={period === item ? "active" : ""} onClick={() => { setPeriod(item); monthFilterRef.current?.removeAttribute("open"); }}>{item}</button>
-              ))}
-              <details data-dropdown name="portal-dropdown" className={`month-period-filter ${period === "MES" ? "active" : ""}`} ref={monthFilterRef}>
-                <summary onClick={() => setPeriod("MES")}>MES</summary>
-                <div className="month-options">
-                  <div className="month-options-head">
-                    <b>{selectedMonths.length} MESES</b>
-                    <button type="button" onClick={() => setSelectedMonths(selectedMonths.length === monthOrder.length ? [] : monthOrder)}>{selectedMonths.length === monthOrder.length ? "LIMPIAR" : "TODOS"}</button>
-                  </div>
-                  {monthOrder.map((month) => (
-                    <label key={month}><input type="checkbox" checked={selectedMonths.includes(month)} onChange={() => toggleMonth(month)} />{month}</label>
-                  ))}
-                </div>
-              </details>
-            </div>
+            <MonthPeriodFilter
+              period={period}
+              onPeriodChange={setPeriod}
+              months={monthPeriodOptions}
+              selectedMonths={selectedMonths}
+              onSelectedMonthsChange={setSelectedMonths}
+              ariaLabel="Periodo del informe"
+            />
             <strong><Store /> {selection.filter((s) => storeMetric(s, 2027).sales !== 0).length} tiendas</strong>
           </div>
         </div>
@@ -1809,7 +1794,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
     : portalSection === "users"
       ? { id: "users", label: "Usuarios", enabled: true }
     : portalSection === "toolbox"
-      ? { id: "toolbox", label: "Toolbox AP", enabled: true }
+      ? { id: "toolbox", label: "Toolbox AP", enabled: false }
     : portalGroups.flatMap((group) => group.items).find((item) => item.id === portalSection) ?? portalGroups[0].items[0];
   const selectedPortalGroup = portalGroups.find((group) => group.items.some((item) => item.id === portalSection)) ?? portalGroups[0];
   const openPortalSection = (groupId: string, itemId: string) => {
@@ -1831,7 +1816,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
         <nav className={`portal-topnav ${mobileNavOpen ? "open" : ""}`} aria-label="Informes financieros">
           {canViewHome && <button type="button" className={portalSection === "home" ? "active" : ""} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("home"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Inicio</button>}
           {canViewSalesMargin && <button type="button" className={portalSection === "sales-margin" ? "active" : ""} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("sales-margin"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Venta & Margen</button>}
-          {canUseToolbox && <button type="button" className={portalSection === "toolbox" ? "active" : ""} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("toolbox"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Toolbox AP</button>}
+          {canUseToolbox && <button type="button" className={`upcoming ${portalSection === "toolbox" ? "active" : ""}`} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("toolbox"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}><span>Toolbox AP</span><small>Próximamente</small></button>}
           {visiblePortalGroups.map((group) => {
             const GroupIcon = group.icon;
             const groupOpen = openTopnavGroup === group.id;
@@ -1889,7 +1874,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
             </article>}
             {canUseToolbox && <article className="portal-legend-card toolbox-home-card">
               <div className="portal-legend-head"><span><PackageCheck /></span><div><small>HERRAMIENTA DE PLANIFICACIÓN</small><h2>Toolbox AP</h2><p>Planificación financiera, carga de bases y herramientas operativas del área.</p></div></div>
-              <div className="portal-legend-links"><button type="button" className="available" onClick={() => setPortalSection("toolbox")}><span><b>Abrir Toolbox AP</b><small>Disponible</small></span><ChevronRight /></button></div>
+              <div className="portal-legend-links"><button type="button" onClick={() => setPortalSection("toolbox")}><span><b>Toolbox AP</b><small>Próximamente</small></span><ChevronRight /></button></div>
             </article>}
             {visiblePortalGroups.map((group) => {
               const GroupIcon = group.icon;
@@ -1901,7 +1886,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
         </div>
       </section> : portalSection === "sales-margin" ? <SalesMargin key={salesMarginScope} sessionScope={salesMarginScope} refreshKey={salesMarginRefreshKey} onRefreshComplete={completeSalesMarginRefresh} /> : needsPrivateData && !privateData ? <section className="portal-data-status" aria-live="polite">
         {reportsError ? <><AlertTriangle /><h2>No pudimos cargar este informe</h2><p>{reportsError}</p><button type="button" onClick={onRetryReports}>Reintentar</button></> : <><RefreshCw className="spin" /><h2>Preparando tu informe</h2><p>Puedes seguir navegando mientras termina la carga.</p></>}
-      </section> : portalSection === "users" && canManageUsers ? <div className="content"><UsuariosAdmin /></div> : portalSection === "toolbox" ? <ToolboxPlanning /> : blActive ? <><section className="hero">
+      </section> : portalSection === "users" && canManageUsers ? <div className="content"><UsuariosAdmin /></div> : blActive ? <><section className="hero">
         <div><label>PLANIFICACIÓN FINANCIERA · PRESUPUESTO 2027P</label><h1>Rentabilidad de tiendas.</h1><p>EERR Retail y riesgo Four Walls por tienda.</p></div>
         <span className="unit-badge"><b>INFORME EN MM$</b><small>CONSULTADO  {snapshotLabel}</small></span>
       </section>
@@ -1925,9 +1910,9 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
       </> : portalSection === "ecommerce" ? <ChannelProfitability channel="Ecommerce" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "marketplace" ? <ChannelProfitability channel="Marketplace" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "wholesale" ? <ChannelProfitability channel="Wholesale" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "consolidada" ? <ChannelProfitability channel="Consolidado" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "paises" ? <CountryProfitability /> : portalSection === "benchmark-nacional" ? <NationalBenchmark /> : portalSection === "benchmark-internacional" ? <InternationalBenchmark /> : portalSection === "macroeconomia-ipom" ? <MacroeconomicsMarket /> : portalSection === "mercado-retail-cnc" ? <RetailCncMarket /> : portalSection === "importaciones-retail" ? <ImportacionesIndustria key="retail" /> : portalSection === "importaciones-cosmeticos" ? <ImportacionesIndustria key="cosmetics" variant="cosmetics" /> : <section className="construction-page">
         <div className="construction-card">
           <i><Building2 /></i>
-          <label>{selectedPortalGroup.label}</label>
+          <label>{portalSection === "toolbox" ? "Planificación Financiera" : selectedPortalGroup.label}</label>
           <h1>{selectedPortalItem.label}</h1>
-          <strong>EN CONSTRUCCIÓN</strong>
+          <strong>{portalSection === "toolbox" ? "PRÓXIMAMENTE" : "EN CONSTRUCCIÓN"}</strong>
           <p>Este informe formará parte del Portal Financiero. Su estructura y fuentes de datos todavía están en preparación.</p>
           {canViewHome && <button type="button" onClick={() => setPortalSection("home")}>VOLVER A LA PORTADA</button>}
         </div>

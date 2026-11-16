@@ -16,12 +16,8 @@ export type SalesMarginPayload = {
   sourceSheet: string;
   refreshedAt: string | null;
   unit: string;
-  years?: string[];
   error?: string;
 };
-
-export const salesMarginYearOptions = ["2020", "2021", "2022", "2023", "2024", "2025", "2026P", "2026E", "2027P", "2027M", "2027E", "2028P", "2028E"] as const;
-export const salesMarginDefaultYears = ["2024", "2025", "2026P", "2026E", "2027P", "2027M"] as const;
 
 export class SalesMarginRequestError extends Error {
   constructor(message: string, public readonly status: number) {
@@ -33,17 +29,13 @@ const cacheDurationMs = 5 * 60 * 1000;
 let scope: string | null = null;
 let generation = 0;
 let cached: { payload: SalesMarginPayload; expiresAt: number } | null = null;
-const pending = new Map<string, { promise: Promise<SalesMarginPayload>; controller: AbortController }>();
-const normalizeYears = (years: readonly string[]) => {
-  const requested = new Set(years);
-  return salesMarginYearOptions.filter((year) => requested.has(year));
-};
+let pending: { promise: Promise<SalesMarginPayload>; controller: AbortController } | null = null;
 
 // Keep financial data only in memory, within the current signed-in session.
 export const clearSalesMarginData = () => {
   generation += 1;
-  for (const request of pending.values()) request.controller.abort();
-  pending.clear();
+  pending?.controller.abort();
+  pending = null;
   cached = null;
   scope = null;
 };
@@ -51,31 +43,18 @@ export const clearSalesMarginData = () => {
 export const getSalesMarginSnapshot = (sessionScope: string) =>
   scope === sessionScope ? cached?.payload ?? null : null;
 
-export const loadSalesMargin = (
-  sessionScope: string,
-  force = false,
-  years: readonly string[] = salesMarginDefaultYears,
-): Promise<SalesMarginPayload> => {
+export const loadSalesMargin = (sessionScope: string, force = false): Promise<SalesMarginPayload> => {
   if (scope !== sessionScope) {
     clearSalesMarginData();
     scope = sessionScope;
   }
-
-  const cacheExpired = Boolean(cached && cached.expiresAt <= Date.now());
-  const requestedYears = normalizeYears(years);
-  const loadedYears = new Set(cacheExpired ? [] : cached?.payload.years ?? []);
-  const yearsToFetch = force || cacheExpired ? requestedYears : requestedYears.filter((year) => !loadedYears.has(year));
-  if (yearsToFetch.length === 0 && cached) return Promise.resolve(cached.payload);
-
-  // Prefetch, navigation and equal year selections share a single request.
-  const requestKey = yearsToFetch.join(",");
-  const activeRequest = pending.get(requestKey);
-  if (activeRequest) return activeRequest.promise;
+  // Prefetch, navigation and refresh share a single request.
+  if (pending) return pending.promise;
+  if (!force && cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.payload);
 
   const requestGeneration = generation;
   const controller = new AbortController();
-  const search = new URLSearchParams({ years: yearsToFetch.join(",") });
-  const promise = fetch(`/api/sales-margin?${search}`, { cache: "no-store", signal: controller.signal })
+  const promise = fetch("/api/sales-margin", { cache: "no-store", signal: controller.signal })
     .then(async (response) => {
       const body = await response.json() as SalesMarginPayload;
       if (!response.ok) {
@@ -83,24 +62,13 @@ export const loadSalesMargin = (
         throw new SalesMarginRequestError(body.error || "No fue posible cargar Venta & Margen.", response.status);
       }
       if (requestGeneration === generation) {
-        const responseYears = normalizeYears(body.years?.length ? body.years : yearsToFetch);
-        const replacedYears = new Set<string>(responseYears);
-        const rows = [
-          ...(cached?.payload.rows ?? []).filter((row) => !replacedYears.has(row.scenario)),
-          ...body.rows,
-        ];
-        const mergedYears = normalizeYears([...(cached?.payload.years ?? []), ...responseYears]);
-        cached = {
-          payload: { ...body, rows, years: mergedYears },
-          expiresAt: Date.now() + cacheDurationMs,
-        };
-        return cached.payload;
+        cached = { payload: body, expiresAt: Date.now() + cacheDurationMs };
       }
       return body;
     })
     .finally(() => {
-      if (pending.get(requestKey)?.promise === promise) pending.delete(requestKey);
+      if (pending?.promise === promise) pending = null;
     });
-  pending.set(requestKey, { promise, controller });
+  pending = { promise, controller };
   return promise;
 };

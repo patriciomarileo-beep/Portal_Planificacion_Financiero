@@ -420,9 +420,10 @@ export const buildDisplayRows = (
       const aggregateLabel = quarterFilter === "MES"
         ? activeMonths.length === 1 ? monthLabels[activeMonths[0]] : `${activeMonths.length} MESES`
         : quarterFilter;
-      const parentKey = `${keyPrefix}\u0000${aggregateLabel}`;
-      const rowForPeriod = (period: string, metrics: ScenarioMetrics): DisplayRow => ({
-        key: `${keyPrefix}\u0000${period}`,
+      const childMonths = view === "summary" || activeMonths.length > 1 ? activeMonths : [];
+      const parentKey = `${keyPrefix}\u0000aggregate-${quarterFilter}-${activeMonths.join("-")}`;
+      const rowForPeriod = (period: string, metrics: ScenarioMetrics, keySuffix: string): DisplayRow => ({
+        key: `${keyPrefix}\u0000${keySuffix}`,
         primary: periodLevel === "primary" ? period : primary,
         secondary: periodLevel === "secondary" ? period : secondary,
         tertiary: periodLevel === "tertiary" ? period : "",
@@ -430,13 +431,13 @@ export const buildDisplayRows = (
       });
       return [
         {
-          ...rowForPeriod(aggregateLabel, totalMetrics),
+          ...rowForPeriod(aggregateLabel, totalMetrics, `aggregate-${quarterFilter}-${activeMonths.join("-")}`),
           key: parentKey,
           total,
-          expandable: activeMonths.length > 0,
+          expandable: childMonths.length > 0,
         },
-        ...activeMonths.map((month) => ({
-          ...rowForPeriod(monthLabels[month], metricsByMonth.get(month) ?? {}),
+        ...childMonths.map((month) => ({
+          ...rowForPeriod(monthLabels[month], metricsByMonth.get(month) ?? {}, `month-${month}`),
           parentKey,
           depth: 1,
         })),

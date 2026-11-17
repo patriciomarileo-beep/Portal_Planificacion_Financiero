@@ -270,6 +270,31 @@ test("temporal drilldown keeps every logical row and nests its months", () => {
   assert.match(styles, /\.sales-margin-table\.view-chainBrand tbody th \{ text-align: center; \}/);
 });
 
+test("a single-month table filter keeps unique React rows and never mixes quarters", () => {
+  const base = payload.rows[0];
+  const rows = [
+    { ...base, month: 1, quarter: "Q1", chain: "HUSH PUPPIES", brand: "MARCA A", business: "ECOMMERCE", class: "CALZADO", sales: 10 },
+    { ...base, month: 2, quarter: "Q1", chain: "HUSH PUPPIES", brand: "MARCA A", business: "ECOMMERCE", class: "CALZADO", sales: 20 },
+    { ...base, month: 1, quarter: "Q1", chain: "ROCKFORD", brand: "MARCA B", business: "WHOLESALE", class: "VESTUARIO", sales: 30 },
+    { ...base, month: 8, quarter: "Q3", chain: "ROCKFORD", brand: "MARCA B", business: "WHOLESALE", class: "VESTUARIO", sales: 40 },
+  ];
+
+  for (const view of ["channel", "brand", "brandChannel", "brandClass", "chainBrand"]) {
+    const display = buildDisplayRows(rows, view, "MES", [1], false);
+    const keys = display.map((row) => row.key);
+    assert.equal(new Set(keys).size, keys.length, `${view} must not emit duplicate React keys`);
+    assert.equal(display.some((row) => row.parentKey), false, `${view} should not add a redundant child for one month`);
+    assert.equal(display.some((row) => row.expandable), false, `${view} should not show an empty accordion for one month`);
+    const periods = display.map((row) => view === "channel" || view === "brand" ? row.secondary : row.tertiary);
+    assert.equal(periods.every((period) => period === "ENE"), true, `${view} must only render the selected month`);
+    assert.equal(display.some((row) => row.metrics["2027P"]?.sales === 20 || row.metrics["2027P"]?.sales === 40), false);
+  }
+
+  const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
+  assert.match(report, /aggregate-\$\{quarterFilter\}-\$\{activeMonths\.join\("-"\)\}/);
+  assert.match(report, /`month-\$\{month\}`/);
+});
+
 test("chain view filters are bidirectionally faceted", () => {
   const rows = [
     { ...payload.rows[0], chain: "HUSH PUPPIES", brand: "HUSH PUPPIES", business: "BRICK & LIFE", class: "CALZADO" },

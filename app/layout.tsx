@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Portal Financiero | Forus",
-  description: "Portal de informes y planificación financiera de Forus.",
+  title: "Accountability Portal | Forus",
+  description: "Accountability Portal de informes y planificación financiera de Forus.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

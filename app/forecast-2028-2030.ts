@@ -1,4 +1,4 @@
-import type { BaseRow } from "./base-consolidada";
+import type { BaseRow } from "./base-consolidada-types";
 
 export type ForecastYear = 2028 | 2029 | 2030;
 export type Forecast2030Row = { year: ForecastYear; month: string; code: string; chain: string; store: string; sales: number; margin: number; payroll: number; rent: number; general: number; fourWalls: number; salesGrowth: number; marginRate: number; model: string };

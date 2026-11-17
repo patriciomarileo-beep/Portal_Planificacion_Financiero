@@ -1,5 +1,5 @@
 
-import type { BaseRow } from "../../base-consolidada";
+import type { BaseRow } from "../../base-consolidada-types";
 import { googleAccessToken } from "./bigquery";
 
 const SHEET_NAME = "BASE_CONSOLIDADA";

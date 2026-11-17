@@ -44,11 +44,12 @@ import {
 } from "lucide-react";
 import { parseMarketIndicators, indicatorDateLabel, type MarketIndicator } from "./market/indicator-data";
 import type { DollarHistoryPayload } from "./market/dollar-history-data";
-import type { BaseRow } from "./base-consolidada";
+import type { BaseRow } from "./base-consolidada-types";
 import { PrivateDataContext, usePrivateData, type PrivateData } from "./private-data-context";
 import { storeClassification, type StoreClassification } from "./store-classification";
 import { canAccessMenu, type PortalMenu } from "./menu-access";
 import { clearSalesMarginData, loadSalesMargin } from "./sales-margin/sales-margin-data";
+import type { SalesMarginView } from "./sales-margin/SalesMargin";
 import MonthPeriodFilter, { type MonthPeriod } from "./components/MonthPeriodFilter";
 const reportLoading = () => <div className="portal-data-status" role="status"><RefreshCw className="spin" /><p>Cargando informe…</p></div>;
 const NationalBenchmark = dynamic(() => import("./market/NationalBenchmark"), { loading: reportLoading });
@@ -1470,6 +1471,7 @@ function UsuariosAdmin() {
 function EconomicIndicators() {
   const [indicators, setIndicators] = useState<MarketIndicator[]>([]);
   const [indicatorError, setIndicatorError] = useState(false);
+  const [indicatorsLoading, setIndicatorsLoading] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1483,7 +1485,8 @@ function EconomicIndicators() {
         setIndicators(valid);
         setIndicatorError(valid.length < 4);
       })
-      .catch((error) => { if (error.name !== "AbortError") setIndicatorError(true); });
+      .catch((error) => { if (error.name !== "AbortError") setIndicatorError(true); })
+      .finally(() => setIndicatorsLoading(false));
     return () => controller.abort();
   }, []);
 
@@ -1493,6 +1496,13 @@ function EconomicIndicators() {
     petroleo: Waves,
     cobre: Activity,
   };
+  const indicatorDefinitions: { id: MarketIndicator["id"]; label: string; unit: string }[] = [
+    { id: "dolar", label: "Dólar observado", unit: "CLP" },
+    { id: "uf", label: "Unidad de Fomento", unit: "CLP" },
+    { id: "petroleo", label: "Petróleo Brent", unit: "USD/barril" },
+    { id: "cobre", label: "Libra de cobre", unit: "USD/lb" },
+  ];
+  const indicatorsById = new Map(indicators.map((indicator) => [indicator.id, indicator]));
   const numberFormat = (indicator: MarketIndicator) => new Intl.NumberFormat("es-CL", {
     minimumFractionDigits: indicator.id === "uf" ? 2 : 2,
     maximumFractionDigits: 2,
@@ -1506,10 +1516,17 @@ function EconomicIndicators() {
   };
 
   return <div className="economic-panel">
-    <div className="economic-panel-head"><div><small>PULSO ECONÓMICO</small><h2>Indicadores diarios</h2></div><span><i /> Datos actualizados</span></div>
+    <div className="economic-panel-head"><div><small>PULSO ECONÓMICO</small><h2>Indicadores diarios</h2></div><span className={indicatorError ? "partial" : ""}><i /> {indicatorError ? "Disponibilidad parcial" : "Datos actualizados"}</span></div>
     <div className="economic-grid">
-      {indicators.length ? [...indicators].sort((a, b) => ["dolar", "uf", "petroleo", "cobre"].indexOf(a.id) - ["dolar", "uf", "petroleo", "cobre"].indexOf(b.id)).map((indicator) => {
-        const Icon = icons[indicator.id];
+      {indicatorsLoading ? Array.from({ length: 4 }, (_, index) => <article className="economic-card loading" key={index}><span /><b /><i /></article>) : indicatorDefinitions.map((definition) => {
+        const indicator = indicatorsById.get(definition.id);
+        const Icon = icons[definition.id];
+        if (!indicator) return <article className="economic-card unavailable" key={definition.id}>
+          <div className="economic-card-title"><i><Icon /></i><span><b>{definition.label}</b><small>{definition.unit}</small></span></div>
+          <strong>Dato no disponible</strong>
+          <div className="economic-trend"><span>Sin conexión</span><small>con la fuente</small></div>
+          <time>Fuente temporalmente no disponible</time>
+        </article>;
         const hasTrend = indicator.history.length > 1;
         const direction = indicator.change > 0.001 ? "up" : indicator.change < -0.001 ? "down" : "flat";
         return <article className={`economic-card ${direction}`} key={indicator.id}>
@@ -1519,7 +1536,7 @@ function EconomicIndicators() {
           <svg viewBox="0 0 100 38" preserveAspectRatio="none" aria-hidden="true"><polyline points={chartPoints(indicator.history)} /></svg>
           <time dateTime={indicator.date}>{indicatorDateLabel(indicator.date)}</time>
         </article>;
-      }) : Array.from({ length: 4 }, (_, index) => <article className="economic-card loading" key={index}><span /><b /><i /></article>)}
+        })}
     </div>
     <div className="economic-source"><span>{indicatorError ? "Algunos indicadores no están disponibles temporalmente." : "Valores referenciales · última observación disponible"}</span><a href="https://www.bcentral.cl/es/areas/estadisticas" target="_blank" rel="noreferrer">BCCh</a><a href="https://fred.stlouisfed.org/series/DCOILBRENTEU" target="_blank" rel="noreferrer">FRED</a></div>
   </div>;
@@ -1651,7 +1668,7 @@ function LoginForm({ onLogin }: { onLogin: (user: AuthUser) => void | Promise<vo
       <section className="login-panel login-access-panel">
         <div className="brand login-brand"><img src="/forus.png" alt="Forus" /><b>PLANIFICACIÓN <span>FINANCIERA</span><small>Intelligence portal</small></b></div>
         <div className="login-copy">
-          <label>PORTAL FINANCIERO · ACCESO CORPORATIVO</label>
+          <label>ACCOUNTABILITY PORTAL · ACCESO CORPORATIVO</label>
           <h1>Del desempeño interno al pulso de la industria.</h1>
           <p>Rentabilidad, forecast y señales de la macroindustria para apoyar decisiones con una mirada integral.</p>
         </div>
@@ -1702,8 +1719,12 @@ function UserMenu({ user, onLogout }: { user: AuthUser; onLogout: () => Promise<
   </details>;
 }
 
-function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
-  authUser: AuthUser; onLogout: () => Promise<void>; reportsError: string; onRetryReports: () => void;
+function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshReports }: {
+  authUser: AuthUser;
+  onLogout: () => Promise<void>;
+  reportsError: string;
+  onRetryReports: () => void;
+  onRefreshReports: () => Promise<void>;
 }) {
   const privateData = useContext(PrivateDataContext);
   const baseSnapshotAt = privateData?.baseSnapshotAt ?? "";
@@ -1722,6 +1743,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   const [analysisMetric, setAnalysisMetric] = useState<ProfitMetric>("fourWalls");
   const [refreshing, setRefreshing] = useState(false);
   const [salesMarginRefreshKey, setSalesMarginRefreshKey] = useState(0);
+  const [salesMarginInitialView, setSalesMarginInitialView] = useState<SalesMarginView>("summary");
   const [profitabilityRefreshKey, setProfitabilityRefreshKey] = useState(0);
   const visiblePortalGroups = portalGroups.filter(group => canAccessMenu(authUser.role, group.id));
   const canViewHome = canAccessMenu(authUser.role, "home");
@@ -1762,7 +1784,11 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
       setProfitabilityRefreshKey((current) => current + 1);
       return;
     }
-    window.setTimeout(() => window.location.reload(), 120);
+    if (blActive) {
+      void onRefreshReports().finally(() => setRefreshing(false));
+      return;
+    }
+    setRefreshing(false);
   };
   const completeSalesMarginRefresh = useCallback(() => setRefreshing(false), []);
   const completeProfitabilityRefresh = useCallback(() => setRefreshing(false), []);
@@ -1804,18 +1830,51 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
       setOpenTopnavGroup(null);
     }
   };
+  const openSalesMargin = (targetView: SalesMarginView = "summary") => {
+    setSalesMarginInitialView(targetView);
+    setPortalSection("sales-margin");
+    setOpenTopnavGroup(null);
+    setMobileNavOpen(false);
+  };
 
   return (
     <div className="portal-shell microsoft-shell">
       <header className="portal-topbar">
         <button className="portal-brand" type="button" onClick={() => { setPortalSection(defaultSection); setOpenTopnavGroup(null); setMobileNavOpen(false); }} aria-label={canViewHome ? "Ir a la portada" : "Ir a Comex"}>
           <img src="/forus.png" alt="Forus" />
-          <span><b>Portal Financiero</b><small>Planificación · Forus</small></span>
+          <span><b>Accountability Portal</b><small>Planificación · Forus</small></span>
         </button>
         <button className="portal-mobile-toggle" type="button" onClick={() => { setMobileNavOpen((current) => !current); setOpenTopnavGroup(null); }} aria-expanded={mobileNavOpen} aria-label="Abrir menú"><Menu /></button>
         <nav className={`portal-topnav ${mobileNavOpen ? "open" : ""}`} aria-label="Informes financieros">
           {canViewHome && <button type="button" className={portalSection === "home" ? "active" : ""} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("home"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Inicio</button>}
-          {canViewSalesMargin && <button type="button" className={portalSection === "sales-margin" ? "active" : ""} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("sales-margin"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Venta & Margen</button>}
+          {canViewSalesMargin && <div
+            className={`portal-topnav-group sales-margin-topnav-group ${openTopnavGroup === "sales-margin" ? "open" : ""}`}
+            onMouseEnter={() => setOpenTopnavGroup("sales-margin")}
+            onMouseLeave={() => setOpenTopnavGroup((current) => current === "sales-margin" ? null : current)}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                setOpenTopnavGroup((current) => current === "sales-margin" ? null : current);
+              }
+            }}
+          >
+            <button type="button" className={portalSection === "sales-margin" ? "active" : ""} aria-haspopup="true" aria-expanded={openTopnavGroup === "sales-margin"} onClick={() => setOpenTopnavGroup("sales-margin")}>
+              <CircleDollarSign /><span>Venta &amp; Margen</span><ChevronDown />
+            </button>
+            <div className="portal-mega-menu">
+              <div className="portal-mega-intro"><CircleDollarSign /><small>MÓDULO</small><strong>Venta &amp; Margen</strong><p>Ventas, margen y variaciones por período, canal, marca y clase.</p></div>
+              <div className="portal-mega-links">
+                {([
+                  ["summary", "Consolidado"],
+                  ["channel", "Canal"],
+                  ["brand", "Marca"],
+                  ["brandChannel", "Marca × Canal"],
+                  ["brandClass", "Marca × Clase"],
+                ] as [SalesMarginView, string][]).map(([targetView, label]) => <button type="button" className="available" key={targetView} onClick={() => openSalesMargin(targetView)}>
+                  <span><b>{label}</b><small>Disponible</small></span><ChevronRight />
+                </button>)}
+              </div>
+            </div>
+          </div>}
           {canUseToolbox && <button type="button" className={`upcoming ${portalSection === "toolbox" ? "active" : ""}`} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("toolbox"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}><span>Toolbox AP</span><small>Próximamente</small></button>}
           {visiblePortalGroups.map((group) => {
             const GroupIcon = group.icon;
@@ -1850,7 +1909,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
       </header>
       <main ref={workspaceRef} className="portal-workspace">
       <header className={`portal-reportbar ${portalSection === "home" ? "home" : ""}`}>
-        <div className="portal-context"><small>{portalSection === "home" ? "Portal Financiero" : portalSection === "users" ? "Administración" : portalSection === "toolbox" || portalSection === "sales-margin" ? "Planificación Financiera" : selectedPortalGroup.label}</small><b>{selectedPortalItem.label}</b></div>
+        <div className="portal-context"><small>{portalSection === "home" ? "Accountability Portal" : portalSection === "users" ? "Administración" : portalSection === "toolbox" || portalSection === "sales-margin" ? "Planificación Financiera" : selectedPortalGroup.label}</small><b>{selectedPortalItem.label}</b></div>
         {blActive && <nav>
           <button className={activeView === "annual" ? "active" : ""} onClick={() => setView("annual")}>Comparativa anual</button>
           <button className={activeView === "detail" ? "active" : ""} onClick={() => setView("detail")}>Detalle tiendas</button>
@@ -1870,7 +1929,15 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
         <div className="portal-legend-grid">
             {canViewSalesMargin && <article className="portal-legend-card sales-margin-home-card">
               <div className="portal-legend-head"><span><CircleDollarSign /></span><div><small>PLANIFICACIÓN FINANCIERA</small><h2>Venta &amp; Margen</h2><p>Ventas, margen y variaciones por período, canal, marca y clase.</p></div></div>
-              <div className="portal-legend-links"><button type="button" className="available" onClick={() => setPortalSection("sales-margin")}><span><b>Abrir Venta &amp; Margen</b><small>Disponible</small></span><ChevronRight /></button></div>
+              <div className="portal-legend-links">
+                {([
+                  ["summary", "Consolidado"],
+                  ["channel", "Canal"],
+                  ["brand", "Marca"],
+                  ["brandChannel", "Marca × Canal"],
+                  ["brandClass", "Marca × Clase"],
+                ] as [SalesMarginView, string][]).map(([targetView, label]) => <button type="button" className="available" key={targetView} onClick={() => openSalesMargin(targetView)}><span><b>{label}</b><small>Disponible</small></span><ChevronRight /></button>)}
+              </div>
             </article>}
             {canUseToolbox && <article className="portal-legend-card toolbox-home-card">
               <div className="portal-legend-head"><span><PackageCheck /></span><div><small>HERRAMIENTA DE PLANIFICACIÓN</small><h2>Toolbox AP</h2><p>Planificación financiera, carga de bases y herramientas operativas del área.</p></div></div>
@@ -1884,7 +1951,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
               </article>;
             })}
         </div>
-      </section> : portalSection === "sales-margin" ? <SalesMargin key={salesMarginScope} sessionScope={salesMarginScope} refreshKey={salesMarginRefreshKey} onRefreshComplete={completeSalesMarginRefresh} /> : needsPrivateData && !privateData ? <section className="portal-data-status" aria-live="polite">
+      </section> : portalSection === "sales-margin" ? <SalesMargin key={`${salesMarginScope}:${salesMarginInitialView}`} sessionScope={salesMarginScope} initialView={salesMarginInitialView} refreshKey={salesMarginRefreshKey} onRefreshComplete={completeSalesMarginRefresh} /> : needsPrivateData && !privateData ? <section className="portal-data-status" aria-live="polite">
         {reportsError ? <><AlertTriangle /><h2>No pudimos cargar este informe</h2><p>{reportsError}</p><button type="button" onClick={onRetryReports}>Reintentar</button></> : <><RefreshCw className="spin" /><h2>Preparando tu informe</h2><p>Puedes seguir navegando mientras termina la carga.</p></>}
       </section> : portalSection === "users" && canManageUsers ? <div className="content"><UsuariosAdmin /></div> : blActive ? <><section className="hero">
         <div><label>PLANIFICACIÓN FINANCIERA · PRESUPUESTO 2027P</label><h1>Rentabilidad de tiendas.</h1><p>EERR Retail y riesgo Four Walls por tienda.</p></div>
@@ -1913,7 +1980,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
           <label>{portalSection === "toolbox" ? "Planificación Financiera" : selectedPortalGroup.label}</label>
           <h1>{selectedPortalItem.label}</h1>
           <strong>{portalSection === "toolbox" ? "PRÓXIMAMENTE" : "EN CONSTRUCCIÓN"}</strong>
-          <p>Este informe formará parte del Portal Financiero. Su estructura y fuentes de datos todavía están en preparación.</p>
+          <p>Este informe formará parte de Accountability Portal. Su estructura y fuentes de datos todavía están en preparación.</p>
           {canViewHome && <button type="button" onClick={() => setPortalSection("home")}>VOLVER A LA PORTADA</button>}
         </div>
       </section>}
@@ -1922,8 +1989,8 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   );
 }
 
-// Para refrescar el dashboard, reemplazar este snapshot mediante el mismo mapper
-// conectado a Google Sheets API y mantener los índices definidos en BaseRow.
+// B&L se actualiza desde Google Sheets mediante /api/portal-data.
+// El estado se reemplaza en memoria para conservar la vista y los filtros activos.
 
 export default function Home() {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -1989,5 +2056,5 @@ export default function Home() {
   }, [loadSession]);
   if (checking) return <main className="login-shell"><span className="login-status">Validando acceso...</span></main>;
   if (!user) return <>{error && <p role="alert">{error}</p>}<LoginForm onLogin={acceptUser} /></>;
-  return <PrivateDataContext.Provider value={data}><Portal authUser={user} onLogout={logout} reportsError={reportsError} onRetryReports={() => void loadPortalData()} /></PrivateDataContext.Provider>;
+  return <PrivateDataContext.Provider value={data}><Portal authUser={user} onLogout={logout} reportsError={reportsError} onRetryReports={() => void loadPortalData()} onRefreshReports={loadPortalData} /></PrivateDataContext.Provider>;
 }

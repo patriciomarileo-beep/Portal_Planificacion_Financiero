@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Download, SlidersHorizontal } from "lucide-react";
-import type { BaseRow } from "../base-consolidada";
+import type { BaseRow } from "../base-consolidada-types";
 import { usePrivateData } from "../private-data-context";
 import { buildForecast2030, type ForecastYear } from "../forecast-2028-2030";
 

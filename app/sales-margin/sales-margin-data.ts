@@ -17,10 +17,17 @@ export type SalesMarginPayload = {
   refreshedAt: string | null;
   unit: string;
   years?: string[];
+  chainYears?: string[];
+  brandGrouping: {
+    label: "OTRAS";
+    thresholdMm: number;
+    window: string[];
+    brands: { name: string; totalSalesMm: number }[];
+  };
   error?: string;
 };
 
-export const salesMarginYearOptions = ["2020", "2021", "2022", "2023", "2024", "2025", "2026P", "2026E", "2027P", "2027M", "2027E", "2028P", "2028E"] as const;
+export const salesMarginYearOptions = ["2020", "2021", "2022", "2023", "2024", "2025", "2026P", "2026E", "2027P", "2027M", "2027E", "2028PS", "2029PS", "2030PS"] as const;
 export const salesMarginDefaultYears = ["2024", "2025", "2026P", "2026E", "2027P", "2027M"] as const;
 
 export class SalesMarginRequestError extends Error {
@@ -55,6 +62,7 @@ export const loadSalesMargin = (
   sessionScope: string,
   force = false,
   years: readonly string[] = salesMarginDefaultYears,
+  includeChain = false,
 ): Promise<SalesMarginPayload> => {
   if (scope !== sessionScope) {
     clearSalesMarginData();
@@ -64,17 +72,21 @@ export const loadSalesMargin = (
   const cacheExpired = Boolean(cached && cached.expiresAt <= Date.now());
   const requestedYears = normalizeYears(years);
   const loadedYears = new Set(cacheExpired ? [] : cached?.payload.years ?? []);
-  const yearsToFetch = force || cacheExpired ? requestedYears : requestedYears.filter((year) => !loadedYears.has(year));
+  const loadedChainYears = new Set(cacheExpired ? [] : cached?.payload.chainYears ?? []);
+  const yearsToFetch = force || cacheExpired
+    ? requestedYears
+    : requestedYears.filter((year) => !loadedYears.has(year) || (includeChain && !loadedChainYears.has(year)));
   if (yearsToFetch.length === 0 && cached) return Promise.resolve(cached.payload);
 
   // Prefetch, navigation and equal year selections share a single request.
-  const requestKey = yearsToFetch.join(",");
+  const requestKey = `${includeChain ? "chain" : "summary"}:${yearsToFetch.join(",")}`;
   const activeRequest = pending.get(requestKey);
   if (activeRequest) return activeRequest.promise;
 
   const requestGeneration = generation;
   const controller = new AbortController();
   const search = new URLSearchParams({ years: yearsToFetch.join(",") });
+  if (includeChain) search.set("includeChain", "1");
   const promise = fetch(`/api/sales-margin?${search}`, { cache: "no-store", signal: controller.signal })
     .then(async (response) => {
       const body = await response.json() as SalesMarginPayload;
@@ -90,8 +102,13 @@ export const loadSalesMargin = (
           ...body.rows,
         ];
         const mergedYears = normalizeYears([...(cached?.payload.years ?? []), ...responseYears]);
+        const retainedChainYears = (cached?.payload.chainYears ?? []).filter((year) => !replacedYears.has(year));
+        const mergedChainYears = normalizeYears([
+          ...retainedChainYears,
+          ...(body.chainYears?.length ? responseYears : []),
+        ]);
         cached = {
-          payload: { ...body, rows, years: mergedYears },
+          payload: { ...body, rows, years: mergedYears, chainYears: mergedChainYears },
           expiresAt: Date.now() + cacheDurationMs,
         };
         return cached.payload;

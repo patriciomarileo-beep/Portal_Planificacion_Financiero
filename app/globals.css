@@ -4037,7 +4037,7 @@ body {
   text-align: left;
 }
 .microsoft-shell .portal-brand img { width: 54px; height: 34px; object-fit: contain; }
-.microsoft-shell .portal-brand b { color: #18202b; font-size: 15px; font-weight: 600; }
+.microsoft-shell .portal-brand b { color: #18202b; font-size: 15px; font-weight: 600; white-space: nowrap; }
 .microsoft-shell .portal-brand small { margin-top: 2px; color: #68717e; font-size: 10px; letter-spacing: 0; }
 .portal-topnav {
   height: 100%;
@@ -4212,6 +4212,7 @@ body {
 .economic-panel-head h2 { margin: 4px 0 0; color: #18202b; font-size: 24px; font-weight: 400; letter-spacing: -.02em; }
 .economic-panel-head > span { display: flex; align-items: center; gap: 6px; color: #64707d; font-size: 9px; white-space: nowrap; }
 .economic-panel-head > span i { width: 7px; height: 7px; border-radius: 50%; background: #107c10; box-shadow: 0 0 0 4px rgba(16,124,16,.1); }
+.economic-panel-head > span.partial i { background: #d78b20; box-shadow: 0 0 0 4px rgba(215,139,32,.12); }
 .economic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .economic-card { position: relative; min-height: 154px; overflow: hidden; padding: 16px; border: 1px solid #e5e8ec; background: rgba(255,255,255,.92); transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
 .economic-card:hover { z-index: 2; transform: translateY(-3px); border-color: #b8d5ec; box-shadow: 0 12px 24px rgba(29, 62, 92, .12); }
@@ -4227,6 +4228,10 @@ body {
 .economic-trend span { color: #107c10; font-size: 10px; font-weight: 700; }
 .economic-card.down .economic-trend span { color: #c42b1c; }
 .economic-card.flat .economic-trend span { color: #68717e; }
+.economic-card.unavailable { background: rgba(248,249,250,.92); }
+.economic-card.unavailable > strong { color: #68717e; font-size: 16px; }
+.economic-card.unavailable .economic-card-title > i { background: #edf0f3; color: #68717e; }
+.economic-card.unavailable .economic-trend span { color: #c42b1c; }
 .economic-trend small { color: #9299a2; font-size: 8px; }
 .economic-card > svg { position: absolute; right: 0; bottom: 0; width: 48%; height: 54px; overflow: visible; opacity: .52; }
 .economic-card > svg polyline { fill: none; stroke: #107c10; stroke-width: 2; vector-effect: non-scaling-stroke; }
@@ -4620,6 +4625,15 @@ body {
 .sales-margin-table tbody tr:hover td, .sales-margin-table tbody tr:hover th { background: #eef7fb; }
 /* Segunda dimensión de la tabla: Período, Canal o Clase según la pestaña. */
 .sales-margin-table td.dimension { min-width: 115px; color: #65758a; font-weight: 600; }
+/* Control de acordeón que mantiene el desglose temporal dentro de la fila principal. */
+.sales-margin-drilldown-toggle { width: 100%; display: inline-flex; align-items: center; justify-content: flex-start; gap: 5px; padding: 0; border: 0; color: inherit; background: transparent; font: inherit; font-weight: 750; cursor: pointer; }
+.sales-margin-drilldown-toggle svg { width: 13px; height: 13px; flex: 0 0 13px; }
+.sales-margin-drilldown-toggle:hover { color: #116f9e; }
+/* Meses desplegados como subfilas de la fila agregada seleccionada. */
+.sales-margin-table tr.temporal-child td { background: #f8fbfd; }
+.sales-margin-drilldown-label { display: inline-block; padding-left: 18px; color: #74869b; font-weight: 600; }
+/* La dimensión Cadena se centra en todas las filas y bloques combinados. */
+.sales-margin-table.view-chainBrand tbody th { text-align: center; }
 /* Celdas numéricas: alineación derecha y dígitos tabulares. */
 .sales-margin-table td.number { min-width: 58px; text-align: right; font-variant-numeric: tabular-nums; }
 /* Celdas de margen porcentual: color y fondo diferenciados. */
@@ -4639,11 +4653,41 @@ body {
 /* Variación negativa dentro de una fila total. */
 .sales-margin-table tr.total td.variance.negative { color: #a63131; background: #f9dfdf; }
 /* Pie del panel: distribuye la fuente técnica y la referencia funcional. */
-.sales-margin-panel > footer { display: flex; justify-content: space-between; gap: 24px; padding: 13px 18px; color: #748397; font-size: 8px; }
+.sales-margin-panel > footer { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 18px; padding: 13px 18px; color: #748397; font-size: 8px; }
 /* Evita que las rutas largas desborden el pie y muestra puntos suspensivos. */
-.sales-margin-panel > footer span { max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sales-margin-panel > footer span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sales-margin-panel > footer span:last-child { text-align: right; }
 /* Resalta la palabra FUENTE dentro del pie. */
 .sales-margin-panel > footer b { color: #1d547d; }
+/* Acceso permanente al detalle de las marcas que conforman OTRAS. */
+.sales-margin-brand-glossary-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 29px; padding: 0 10px; border: 1px solid #bfd2e3; border-radius: 5px; color: #1d547d; background: #f2f7fb; font-size: 8px; font-weight: 800; letter-spacing: .04em; cursor: pointer; }
+.sales-margin-brand-glossary-trigger:hover { border-color: #1678a9; color: #0f6898; background: #eaf5fa; }
+.sales-margin-brand-glossary-trigger:disabled { opacity: .55; cursor: wait; }
+.sales-margin-brand-glossary-trigger svg { width: 13px; height: 13px; }
+/* Capa que mantiene el glosario visible sobre cualquier vista de Venta & Margen. */
+.sales-margin-brand-glossary-backdrop { position: fixed; z-index: 90; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(15, 34, 56, .48); backdrop-filter: blur(2px); }
+/* Ventana con la regla vigente y el listado exacto devuelto por BigQuery. */
+.sales-margin-brand-glossary { width: min(680px, 100%); max-height: min(720px, calc(100vh - 48px)); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #cbd8e5; border-radius: 10px; background: #fff; box-shadow: 0 26px 70px rgba(17, 43, 70, .28); }
+.sales-margin-brand-glossary > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 20px 22px 16px; border-bottom: 1px solid #e1e8ef; background: #f7fafc; }
+.sales-margin-brand-glossary > header small { color: #718197; font-size: 8px; font-weight: 800; letter-spacing: .13em; }
+.sales-margin-brand-glossary > header h2 { margin: 4px 0 0; color: #173d69; font-size: 22px; font-weight: 550; }
+.sales-margin-brand-glossary > header button { width: 32px; height: 32px; display: grid; flex: 0 0 32px; place-items: center; border: 1px solid #d2dce6; border-radius: 50%; color: #52677d; background: #fff; cursor: pointer; }
+.sales-margin-brand-glossary > header button:hover { color: #173d69; background: #edf5fa; }
+.sales-margin-brand-glossary > header button svg { width: 15px; }
+.sales-margin-brand-glossary > p { margin: 0; padding: 15px 22px 12px; color: #5d6f83; font-size: 11px; line-height: 1.55; }
+.sales-margin-brand-glossary > p b { color: #173d69; }
+/* Resumen previo al detalle para mostrar rápidamente la cantidad agrupada. */
+.sales-margin-brand-glossary-summary { display: flex; align-items: center; justify-content: space-between; margin: 0 22px 10px; padding: 10px 12px; border: 1px solid #d8e5ef; border-radius: 6px; color: #466079; background: #eef6fb; font-size: 10px; font-weight: 700; }
+.sales-margin-brand-glossary-summary strong { color: #0f6898; font-size: 17px; }
+/* Lista desplazable: nombre original de la marca y venta usada por la regla. */
+.sales-margin-brand-glossary-list { min-height: 120px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 0 12px; overflow-y: auto; margin: 0 22px; padding: 0 4px 4px; }
+.sales-margin-brand-glossary-list > div { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 8px; border-bottom: 1px solid #edf1f5; color: #30465e; font-size: 10px; }
+.sales-margin-brand-glossary-list > div span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sales-margin-brand-glossary-list > div strong { flex: 0 0 auto; color: #173d69; font-size: 9px; font-variant-numeric: tabular-nums; }
+.sales-margin-brand-glossary-list > p { grid-column: 1 / -1; color: #718197; font-size: 10px; text-align: center; }
+.sales-margin-brand-glossary > footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 22px 18px; border-top: 1px solid #e1e8ef; }
+.sales-margin-brand-glossary > footer small { color: #7a899a; font-size: 9px; }
+.sales-margin-brand-glossary > footer button { min-height: 32px; padding: 0 17px; border: 0; border-radius: 5px; color: #fff; background: #1678a9; font-size: 9px; font-weight: 800; text-transform: uppercase; cursor: pointer; }
 /* Aviso situado sobre la tabla mientras BigQuery carga o actualiza datos. */
 .sales-margin-loading-status { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 38px; padding: 8px 16px; color: #5e7085; font-size: 11px; line-height: 1.35; text-align: left; }
 /* Mantiene el indicador de carga al lado del mensaje, sin ocupar una fila propia. */
@@ -4695,9 +4739,14 @@ body {
   /* Centra el contenido del botón Actualizar. */
   .sales-margin-refresh { justify-content: center; }
   /* Apila los datos de fuente del pie. */
-  .sales-margin-panel > footer { flex-direction: column; gap: 6px; }
+  .sales-margin-panel > footer { grid-template-columns: 1fr; gap: 8px; }
   /* Permite que cada texto del pie utilice todo el ancho. */
   .sales-margin-panel > footer span { max-width: 100%; }
+  .sales-margin-panel > footer span:last-child { text-align: left; }
+  .sales-margin-brand-glossary-backdrop { align-items: end; padding: 12px; }
+  .sales-margin-brand-glossary { max-height: calc(100vh - 24px); }
+  .sales-margin-brand-glossary-list { grid-template-columns: 1fr; }
+  .sales-margin-brand-glossary > footer { align-items: stretch; flex-direction: column; }
 }
 
 
@@ -5390,6 +5439,7 @@ body {
 .microsoft-shell .sales-margin-table.view-chainBrand tbody th[scope="rowgroup"] {
   vertical-align: top;
   padding-top: 12px;
+  text-align: center;
 }
 .microsoft-shell .sales-margin-table td.dimension { color: #697990; font-weight: 500; }
 .microsoft-shell .sales-margin-table td.number { color: #405169; font-size: 12px; }
@@ -5411,6 +5461,10 @@ body {
   border-top: 2px solid #bcd0ed;
   font-weight: 800;
 }
+.microsoft-shell .sales-margin-table tbody tr.temporal-parent:not(.total) th,
+.microsoft-shell .sales-margin-table tbody tr.temporal-parent:not(.total) td { background: #fbfdff; }
+.microsoft-shell .sales-margin-table tbody tr.temporal-child th,
+.microsoft-shell .sales-margin-table tbody tr.temporal-child td { background: #f5f9fc; }
 
 /* Ajustes responsive compartidos. */
 @media (max-width: 900px) {
@@ -5602,7 +5656,7 @@ body {
   }
 
   .microsoft-shell .portal-brand {
-    min-width: clamp(150px, 15vw, 165px);
+    min-width: clamp(195px, 17vw, 215px);
   }
 
   .microsoft-shell :is(.portal-topnav > button, .portal-topnav-group > button) {

@@ -1,12 +1,12 @@
 "use client";
 import { createContext, useContext } from "react";
-import type { baseConsolidada, baseSnapshotAt } from "./base-consolidada";
+import type { BaseRow } from "./base-consolidada-types";
 import type { catM2SnapshotStores, catM2SnapshotTotals } from "./cat-m2-2025";
 import type { storeM2 } from "./store-m2";
 import type { storeContractEnd } from "./store-contract-end";
 export type PrivateData = {
-  baseConsolidada: typeof baseConsolidada;
-  baseSnapshotAt: typeof baseSnapshotAt;
+  baseConsolidada: BaseRow[];
+  baseSnapshotAt: string;
   catM2SnapshotStores: typeof catM2SnapshotStores;
   catM2SnapshotTotals: typeof catM2SnapshotTotals;
   storeM2: typeof storeM2;

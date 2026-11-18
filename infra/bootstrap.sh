@@ -49,9 +49,23 @@ gcloud compute networks subnets add-iam-policy-binding "$SUBNET" \
   --member="serviceAccount:${SA}" --role="roles/compute.networkUser" >/dev/null
 
 echo "5. Registros DNS (solo en las dos zonas de prod.priv.forus-sistemas.com)"
+# gcloud no tiene add-iam-policy-binding para zonas DNS: se lee la política, se
+# agrega el miembro sin tocar los demás y se escribe con el mismo etag (si otro
+# la cambió entremedio, set-iam-policy falla en vez de pisarla).
+command -v jq >/dev/null || { echo "ERROR: se requiere jq para el paso 5." >&2; exit 1; }
 for ZONE in "$PUBLIC_ZONE" "$PRIVATE_ZONE"; do
-  gcloud dns managed-zones add-iam-policy-binding "$ZONE" --project "$HOST_PROJECT" \
-    --member="serviceAccount:${SA}" --role="roles/dns.admin" >/dev/null
+  POLICY_FILE=$(mktemp)
+  gcloud dns managed-zones get-iam-policy "$ZONE" --project "$HOST_PROJECT" --format=json |
+    jq --arg m "serviceAccount:${SA}" --arg r "roles/dns.admin" '
+      .bindings = (.bindings // [])
+      | if any(.bindings[]; .role == $r and .condition == null) then
+          .bindings |= map(if .role == $r and .condition == null then .members = ((.members + [$m]) | unique) else . end)
+        else
+          .bindings += [{role: $r, members: [$m]}]
+        end' >"$POLICY_FILE"
+  gcloud dns managed-zones set-iam-policy "$ZONE" --project "$HOST_PROJECT" \
+    --policy-file="$POLICY_FILE" >/dev/null
+  rm -f "$POLICY_FILE"
 done
 
 echo "6. Workload Identity: solo este repo de GitLab puede impersonar la SA"

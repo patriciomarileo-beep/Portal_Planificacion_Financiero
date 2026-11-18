@@ -10,8 +10,17 @@ export type SalesMarginRow = {
   marginAmount: number;
 };
 
+
+export type SalesMarginYearStatus = {
+  key: string;
+  realOnly: boolean;
+  realMonths: number;
+};
+
+
 export type SalesMarginPayload = {
   rows: SalesMarginRow[];
+  yearCatalog?: SalesMarginYearStatus[];
   source: string;
   sourceSheet: string;
   refreshedAt: string | null;
@@ -28,8 +37,111 @@ export type SalesMarginPayload = {
   error?: string;
 };
 
-export const salesMarginYearOptions = ["2020", "2021", "2022", "2023", "2024", "2025", "2026P", "2026E", "2027P", "2027M", "2027E", "2028PS", "2029PS", "2030PS"] as const;
-export const salesMarginDefaultYears = ["2024", "2025", "2026P", "2026E", "2027P", "2027M"] as const;
+
+export const salesMarginYearOptions = [
+  "2020", "2021", "2022", "2023",
+  "2024", "2025",
+  "2026E", "2026P",
+  "2027P", "2027M", "2027E",
+  "2028PS", "2029PS", "2030PS",
+] as const;
+
+export const salesMarginDefaultYears = [
+  "2024", "2025",
+  "2026E", "2026P",
+  "2027P", "2027M",
+] as const;
+
+
+export const sortSalesMarginYears = (
+  values: readonly string[]
+): string[] => {
+  const priority: Record<string, number> = {
+    "": 0,
+    E: 1,
+    P: 2,
+    M: 3,
+    PS: 4,
+  };
+
+  return [...new Set(
+    values.filter((year) =>
+      /^20\d{2}(?:PS|[PEM])?$/.test(year)
+    )
+  )].sort((a, b) =>
+    Number(a.slice(0, 4)) - Number(b.slice(0, 4)) ||
+    (priority[a.slice(4)] ?? 99) -
+    (priority[b.slice(4)] ?? 99)
+  );
+};
+
+// Renombra únicamente la etiqueta.
+// El identificador técnico permanece intacto.
+export const displayScenarioLabel = (
+  key: string,
+  catalog: readonly SalesMarginYearStatus[]
+): string => {
+  const status = catalog.find((item) => item.key === key);
+
+  if (
+    /^20\d{2}E$/.test(key) &&
+    status?.realOnly &&
+    status.realMonths === 12
+  ) {
+    return key.slice(0, 4);
+  }
+
+  return key;
+};
+
+// Selecciona los dos últimos años reales completos
+// y agrega los escenarios de planificación disponibles.
+export const deriveDefaultScenarioYears = (
+  catalog: readonly SalesMarginYearStatus[]
+): string[] => {
+  const completeRealYears = catalog
+    .filter((item) =>
+      /^20\d{2}E?$/.test(item.key) &&
+      item.realOnly &&
+      item.realMonths === 12
+    )
+    .sort((a, b) =>
+      Number(a.key.slice(0, 4)) -
+      Number(b.key.slice(0, 4)) ||
+      a.key.length - b.key.length
+    );
+
+  const byYear = new Map<number, string>();
+
+  for (const item of completeRealYears) {
+    byYear.set(Number(item.key.slice(0, 4)), item.key);
+  }
+
+  const historical = [...byYear.values()].slice(-2);
+
+  if (historical.length < 2) {
+    return [...salesMarginDefaultYears];
+  }
+
+  const latest = historical[historical.length - 1];
+  const year = Number(latest.slice(0, 4));
+  const available = new Set(catalog.map((item) => item.key));
+
+  const candidates = [
+    ...historical,
+    ...(latest.endsWith("E") ? [`${year}P`] : []),
+    `${year + 1}E`,
+    `${year + 1}P`,
+    `${year + 1}M`,
+    `${year + 2}P`,
+    `${year + 2}M`,
+  ];
+
+  return sortSalesMarginYears(
+    candidates.filter((key) => available.has(key))
+  );
+};
+
 
 export class SalesMarginRequestError extends Error {
   constructor(message: string, public readonly status: number) {
@@ -42,10 +154,7 @@ let scope: string | null = null;
 let generation = 0;
 const cached = new Map<string, { payload: SalesMarginPayload; expiresAt: number }>();
 const pending = new Map<string, { promise: Promise<SalesMarginPayload>; controller: AbortController }>();
-const normalizeYears = (years: readonly string[]) => {
-  const requested = new Set(years);
-  return salesMarginYearOptions.filter((year) => requested.has(year));
-};
+const normalizeYears = sortSalesMarginYears;
 
 // Keep financial data only in memory, within the current signed-in session.
 export const clearSalesMarginData = () => {

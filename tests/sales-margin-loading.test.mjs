@@ -24,7 +24,7 @@ const payload = {
     { month: 1, quarter: "Q1", business: "BRICK & LIFE", chain: "", brand: "MARCA", class: "CALZADO", scenario: "2027M", sales: 23456, marginAmount: 10000 },
   ],
   source: "test-table", sourceSheet: "test-sheet", refreshedAt: "2026-11-09", unit: "MM$",
-  years: ["2024", "2025", "2026P", "2026E", "2027P", "2027M"],
+  years: ["2024", "2025", "2026E", "2026P", "2027P", "2027M"],
   chainYears: [],
   brandGrouping: {
     label: "OTRAS",
@@ -422,7 +422,7 @@ test("selecting an optional year fetches and merges only the missing year", asyn
       rows: years.map((scenario) => ({ ...payload.rows[0], scenario })),
     });
   });
-  const defaults = ["2024", "2025", "2026P", "2026E", "2027P", "2027M"];
+  const defaults = ["2024", "2025", "2026E", "2026P", "2027P", "2027M"];
   await loadSalesMargin("user-a", false, defaults);
   const expanded = await loadSalesMargin("user-a", false, [...defaults, "2020"]);
   assert.deepEqual(requests, [defaults, ["2020"]]);

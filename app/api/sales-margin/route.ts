@@ -5,9 +5,13 @@ import { errorResponse, json } from "../_shared/http";
 
 const sourceTable = "forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_CONSOLIDADA_TOOLBOX_CL";
 const cacheDurationMs = 5 * 60 * 1000;
-const allowedYears = ["2020", "2021", "2022", "2023", "2024", "2025", "2026P", "2026E", "2027P", "2027M", "2027E", "2028PS", "2029PS", "2030PS"] as const;
-const defaultYears = ["2024", "2025", "2026P", "2026E", "2027P", "2027M"] as const;
-const allowedYearSet = new Set<string>(allowedYears);
+
+const defaultYears = [
+  "2024", "2025", "2026E", 
+  "2026P", "2027P", "2027M",
+] as const;
+
+const allowedScenarioPattern = /^20\d{2}(?:PS|[PEM])?$/;
 
 type CachedPayload = {
   expiresAt: number;
@@ -75,7 +79,7 @@ mapped AS (
       )
       ELSE chain_candidate
     END chain,
-    * EXCEPT (source_period, source_origin, chain_candidate)
+    * EXCEPT (source_period, chain_candidate)
   FROM raw
   WHERE (REGEXP_CONTAINS(source_period, r'^\\d{4}$') AND source_origin='REAL')
      OR (REGEXP_CONTAINS(source_period, r'^\\d{4}[PM]$') AND source_origin='PRESUPUESTO')
@@ -93,6 +97,19 @@ source AS (
   )
   WHERE estimate_priority IS NULL OR estimate_priority=selected_estimate_priority
 ),
+
+scenario_status AS (
+  SELECT
+    scenario,
+    COUNTIF(source_origin = 'REAL') AS real_rows,
+    COUNTIF(source_origin != 'REAL') AS non_real_rows,
+    COUNT(
+      DISTINCT IF(source_origin = 'REAL', month, NULL)
+    ) AS real_months
+  FROM source
+  GROUP BY scenario
+),
+
 grouping_window_candidates AS (
   SELECT DISTINCT SAFE_CAST(actual.scenario AS INT64) base_year
   FROM source actual
@@ -143,7 +160,25 @@ filtered AS (
   SELECT *
   FROM classified
   WHERE scenario IN (${years.map((year) => `'${year}'`).join(", ")})${temporalFilter}
+),
+
+real_year_status AS (
+  SELECT
+    SAFE_CAST(SUBSTR(source_period, 1, 4) AS INT64) AS year,
+    MAX(IF(source_origin = 'REAL', source_period, NULL)) AS real_scenario,
+    COUNT(DISTINCT IF(source_origin = 'REAL', month, NULL)) AS real_months,
+    COUNTIF(source_origin = 'FORECAST') AS forecast_rows
+  FROM raw
+  WHERE (
+    source_origin = 'REAL'
+    AND REGEXP_CONTAINS(source_period, r'^\d{4}E?$')
+  ) OR (
+    source_origin = 'FORECAST'
+    AND REGEXP_CONTAINS(source_period, r'^\d{4}FR$')
+  )
+  GROUP BY year
 )
+
 SELECT ${temporalSelect} business, ${includeChain ? "chain" : "''"} chain, brand, class, scenario,
   SUM(sales_amount)/1000000 sales,
   SUM(margin_amount)/1000000 margin_amount,
@@ -164,7 +199,34 @@ SELECT ${temporalSelect} business, ${includeChain ? "chain" : "''"} chain, brand
     FROM brand_classification
     WHERE grouped_as_other),
     NULL
-  ) grouped_brands_json
+  ) grouped_brands_json,
+
+  IF(
+    ROW_NUMBER() OVER (
+      ORDER BY brand, business${includeChain ? ", chain" : ""},
+               class, ${temporalOrder}scenario
+    ) = 1,
+    (
+      SELECT TO_JSON_STRING(
+        ARRAY_AGG(
+          STRUCT(
+            scenario AS key,
+            real_rows > 0
+              AND non_real_rows = 0 AS realOnly,
+            real_months AS realMonths
+          )
+          ORDER BY scenario
+        )
+      )
+      FROM scenario_status
+      WHERE REGEXP_CONTAINS(
+        scenario,
+        r'^\\d{4}(PS|[PEM])?$'
+      )
+    ),
+    NULL
+  ) year_catalog_json
+
 FROM filtered
 GROUP BY ${temporalGroup}business${includeChain ? ", chain" : ""}, brand, class, scenario
 ORDER BY brand, business${includeChain ? ", chain" : ""}, class, ${temporalOrder}scenario`;
@@ -188,12 +250,79 @@ const groupedBrandsFrom = (value: unknown): GroupedBrand[] => {
   }
 };
 
+
+type YearStatus = {
+  key: string;
+  realOnly: boolean;
+  realMonths: number;
+};
+
+const parseYearCatalog = (value: unknown): YearStatus[] => {
+  if (typeof value !== "string") return [];
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.flatMap((entry): YearStatus[] => {
+      if (!entry || typeof entry !== "object") return [];
+
+      const item = entry as Record<string, unknown>;
+
+      if (
+        typeof item.key !== "string" ||
+        !allowedScenarioPattern.test(item.key)
+      ) {
+        return [];
+      }
+
+      return [{
+        key: item.key,
+        realOnly: item.realOnly === true,
+        realMonths: Number(item.realMonths ?? 0),
+      }];
+    });
+  } catch {
+    return [];
+  }
+};
+
+
+
 const requestedYears = (request: NextRequest) => {
   const raw = request.nextUrl.searchParams.get("years");
+
   if (!raw) return [...defaultYears];
-  const years = [...new Set(raw.split(",").map((year) => year.trim()).filter(Boolean))];
-  if (years.length === 0 || years.some((year) => !allowedYearSet.has(year))) return null;
-  return allowedYears.filter((year) => years.includes(year));
+
+  const years = [
+    ...new Set(
+      raw.split(",")
+        .map((year) => year.trim())
+        .filter(Boolean)
+    ),
+  ];
+
+  if (
+    years.length === 0 ||
+    years.length > 30 ||
+    years.some((year) => !allowedScenarioPattern.test(year))
+  ) {
+    return null;
+  }
+
+  const priority: Record<string, number> = {
+    "": 0,
+    E: 1,
+    P: 2,
+    M: 3,
+    PS: 4,
+  };
+
+  return years.sort((a, b) =>
+    Number(a.slice(0, 4)) - Number(b.slice(0, 4)) ||
+    (priority[a.slice(4)] ?? 99) -
+    (priority[b.slice(4)] ?? 99)
+  );
 };
 
 const requestedChainMonths = (request: NextRequest, includeChain: boolean) => {
@@ -243,6 +372,9 @@ export async function GET(request: NextRequest) {
       refreshedAt: records[0]?.refreshed_at ?? null,
       unit: "MM$",
       years,
+      yearCatalog: parseYearCatalog(
+        records[0]?.year_catalog_json
+      ),
       chainYears: includeChain ? years : [],
       chainPeriodKey: includeChain ? chainPeriodKey : undefined,
       brandGrouping: {

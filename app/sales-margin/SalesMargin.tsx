@@ -7,8 +7,12 @@ import {
   salesMarginDefaultYears,
   salesMarginYearOptions,
   SalesMarginRequestError,
+  deriveDefaultScenarioYears,
+  displayScenarioLabel,
+  sortSalesMarginYears,
   type SalesMarginPayload as Payload,
   type SalesMarginRow as ApiRow,
+  type SalesMarginYearStatus,
 } from "./sales-margin-data";
 import {
   BarChart3,
@@ -27,8 +31,9 @@ import {
 } from "lucide-react";
 import MonthPeriodFilter, { type MonthPeriod } from "../components/MonthPeriodFilter";
 
-type Scenario = typeof salesMarginYearOptions[number];
-type ScenarioLabel = Scenario;
+type Scenario = string;
+type ScenarioLabel = string;
+
 export type SalesMarginView = "summary" | "channel" | "chainBrand" | "brand" | "brandChannel" | "brandClass";
 type QuarterFilter = MonthPeriod;
 type Metric = { sales: number; marginAmount: number };
@@ -46,9 +51,10 @@ type DisplayRow = {
   depth?: number;
 };
 
-const scenarios: { key: Scenario; label: ScenarioLabel }[] = salesMarginYearOptions.map((key) => ({ key, label: key }));
+const validReportScenario = (scenario: string) =>
+  /^20\d{2}(?:PS|[PEM])?$/.test(scenario);
 
-const yearOptions = scenarios.map(({ label }) => label);
+const EMPTY_YEAR_CATALOG: SalesMarginYearStatus[] = [];
 
 const currentDefaultYears: ScenarioLabel[] = [...salesMarginDefaultYears];
 
@@ -215,6 +221,7 @@ function MultiSelectFilter<T extends string>({
   selected,
   onChange,
   emptySelectionLabel,
+  displayOption,
 }: {
   label: string;
   plural: string;
@@ -223,8 +230,11 @@ function MultiSelectFilter<T extends string>({
   selected: T[];
   onChange: (values: T[]) => void;
   emptySelectionLabel?: string;
+  displayOption?: (value: T) => string;
 }) {
   const optionsId = useId();
+  const optionLabel =
+    displayOption ?? ((value: T) => value);
   const [optionQuery, setOptionQuery] = useState("");
   const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
   const toggle = (option: T) => onChange(
@@ -235,10 +245,10 @@ function MultiSelectFilter<T extends string>({
   const selectionLabel = selected.length === 0
     ? emptySelectionLabel ?? allLabel
     : selected.length === 1
-      ? selected[0]
+      ? optionLabel(selected[0])
       : `${selected.length} ${plural}`;
   const visibleOptions = options.filter((option) =>
-    option.toLocaleLowerCase("es").includes(optionQuery.trim().toLocaleLowerCase("es")),
+    optionLabel(option).toLocaleLowerCase("es").includes(optionQuery.trim().toLocaleLowerCase("es")),
   );
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
 
@@ -315,7 +325,7 @@ function MultiSelectFilter<T extends string>({
       >
 
         <input type="checkbox" checked={selected.includes(option)} onChange={() => toggle(option)} />
-        {option}
+        {optionLabel(option)}
       </label>)}
       {visibleOptions.length === 0 && <small className="sales-margin-option-empty">Sin coincidencias</small>}
     </div>
@@ -335,7 +345,9 @@ const addMetric = (target: ScenarioMetrics, scenario: Scenario, metric: Metric) 
 const sumMetrics = (rows: DisplayRow[]): ScenarioMetrics => {
   const result: ScenarioMetrics = {};
   for (const row of rows) {
-    for (const { key } of scenarios) addMetric(result, key, row.metrics[key] ?? zeroMetric());
+    for (const [scenario, metric] of Object.entries(row.metrics)) {
+      if (metric) addMetric(result, scenario, metric);
+    }
   }
   return result;
 };
@@ -348,7 +360,7 @@ const groupedRows = (
 ): DisplayRow[] => {
   const grouped = new Map<string, DisplayRow>();
   for (const row of rows) {
-    if (!scenarios.some(({ key }) => key === row.scenario)) continue;
+    if (!validReportScenario(row.scenario)) continue;
     const primary = primaryOf(row);
     const secondary = secondaryOf(row);
     const tertiary = tertiaryOf(row);
@@ -406,7 +418,7 @@ export const buildDisplayRows = (
       const totalMetrics: ScenarioMetrics = {};
       const metricsByMonth = new Map<number, ScenarioMetrics>();
       for (const row of sourceRows) {
-        if (!scenarios.some(({ key }) => key === row.scenario)) continue;
+        if (!validReportScenario(row.scenario)) continue;
         if (!activeMonthSet.has(row.month)) continue;
         const scenario = row.scenario as Scenario;
         const metric = {
@@ -677,8 +689,49 @@ export default function SalesMargin({
   const [error, setError] = useState("");
   const [brandGlossaryOpen, setBrandGlossaryOpen] = useState(false);
   const handledRefreshKey = useRef(refreshKey);
-  const effectiveYearFilter = yearFilter ?? currentDefaultYears;
-  const requestedYears = effectiveYearFilter.length === 0 ? yearOptions : effectiveYearFilter;
+  
+
+  const yearCatalog =
+    payload?.yearCatalog ?? EMPTY_YEAR_CATALOG;
+
+  const yearOptions = useMemo(
+    () => yearCatalog.length > 0
+      ? sortSalesMarginYears(
+          yearCatalog.map((item) => item.key)
+        )
+      : [...salesMarginYearOptions],
+    [yearCatalog],
+  );
+
+  const defaultYearFilter = useMemo(
+    () => yearCatalog.length > 0
+      ? deriveDefaultScenarioYears(yearCatalog)
+      : currentDefaultYears,
+    [yearCatalog],
+  );
+
+  const labelForYear = useCallback(
+    (key: string) => displayScenarioLabel(key, yearCatalog),
+    [yearCatalog],
+  );
+
+  const scenarioDefinitions = useMemo(
+    () => yearOptions.map((key) => ({
+      key,
+      label: labelForYear(key),
+    })),
+    [yearOptions, labelForYear],
+  );
+
+  const effectiveYearFilter =
+    yearFilter ?? defaultYearFilter;
+
+  const requestedYears = effectiveYearFilter.length === 0
+    ? yearOptions
+    : effectiveYearFilter;
+
+
+
   const includeChain = view === "chainBrand";
   const hasActiveChainFilter = includeChain && chainFilter.length > 0;
   const chainMonthsForRequest = useMemo(() => {
@@ -794,19 +847,37 @@ export default function SalesMargin({
   const visibleRows = useMemo(() => paginatedRows.filter((row) =>
     !row.parentKey || expandedTemporalRows.has(row.parentKey)
   ), [paginatedRows, expandedTemporalRows]);
+
   const visibleScenarios = useMemo(
     () => effectiveYearFilter.length === 0
-      ? scenarios
-      : scenarios.filter(({ label }) => effectiveYearFilter.includes(label)),
-    [effectiveYearFilter],
+      ? scenarioDefinitions
+      : scenarioDefinitions.filter(({ key }) =>
+          effectiveYearFilter.includes(key)
+        ),
+    [effectiveYearFilter, scenarioDefinitions],
   );
+
   const visibleComparisons = useMemo(() => {
-    if (effectiveYearFilter.length === 0) return comparisons;
-    const visibleScenarioKeys = new Set(visibleScenarios.map(({ key }) => key));
-    return comparisons.filter(({ current, previous }) =>
-      visibleScenarioKeys.has(current) && visibleScenarioKeys.has(previous)
-    );
-  }, [effectiveYearFilter, visibleScenarios]);
+  const selectedKeys = new Set(
+    visibleScenarios.map(({ key }) => key)
+  );
+
+  return comparisons
+    .filter(({ current, previous }) =>
+      selectedKeys.has(current) &&
+      selectedKeys.has(previous)
+    )
+    .map(({ current, previous }) => ({
+      current,
+      previous,
+      label:
+        `${labelForYear(current).slice(2)}/` +
+        `${labelForYear(previous).slice(2)}`,
+    }));
+}, [visibleScenarios, labelForYear]);
+
+
+  
   const totalMetrics = useMemo(() => {
     const rows = groupedRows(filteredSourceRows, () => "TOTAL");
     return rows[0]?.metrics ?? {};
@@ -998,7 +1069,14 @@ export default function SalesMargin({
             onChange={(values) => changeFilter("classes", values)}
             emptySelectionLabel={dependentSelectionLabel(filterOptions.classes, "CLASES", brandFilter.length > 0 || channelFilter.length > 0 || hasActiveChainFilter)}
           />
-          <MultiSelectFilter label="AÑO" plural="AÑOS" allLabel="TODOS" options={yearOptions} selected={effectiveYearFilter} onChange={changeYearFilter} />
+          <MultiSelectFilter 
+            label="AÑO" 
+            plural="AÑOS" 
+            allLabel="TODOS" 
+            options={yearOptions} 
+            selected={effectiveYearFilter} 
+            onChange={changeYearFilter}
+            displayOption={labelForYear}/>
           <MonthPeriodFilter
             period={quarterFilter}
             onPeriodChange={(period) => {

@@ -400,7 +400,22 @@ test("a single selected brand hides the redundant consolidated row", () => {
 
 test("the initial query loads visible years and defers the chain dimension", () => {
   const route = readFileSync(new URL("../app/api/sales-margin/route.ts", import.meta.url), "utf8");
-  assert.match(route, /const defaultYears = \["2024", "2025", "2026P", "2026E", "2027P", "2027M"\]/);
+  
+  const defaultYearsMatch = route.match(
+    /const defaultYears\s*=\s*\[([\s\S]*?)\]\s*as const/
+  );
+
+  assert.ok(defaultYearsMatch);
+
+  const parsedYears = [
+    ...defaultYearsMatch[1].matchAll(/"([^"]+)"/g)
+  ].map((match) => match[1]);
+
+  assert.deepEqual(parsedYears, [
+    "2024", "2025", "2026E",
+    "2026P", "2027P", "2027M",
+  ]);
+
   assert.match(route, /WHERE scenario IN \(\$\{years\.map/);
   assert.match(route, /const queryForYears = \(years: string\[\], includeChain: boolean, chainMonths: number\[\] \| null\)/);
   assert.match(route, /\$\{includeChain \? "chain" : "''"\} chain/);

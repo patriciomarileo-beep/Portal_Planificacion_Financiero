@@ -160,23 +160,6 @@ filtered AS (
   SELECT *
   FROM classified
   WHERE scenario IN (${years.map((year) => `'${year}'`).join(", ")})${temporalFilter}
-),
-
-real_year_status AS (
-  SELECT
-    SAFE_CAST(SUBSTR(source_period, 1, 4) AS INT64) AS year,
-    MAX(IF(source_origin = 'REAL', source_period, NULL)) AS real_scenario,
-    COUNT(DISTINCT IF(source_origin = 'REAL', month, NULL)) AS real_months,
-    COUNTIF(source_origin = 'FORECAST') AS forecast_rows
-  FROM raw
-  WHERE (
-    source_origin = 'REAL'
-    AND REGEXP_CONTAINS(source_period, r'^\d{4}E?$')
-  ) OR (
-    source_origin = 'FORECAST'
-    AND REGEXP_CONTAINS(source_period, r'^\d{4}FR$')
-  )
-  GROUP BY year
 )
 
 SELECT ${temporalSelect} business, ${includeChain ? "chain" : "''"} chain, brand, class, scenario,

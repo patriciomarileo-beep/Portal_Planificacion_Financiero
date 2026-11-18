@@ -1861,7 +1861,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
               <CircleDollarSign /><span>Venta &amp; Margen</span><ChevronDown />
             </button>
             <div className="portal-mega-menu">
-              <div className="portal-mega-intro"><CircleDollarSign /><small>MÓDULO</small><strong>Venta &amp; Margen</strong><p>Ventas, margen y variaciones por período, canal, marca y clase.</p></div>
+              <div className="portal-mega-intro"><CircleDollarSign /><small>ÁREA</small><strong>Venta &amp; Margen</strong><p>Ventas, margen y variaciones por período, canal, marca y clase.</p></div>
               <div className="portal-mega-links">
                 {([
                   ["summary", "Consolidado"],
@@ -1869,6 +1869,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
                   ["brand", "Marca"],
                   ["brandChannel", "Marca × Canal"],
                   ["brandClass", "Marca × Clase"],
+                  ["chainBrand", "Cadena × Marca"],
                 ] as [SalesMarginView, string][]).map(([targetView, label]) => <button type="button" className="available" key={targetView} onClick={() => openSalesMargin(targetView)}>
                   <span><b>{label}</b><small>Disponible</small></span><ChevronRight />
                 </button>)}
@@ -1936,6 +1937,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
                   ["brand", "Marca"],
                   ["brandChannel", "Marca × Canal"],
                   ["brandClass", "Marca × Clase"],
+                  ["chainBrand", "Cadena × Marca"],
                 ] as [SalesMarginView, string][]).map(([targetView, label]) => <button type="button" className="available" key={targetView} onClick={() => openSalesMargin(targetView)}><span><b>{label}</b><small>Disponible</small></span><ChevronRight /></button>)}
               </div>
             </article>}

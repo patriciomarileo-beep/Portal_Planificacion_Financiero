@@ -26,7 +26,18 @@ const rowsAsObjects = (payload: BigQueryRowsPayload) => (payload.rows ?? []).map
   Object.fromEntries((payload.schema?.fields ?? []).map((field, index) => [field.name, scalar(row.f[index]?.v)])),
 );
 
-const queryForYears = (years: string[], includeChain: boolean) => `WITH raw AS (
+export const queryForYears = (years: string[], includeChain: boolean, chainMonths: number[] | null) => {
+  const annualChainSummary = includeChain && chainMonths === null;
+  const temporalFilter = includeChain && chainMonths?.length
+    ? ` AND month IN (${chainMonths.join(", ")})`
+    : "";
+  const temporalSelect = annualChainSummary
+    ? "0 month, 'ANUAL' quarter,"
+    : "month, quarter,";
+  const temporalGroup = annualChainSummary ? "" : "month, quarter, ";
+  const temporalOrder = annualChainSummary ? "" : "month, ";
+
+  return `WITH raw AS (
   SELECT
     TRIM(CAST(ANO_2 AS STRING)) source_period,
     TRIM(CAST(ORIGEN_DATO AS STRING)) source_origin,
@@ -131,13 +142,13 @@ classified AS (
 filtered AS (
   SELECT *
   FROM classified
-  WHERE scenario IN (${years.map((year) => `'${year}'`).join(", ")})
+  WHERE scenario IN (${years.map((year) => `'${year}'`).join(", ")})${temporalFilter}
 )
-SELECT month, quarter, business, ${includeChain ? "chain" : "''"} chain, brand, class, scenario,
+SELECT ${temporalSelect} business, ${includeChain ? "chain" : "''"} chain, brand, class, scenario,
   SUM(sales_amount)/1000000 sales,
   SUM(margin_amount)/1000000 margin_amount,
   (SELECT MAX(refreshed_at) FROM source) refreshed_at,
-  IF(ROW_NUMBER() OVER (ORDER BY brand, business${includeChain ? ", chain" : ""}, class, month, scenario)=1,
+  IF(ROW_NUMBER() OVER (ORDER BY brand, business${includeChain ? ", chain" : ""}, class, ${temporalOrder}scenario)=1,
     (SELECT CONCAT(
       CAST(base_year AS STRING), ',',
       CAST(base_year + 1 AS STRING), 'E,',
@@ -145,7 +156,7 @@ SELECT month, quarter, business, ${includeChain ? "chain" : "''"} chain, brand, 
     ) FROM active_grouping_window),
     NULL
   ) grouping_window,
-  IF(ROW_NUMBER() OVER (ORDER BY brand, business${includeChain ? ", chain" : ""}, class, month, scenario)=1,
+  IF(ROW_NUMBER() OVER (ORDER BY brand, business${includeChain ? ", chain" : ""}, class, ${temporalOrder}scenario)=1,
     (SELECT TO_JSON_STRING(ARRAY_AGG(STRUCT(
       brand AS name,
       ROUND(total_sales / 1000000, 2) AS totalSalesMm
@@ -155,8 +166,9 @@ SELECT month, quarter, business, ${includeChain ? "chain" : "''"} chain, brand, 
     NULL
   ) grouped_brands_json
 FROM filtered
-GROUP BY month, quarter, business${includeChain ? ", chain" : ""}, brand, class, scenario
-ORDER BY brand, business${includeChain ? ", chain" : ""}, class, month, scenario`;
+GROUP BY ${temporalGroup}business${includeChain ? ", chain" : ""}, brand, class, scenario
+ORDER BY brand, business${includeChain ? ", chain" : ""}, class, ${temporalOrder}scenario`;
+};
 
 type GroupedBrand = { name: string; totalSalesMm: number };
 
@@ -184,6 +196,16 @@ const requestedYears = (request: NextRequest) => {
   return allowedYears.filter((year) => years.includes(year));
 };
 
+const requestedChainMonths = (request: NextRequest, includeChain: boolean) => {
+  if (!includeChain) return null;
+  const raw = request.nextUrl.searchParams.get("months");
+  if (raw === null) return null;
+  const months = [...new Set(raw.split(",").map(Number))]
+    .filter((month) => Number.isInteger(month) && month >= 1 && month <= 12)
+    .sort((left, right) => left - right);
+  return months.length > 0 ? months : null;
+};
+
 export async function GET(request: NextRequest) {
   try {
     await requireMenuAuth(request, "sales-margin");
@@ -195,11 +217,13 @@ export async function GET(request: NextRequest) {
     const years = requestedYears(request);
     if (!years) return json({ error: "Los años solicitados no son válidos." }, { status: 400 });
     const includeChain = request.nextUrl.searchParams.get("includeChain") === "1";
-    const cacheKey = `${includeChain ? "chain" : "summary"}:${years.join(",")}`;
+    const chainMonths = requestedChainMonths(request, includeChain);
+    const chainPeriodKey = chainMonths?.length ? chainMonths.join("-") : "annual";
+    const cacheKey = `${includeChain ? `chain:${chainPeriodKey}` : "summary"}:${years.join(",")}`;
     const cached = cache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) return json(cached.payload);
 
-    const result = await runQuery<BigQueryRowsPayload>(queryForYears(years, includeChain), [], { paginate: true });
+    const result = await runQuery<BigQueryRowsPayload>(queryForYears(years, includeChain, chainMonths), [], { paginate: true });
     const records = rowsAsObjects(result);
     const groupingWindow = String(records[0]?.grouping_window ?? "").split(",").filter(Boolean);
     const payload = {
@@ -220,6 +244,7 @@ export async function GET(request: NextRequest) {
       unit: "MM$",
       years,
       chainYears: includeChain ? years : [],
+      chainPeriodKey: includeChain ? chainPeriodKey : undefined,
       brandGrouping: {
         label: "OTRAS",
         thresholdMm: 50,

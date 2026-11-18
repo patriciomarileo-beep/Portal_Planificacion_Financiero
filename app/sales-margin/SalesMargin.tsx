@@ -83,6 +83,7 @@ const visibleTabs = SHOW_CHAIN_BRAND_VIEW
 const monthLabels = ["", "ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
 const monthOptions = monthLabels.slice(1).map((label, index) => ({ value: index + 1, label }));
 const allMonths = monthOptions.map(({ value }) => value);
+const chainPageSize = 8;
 const quarterMonths: Record<Exclude<QuarterFilter, "ANUAL">, number[]> = {
   Q1: [1, 2, 3],
   Q2: [4, 5, 6],
@@ -443,6 +444,22 @@ export const buildDisplayRows = (
         })),
       ];
     };
+    const totalForSelectedPeriod = (
+      sourceRows: ApiRow[],
+      keyPrefix: string,
+      primary: string,
+      secondary: string,
+    ): DisplayRow => {
+      const aggregate = periodRows(sourceRows, keyPrefix, primary, secondary, "tertiary", true)[0];
+      return {
+        ...aggregate,
+        key: `${keyPrefix}\u0000TOTAL`,
+        tertiary: "",
+        expandable: false,
+        parentKey: undefined,
+        depth: undefined,
+      };
+    };
     const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
 
     if (view === "summary") {
@@ -496,7 +513,7 @@ export const buildDisplayRows = (
     })).values()].sort((a, b) =>
       a.primary.localeCompare(b.primary, "es") || a.secondary.localeCompare(b.secondary, "es"),
     );
-    const consolidated = periodRows(rows, `${view}-consolidated`, "CONSOLIDADO", consolidatedLabel, "tertiary", true);
+    const consolidated = totalForSelectedPeriod(rows, `${view}-consolidated`, "CONSOLIDADO", consolidatedLabel);
     const brands = unique(pairs.map(({ primary }) => primary));
     const detail = brands.flatMap((brand) => {
       const brandPairs = pairs.filter(({ primary }) => primary === brand);
@@ -509,17 +526,15 @@ export const buildDisplayRows = (
       ));
       return [
         ...channelsOrClasses,
-        ...periodRows(
+        totalForSelectedPeriod(
           rows.filter((row) => row.brand === brand),
           `${view}-${brand}-total`,
           brand,
           "TOTAL",
-          "tertiary",
-          true,
         ),
       ];
     });
-    return showConsolidated ? [...detail, ...consolidated] : detail;
+    return showConsolidated ? [...detail, consolidated] : detail;
   }
 
   if (view === "summary") {
@@ -655,8 +670,9 @@ export default function SalesMargin({
   const [classFilter, setClassFilter] = useState<string[]>([]);
   const [yearFilter, setYearFilter] = useState<ScenarioLabel[] | null>(null);
   const [quarterFilter, setQuarterFilter] = useState<QuarterFilter>("ANUAL");
-  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonths);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
   const [expandedTemporalRows, setExpandedTemporalRows] = useState<Set<string>>(() => new Set());
+  const [chainPage, setChainPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [brandGlossaryOpen, setBrandGlossaryOpen] = useState(false);
@@ -665,23 +681,34 @@ export default function SalesMargin({
   const requestedYears = effectiveYearFilter.length === 0 ? yearOptions : effectiveYearFilter;
   const includeChain = view === "chainBrand";
   const hasActiveChainFilter = includeChain && chainFilter.length > 0;
+  const chainMonthsForRequest = useMemo(() => {
+    if (!includeChain || quarterFilter === "ANUAL") return null;
+    if (quarterFilter === "MES") return selectedMonths.length > 0 ? selectedMonths : null;
+    return quarterMonths[quarterFilter];
+  }, [includeChain, quarterFilter, selectedMonths]);
+  const chainPeriodKey = chainMonthsForRequest?.length ? chainMonthsForRequest.join("-") : "annual";
+  const payloadMatchesPeriod = !includeChain || payload?.chainPeriodKey === chainPeriodKey;
+  const payloadRows = useMemo(
+    () => payloadMatchesPeriod ? payload?.rows ?? [] : [],
+    [payload, payloadMatchesPeriod],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      setPayload(await loadSalesMargin(sessionScope, true, requestedYears, includeChain));
+      setPayload(await loadSalesMargin(sessionScope, true, requestedYears, includeChain, chainMonthsForRequest));
     } catch (loadError) {
       if (loadError instanceof SalesMarginRequestError && [401, 403].includes(loadError.status)) setPayload(null);
       setError(loadError instanceof Error ? loadError.message : "No fue posible cargar Venta & Margen.");
     } finally {
       setLoading(false);
     }
-  }, [includeChain, requestedYears, sessionScope]);
+  }, [chainMonthsForRequest, includeChain, requestedYears, sessionScope]);
 
   useEffect(() => {
     let active = true;
-    void loadSalesMargin(sessionScope, false, requestedYears, includeChain)
+    void loadSalesMargin(sessionScope, false, requestedYears, includeChain, chainMonthsForRequest)
       .then((body) => { if (active) setPayload(body); })
       .catch((loadError) => {
         if (active) {
@@ -691,7 +718,7 @@ export default function SalesMargin({
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [includeChain, requestedYears, sessionScope]);
+  }, [chainMonthsForRequest, includeChain, requestedYears, sessionScope]);
 
   useEffect(() => {
     if (refreshKey === handledRefreshKey.current) return;
@@ -709,7 +736,7 @@ export default function SalesMargin({
   }, [brandGlossaryOpen]);
 
   const filterOptions = useMemo(() => {
-    const rows = payload?.rows ?? [];
+    const rows = payloadRows;
     const activeChains = view === "chainBrand" ? chainFilter : [];
     return {
       brands: salesMarginBrandsForFilters(rows, channelFilter, classFilter, activeChains),
@@ -717,9 +744,9 @@ export default function SalesMargin({
       chains: salesMarginChainsForFilters(rows, brandFilter, channelFilter, classFilter),
       classes: salesMarginClassesForFilters(rows, brandFilter, channelFilter, activeChains),
     };
-  }, [payload, view, brandFilter, channelFilter, chainFilter, classFilter]);
+  }, [payloadRows, view, brandFilter, channelFilter, chainFilter, classFilter]);
   const changeFilter = (changed: SalesMarginFilterKey, values: string[]) => {
-    const rows = payload?.rows ?? [];
+    const rows = payloadRows;
     const next = reconcileSalesMarginFilters(rows, {
       brands: brandFilter,
       channels: channelFilter,
@@ -731,15 +758,16 @@ export default function SalesMargin({
     setChannelFilter(next.channels);
     if (view === "chainBrand") setChainFilter(next.chains);
     setClassFilter(next.classes);
+    setChainPage(0);
   };
-  const filteredSourceRows = useMemo(() => (payload?.rows ?? []).filter((row) =>
+  const filteredSourceRows = useMemo(() => payloadRows.filter((row) =>
     (brandFilter.length === 0 || brandFilter.includes(row.brand))
     && (channelFilter.length === 0 || channelFilter.includes(row.business))
     && (view !== "chainBrand" || (Boolean(row.chain) && (chainFilter.length === 0 || chainFilter.includes(row.chain))))
     && (classFilter.length === 0 || classFilter.includes(row.class))
     && (quarterFilter === "ANUAL"
       || (quarterFilter === "MES" ? selectedMonths.includes(row.month) : row.quarter === quarterFilter))
-  ), [payload, view, brandFilter, channelFilter, chainFilter, classFilter, quarterFilter, selectedMonths]);
+  ), [payloadRows, view, brandFilter, channelFilter, chainFilter, classFilter, quarterFilter, selectedMonths]);
   const allRows = useMemo(
     () => buildDisplayRows(
       filteredSourceRows,
@@ -750,9 +778,22 @@ export default function SalesMargin({
     ),
     [filteredSourceRows, view, quarterFilter, selectedMonths, brandFilter.length, chainFilter.length],
   );
-  const visibleRows = useMemo(() => allRows.filter((row) =>
+  const chainNames = useMemo(() => view === "chainBrand"
+    ? uniqueLabels(allRows.map((row) => row.primary).filter((name) => name !== "CONSOLIDADO"))
+    : [], [allRows, view]);
+  const chainPageCount = Math.max(1, Math.ceil(chainNames.length / chainPageSize));
+  const safeChainPage = Math.min(chainPage, chainPageCount - 1);
+  const chainPageStart = chainNames.length === 0 ? 0 : safeChainPage * chainPageSize + 1;
+  const chainPageEnd = Math.min((safeChainPage + 1) * chainPageSize, chainNames.length);
+  const paginatedRows = useMemo(() => {
+    if (view !== "chainBrand" || chainPageCount <= 1) return allRows;
+    const firstChain = safeChainPage * chainPageSize;
+    const pageChains = new Set(chainNames.slice(firstChain, firstChain + chainPageSize));
+    return allRows.filter((row) => row.primary === "CONSOLIDADO" || pageChains.has(row.primary));
+  }, [allRows, chainNames, chainPageCount, safeChainPage, view]);
+  const visibleRows = useMemo(() => paginatedRows.filter((row) =>
     !row.parentKey || expandedTemporalRows.has(row.parentKey)
-  ), [allRows, expandedTemporalRows]);
+  ), [paginatedRows, expandedTemporalRows]);
   const visibleScenarios = useMemo(
     () => effectiveYearFilter.length === 0
       ? scenarios
@@ -851,6 +892,7 @@ export default function SalesMargin({
     setLoading(true);
     setError("");
     setYearFilter(years);
+    setChainPage(0);
   };
   const clearFilters = () => {
     setBrandFilter([]);
@@ -859,10 +901,11 @@ export default function SalesMargin({
     setClassFilter([]);
     setYearFilter(null);
     setQuarterFilter("ANUAL");
-    setSelectedMonths(allMonths);
+    setSelectedMonths([]);
     setExpandedTemporalRows(new Set());
+    setChainPage(0);
   };
-  const initialLoading = loading && !payload;
+  const initialLoading = loading && (!payload || !payloadMatchesPeriod);
 
   return <section className="sales-margin-module">
     <header className="sales-margin-hero">
@@ -905,8 +948,12 @@ export default function SalesMargin({
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             return <button type="button" key={tab.id} className={view === tab.id ? "active" : ""} onClick={() => {
-              if (tab.id === "chainBrand" && !requestedYears.every((year) => payload?.chainYears?.includes(year))) setLoading(true);
+              if (tab.id === "chainBrand" && (
+                payload?.chainPeriodKey !== "annual"
+                || !requestedYears.every((year) => payload?.chainYears?.includes(year))
+              )) setLoading(true);
               setExpandedTemporalRows(new Set());
+              setChainPage(0);
               setView(tab.id);
             }}>
               <Icon /><span>{tab.label}</span>
@@ -956,12 +1003,16 @@ export default function SalesMargin({
             period={quarterFilter}
             onPeriodChange={(period) => {
               setExpandedTemporalRows(new Set());
+              if (includeChain) setLoading(true);
+              setChainPage(0);
               setQuarterFilter(period);
             }}
             months={monthOptions}
             selectedMonths={selectedMonths}
             onSelectedMonthsChange={(months) => {
               setExpandedTemporalRows(new Set());
+              if (includeChain) setLoading(true);
+              setChainPage(0);
               setSelectedMonths(months);
             }}
             ariaLabel="Período de Venta y Margen"
@@ -1024,6 +1075,14 @@ export default function SalesMargin({
               </tbody>
             </table>
         </div>
+        {view === "chainBrand" && chainPageCount > 1 && <nav className="sales-margin-chain-pagination" aria-label="Paginación de cadenas">
+          <span>Cadenas {chainPageStart}–{chainPageEnd} de {chainNames.length}</span>
+          <div>
+            <button type="button" onClick={() => setChainPage(Math.max(0, safeChainPage - 1))} disabled={safeChainPage === 0}>Anterior</button>
+            <b>{safeChainPage + 1} / {chainPageCount}</b>
+            <button type="button" onClick={() => setChainPage(Math.min(chainPageCount - 1, safeChainPage + 1))} disabled={safeChainPage >= chainPageCount - 1}>Siguiente</button>
+          </div>
+        </nav>}
         {!loading && !error && payload && visibleRows.length === 0 && <div className="sales-margin-empty">No hay registros que coincidan con la búsqueda.</div>}
         <footer>
           <span><b>FUENTE</b> {payload?.source ?? "forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_CONSOLIDADA_TOOLBOX_CL"}</span>

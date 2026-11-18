@@ -39,17 +39,21 @@ export default function MonthPeriodFilter<T extends string | number>({
   };
 
   const toggleMonth = (month: T) => {
-    onPeriodChange("MES");
-    onSelectedMonthsChange(selectedMonths.includes(month)
+    const nextSelectedMonths = selectedMonths.includes(month)
       ? selectedMonths.filter((item) => item !== month)
-      : [...selectedMonths, month]);
+      : [...selectedMonths, month];
+
+    onSelectedMonthsChange(nextSelectedMonths);
+    onPeriodChange(nextSelectedMonths.length > 0 ? "MES" : "ANUAL");
   };
 
   const toggleAllMonths = () => {
-    onPeriodChange("MES");
-    onSelectedMonthsChange(selectedMonths.length === months.length
+    const nextSelectedMonths = selectedMonths.length === months.length
       ? []
-      : months.map(({ value }) => value));
+      : months.map(({ value }) => value);
+
+    onSelectedMonthsChange(nextSelectedMonths);
+    onPeriodChange(nextSelectedMonths.length > 0 ? "MES" : "ANUAL");
   };
 
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -96,7 +100,7 @@ export default function MonthPeriodFilter<T extends string | number>({
       name="portal-dropdown"
       className={`month-period-filter ${period === "MES" ? "active" : ""}`}
     >
-      <summary onClick={() => onPeriodChange("MES")}>MES</summary>
+      <summary>MES</summary>
       <div id={optionsId} className="month-options">
         <div className="month-options-head">
           <b>{selectedMonths.length} MESES</b>

@@ -12,6 +12,8 @@ BEGIN
   DECLARE v_null_dimension_rows INT64 DEFAULT 0;
   DECLARE v_invalid_period_rows INT64 DEFAULT 0;
   DECLARE v_invalid_measure_rows INT64 DEFAULT 0;
+  DECLARE v_invalid_consolidated_rows INT64 DEFAULT 0;
+  DECLARE v_consolidated_tolerance FLOAT64 DEFAULT 0.01;
   DECLARE v_scenarios ARRAY<STRING> DEFAULT [];
   DECLARE v_channels ARRAY<STRING> DEFAULT [];
   DECLARE v_missing_scenarios ARRAY<STRING> DEFAULT [];
@@ -38,7 +40,22 @@ BEGIN
     CAST(ROP AS FLOAT64) AS ROP,
     CAST(UTILIDAD_NETA AS FLOAT64) AS UTILIDAD_NETA
   FROM
-    `forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_EXT_FORECAST_ANUAL_MARCA_CANAL`;
+    `forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_EXT_FORECAST_ANUAL_MARCA_CANAL`
+  -- Google Sheets puede conservar filas vacias dentro del rango fisico de la
+  -- hoja. Se descartan solo las filas completamente vacias; una fila parcial
+  -- permanece en la instantanea para que las validaciones la rechacen.
+  WHERE COALESCE(
+    NULLIF(TRIM(CAST(ANO_2 AS STRING)), ''),
+    NULLIF(TRIM(CAST(QUARTER AS STRING)), ''),
+    NULLIF(TRIM(CAST(MES AS STRING)), ''),
+    NULLIF(TRIM(CAST(NEGOCIO_DETALLE AS STRING)), ''),
+    NULLIF(TRIM(CAST(MARCA AS STRING)), ''),
+    NULLIF(TRIM(CAST(VENTA_NETA AS STRING)), ''),
+    NULLIF(TRIM(CAST(MARGEN AS STRING)), ''),
+    NULLIF(TRIM(CAST(COSTO_OPERACIONAL AS STRING)), ''),
+    NULLIF(TRIM(CAST(ROP AS STRING)), ''),
+    NULLIF(TRIM(CAST(UTILIDAD_NETA AS STRING)), '')
+  ) IS NOT NULL;
 
   SET v_source_rows = (SELECT COUNT(*) FROM source_snapshot);
 
@@ -87,13 +104,49 @@ BEGIN
     FROM source_snapshot
   );
 
+  -- Para cada marca real, el Consolidado debe coincidir con la suma de los
+  -- cuatro canales operativos. UTILIDAD_NETA no se compara porque puede
+  -- contener ajustes contables consolidados que no son aditivos por canal.
+  -- La marca sintetica Consolidado tambien se excluye de esta conciliacion.
+  SET v_invalid_consolidated_rows = (
+    WITH consolidated_reconciliation AS (
+      SELECT
+        ANO_2,
+        QUARTER,
+        MES,
+        MARCA,
+        COUNTIF(NEGOCIO_DETALLE = 'Consolidado') AS consolidated_rows,
+        COUNTIF(NEGOCIO_DETALLE IN ('Brick&Life', 'Ecommerce', 'Marketplace', 'Wholesale')) AS channel_rows,
+        SUM(IF(NEGOCIO_DETALLE = 'Consolidado', VENTA_NETA, 0)) AS consolidated_sales,
+        SUM(IF(NEGOCIO_DETALLE IN ('Brick&Life', 'Ecommerce', 'Marketplace', 'Wholesale'), VENTA_NETA, 0)) AS channel_sales,
+        SUM(IF(NEGOCIO_DETALLE = 'Consolidado', MARGEN, 0)) AS consolidated_margin,
+        SUM(IF(NEGOCIO_DETALLE IN ('Brick&Life', 'Ecommerce', 'Marketplace', 'Wholesale'), MARGEN, 0)) AS channel_margin,
+        SUM(IF(NEGOCIO_DETALLE = 'Consolidado', COSTO_OPERACIONAL, 0)) AS consolidated_operating_cost,
+        SUM(IF(NEGOCIO_DETALLE IN ('Brick&Life', 'Ecommerce', 'Marketplace', 'Wholesale'), COSTO_OPERACIONAL, 0)) AS channel_operating_cost,
+        SUM(IF(NEGOCIO_DETALLE = 'Consolidado', ROP, 0)) AS consolidated_operating_result,
+        SUM(IF(NEGOCIO_DETALLE IN ('Brick&Life', 'Ecommerce', 'Marketplace', 'Wholesale'), ROP, 0)) AS channel_operating_result
+      FROM source_snapshot
+      WHERE UPPER(TRIM(MARCA)) != 'CONSOLIDADO'
+      GROUP BY ANO_2, QUARTER, MES, MARCA
+    )
+    SELECT COUNTIF(
+      consolidated_rows != 1 OR
+      channel_rows = 0 OR
+      ABS(consolidated_sales - channel_sales) > v_consolidated_tolerance OR
+      ABS(consolidated_margin - channel_margin) > v_consolidated_tolerance OR
+      ABS(consolidated_operating_cost - channel_operating_cost) > v_consolidated_tolerance OR
+      ABS(consolidated_operating_result - channel_operating_result) > v_consolidated_tolerance
+    )
+    FROM consolidated_reconciliation
+  );
+
   SET v_scenarios = COALESCE((
-    SELECT ARRAY_AGG(DISTINCT ANO_2 ORDER BY ANO_2)
+    SELECT ARRAY_AGG(DISTINCT ANO_2 IGNORE NULLS ORDER BY ANO_2)
     FROM source_snapshot
   ), []);
 
   SET v_channels = COALESCE((
-    SELECT ARRAY_AGG(DISTINCT NEGOCIO_DETALLE ORDER BY NEGOCIO_DETALLE)
+    SELECT ARRAY_AGG(DISTINCT NEGOCIO_DETALLE IGNORE NULLS ORDER BY NEGOCIO_DETALLE)
     FROM source_snapshot
   ), []);
 
@@ -115,6 +168,15 @@ BEGIN
     IF(v_null_dimension_rows > 0, FORMAT('Se detectaron %d filas con dimensiones vacias. ', v_null_dimension_rows), ''),
     IF(v_invalid_period_rows > 0, FORMAT('Se detectaron %d periodos invalidos. ', v_invalid_period_rows), ''),
     IF(v_invalid_measure_rows > 0, FORMAT('Se detectaron %d filas con medidas invalidas. ', v_invalid_measure_rows), ''),
+    IF(
+      v_invalid_consolidated_rows > 0,
+      FORMAT(
+        'Se detectaron %d consolidados que no coinciden con la suma de sus canales (tolerancia MM$ %.2f). ',
+        v_invalid_consolidated_rows,
+        v_consolidated_tolerance
+      ),
+      ''
+    ),
     IF(
       v_previous_rows > 0 AND v_source_rows < CAST(FLOOR(v_previous_rows * 0.8) AS INT64),
       FORMAT('La fuente disminuyo de %d a %d filas, superando el limite de seguridad de 20%%. ', v_previous_rows, v_source_rows),

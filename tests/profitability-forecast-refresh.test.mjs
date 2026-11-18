@@ -14,6 +14,16 @@ test("the forecast refresh validates a temporary snapshot before atomically repl
   assert.match(sql, /v_null_dimension_rows/);
   assert.match(sql, /v_invalid_period_rows/);
   assert.match(sql, /v_invalid_measure_rows/);
+  assert.match(sql, /v_invalid_consolidated_rows/);
+  assert.match(sql, /v_consolidated_tolerance FLOAT64 DEFAULT 0\.01/);
+  assert.match(sql, /WHERE COALESCE\([\s\S]*UTILIDAD_NETA AS STRING[\s\S]*\) IS NOT NULL;/);
+  assert.match(sql, /ARRAY_AGG\(DISTINCT ANO_2 IGNORE NULLS ORDER BY ANO_2\)/);
+  assert.match(sql, /ARRAY_AGG\(DISTINCT NEGOCIO_DETALLE IGNORE NULLS ORDER BY NEGOCIO_DETALLE\)/);
+  assert.match(sql, /WHERE UPPER\(TRIM\(MARCA\)\) != 'CONSOLIDADO'/);
+  assert.match(sql, /ABS\(consolidated_sales - channel_sales\) > v_consolidated_tolerance/);
+  assert.match(sql, /ABS\(consolidated_margin - channel_margin\) > v_consolidated_tolerance/);
+  assert.match(sql, /ABS\(consolidated_operating_cost - channel_operating_cost\) > v_consolidated_tolerance/);
+  assert.match(sql, /ABS\(consolidated_operating_result - channel_operating_result\) > v_consolidated_tolerance/);
   assert.match(sql, /limite de seguridad de 20%%/);
   assert.match(sql, /BEGIN TRANSACTION;[\s\S]*TRUNCATE TABLE[\s\S]*INSERT INTO[\s\S]*COMMIT TRANSACTION;/);
 });

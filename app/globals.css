@@ -5435,12 +5435,42 @@ body {
   font-weight: 700;
   vertical-align: middle;
 }
-/* En Cadena × marca, fija el nombre de la cadena al inicio de su bloque combinado. */
+/* En Cadena × marca, centra el nombre dentro de todo su bloque combinado. */
 .microsoft-shell .sales-margin-table.view-chainBrand tbody th[scope="rowgroup"] {
-  vertical-align: top;
-  padding-top: 12px;
+  vertical-align: middle;
+  padding-top: 9px;
+  padding-bottom: 9px;
   text-align: center;
 }
+.microsoft-shell .sales-margin-chain-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 18px;
+  border-top: 1px solid #e3e8ef;
+  color: #697990;
+  background: #fff;
+  font-size: 11px;
+}
+.microsoft-shell .sales-margin-chain-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.microsoft-shell .sales-margin-chain-pagination button {
+  min-height: 30px;
+  padding: 5px 11px;
+  border: 1px solid #ccd7e4;
+  border-radius: 3px;
+  color: #274a7d;
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.microsoft-shell .sales-margin-chain-pagination button:hover:not(:disabled) { background: #f2f6fb; }
+.microsoft-shell .sales-margin-chain-pagination button:disabled { opacity: .45; cursor: default; }
 .microsoft-shell .sales-margin-table td.dimension { color: #697990; font-weight: 500; }
 .microsoft-shell .sales-margin-table td.number { color: #405169; font-size: 12px; }
 .microsoft-shell .sales-margin-table td.margin { color: #596b80; background: #fff; }

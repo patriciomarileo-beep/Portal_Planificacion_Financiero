@@ -8,7 +8,8 @@ El despliegue usa la plantilla `forus-corp/planificacion-comercial/ci-templates`
 
 - En el MR corren SAST, dependencias, contenedor, secretos y `security-regression`. La SCAN POLICY del grupo exige que pasen.
 - En `main`, Cloud Build publica la imagen en Artifact Registry y el job manual `deploy` actualiza la imagen del servicio `plataforma-planificacion-financiera` en `forus-cl-planificacion`, región `us-east4`.
-- El pipeline solo cambia la imagen. La cuenta de servicio, las variables, el secreto e IAP se configuran una vez en el servicio y se conservan entre despliegues.
+- El pipeline solo cambia la imagen. La cuenta de servicio, las variables, el secreto, el ingress e IAP se configuran una vez en el servicio y se conservan entre despliegues.
+- Los usuarios entran desde on-premises por un LB interno: `https://planificacion-financiera.prod.priv.forus-sistemas.com`. El servicio solo acepta tráfico interno. El LB está en `infra/` (Terraform) y lo aplican los jobs `infra-plan` / `infra-apply`. El setup y el corte están en [docs/lb-interno.md](docs/lb-interno.md).
 - El acceso pasa primero por IAP, solo para cuentas de `forus.cl`, y después por el login de Google del portal con su tabla de usuarios.
 
 El despliegue manual descrito más abajo queda solo como respaldo.

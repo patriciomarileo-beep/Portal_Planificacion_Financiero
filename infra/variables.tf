@@ -16,6 +16,20 @@ variable "cloud_run_service" {
   default     = "plataforma-planificacion-financiera"
 }
 
+variable "servicios_adicionales" {
+  description = "Otros servicios Cloud Run publicados por el mismo LB, cada uno con su hostname. La clave es el prefijo de sus recursos y el nombre de su path matcher."
+  type = map(object({
+    cloud_run_service = string
+    hostname          = string
+  }))
+  default = {
+    flujo-inventario = {
+      cloud_run_service = "plan-flujo-financiero"
+      hostname          = "flujo-inventario.prod.priv.forus-sistemas.com"
+    }
+  }
+}
+
 variable "name_prefix" {
   description = "Prefijo de nombre para los recursos del balanceador."
   type        = string

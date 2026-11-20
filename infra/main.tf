@@ -63,6 +63,22 @@ resource "google_compute_region_url_map" "https" {
   name            = "${var.name_prefix}-https"
   region          = var.region
   default_service = google_compute_region_backend_service.app.id
+
+  dynamic "host_rule" {
+    for_each = var.servicios_adicionales
+    content {
+      hosts        = [host_rule.value.hostname]
+      path_matcher = host_rule.key
+    }
+  }
+
+  dynamic "path_matcher" {
+    for_each = var.servicios_adicionales
+    content {
+      name            = path_matcher.key
+      default_service = google_compute_region_backend_service.adicional[path_matcher.key].id
+    }
+  }
 }
 
 # --- TLS ----------------------------------------------------------------------
@@ -104,7 +120,7 @@ resource "google_compute_region_target_https_proxy" "app" {
   name                             = "${var.name_prefix}-https"
   region                           = var.region
   url_map                          = google_compute_region_url_map.https.id
-  certificate_manager_certificates = [google_certificate_manager_certificate.app.id]
+  certificate_manager_certificates = concat([google_certificate_manager_certificate.app.id], [for c in google_certificate_manager_certificate.adicional : c.id])
   ssl_policy                       = google_compute_region_ssl_policy.app.id
 }
 

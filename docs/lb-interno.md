@@ -82,6 +82,12 @@ gcloud run services update plataforma-planificacion-financiera \
 - Desde internet, la URL `run.app` debe responder 404.
 - En `.gitlab-ci.yml`, cambia `PRIVATE_INGRESS_ENFORCED` a `"true"`. A partir de ahí, el job `verify-private-access` hace fallar `main` si el servicio vuelve a quedar expuesto o sin IAP.
 
+## 7. Otro servicio por el mismo LB
+
+El LB publica más de un servicio en la misma IP, cada uno con su hostname. Se agregan en `servicios_adicionales` (`infra/variables.tf`): la clave es el prefijo de sus recursos. Por cada uno se crean un NEG serverless, un backend, una regla por host en el URL map, su certificado administrado y sus registros DNS. El servicio de Cloud Run tiene que existir antes del `infra-plan`. La regla de Redes no cambia, porque la IP es la misma.
+
+Hoy: `flujo-inventario` publica `plan-flujo-financiero` en `https://flujo-inventario.prod.priv.forus-sistemas.com`.
+
 ## Reversa
 
 ```bash

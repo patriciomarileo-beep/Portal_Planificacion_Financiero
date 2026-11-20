@@ -172,6 +172,15 @@ const monthShort: Record<string, string> = {
 };
 const portalGroups: { id: PortalMenu; label: string; description: string; icon: typeof BarChart3; items: PortalSection[] }[] = [
   {
+    id: "toolbox",
+    label: "Toolbox AP",
+    description: "Planificación financiera, carga de bases y herramientas operativas del área.",
+    icon: PackageCheck,
+    items: [
+      { id: "toolbox", label: "Toolbox AP" },
+    ],
+  },
+  {
     id: "forecast",
     label: "Rentabilidad Forecast",
     description: "Rentabilidad, resultados y desempeño por canal, país y consolidado.",
@@ -236,7 +245,7 @@ const portalGroups: { id: PortalMenu; label: string; description: string; icon: 
   },
 ];
 const menuForSection = (section: string): PortalMenu | undefined => {
-  if (section === "home" || section === "sales-margin" || section === "toolbox" || section === "users") return section;
+  if (section === "home" || section === "sales-margin" || section === "users") return section;
   return portalGroups.find(group => group.items.some(item => item.id === section))?.id;
 };
 const hiddenUserColumns = new Set([
@@ -1740,7 +1749,6 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
   useEffect(() => {
     if (canViewSalesMargin) void loadSalesMargin(salesMarginScope).catch(() => { /* Retry when the report is opened. */ });
   }, [canViewSalesMargin, salesMarginScope]);
-  const canUseToolbox = canAccessMenu(authUser.role, "toolbox");
   const defaultSection = canViewHome ? "home" : visiblePortalGroups[0]?.items[0]?.id ?? "";
   const [requestedPortalSection, setPortalSection] = useState("home");
   const requestedMenu = menuForSection(requestedPortalSection);
@@ -1803,8 +1811,6 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
       ? { id: "sales-margin", label: "Venta & Margen", enabled: true }
     : portalSection === "users"
       ? { id: "users", label: "Usuarios", enabled: true }
-    : portalSection === "toolbox"
-      ? { id: "toolbox", label: "Toolbox AP", enabled: false }
     : portalGroups.flatMap((group) => group.items).find((item) => item.id === portalSection) ?? portalGroups[0].items[0];
   const selectedPortalGroup = portalGroups.find((group) => group.items.some((item) => item.id === portalSection)) ?? portalGroups[0];
   const openPortalSection = (groupId: string, itemId: string) => {
@@ -1826,7 +1832,6 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
         <nav className={`portal-topnav ${mobileNavOpen ? "open" : ""}`} aria-label="Informes financieros">
           {canViewHome && <button type="button" className={portalSection === "home" ? "active" : ""} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("home"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Inicio</button>}
           {canViewSalesMargin && <button type="button" className={portalSection === "sales-margin" ? "active" : ""} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("sales-margin"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Venta & Margen</button>}
-          {canUseToolbox && <button type="button" className={`upcoming ${portalSection === "toolbox" ? "active" : ""}`} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("toolbox"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}><span>Toolbox AP</span><small>Próximamente</small></button>}
           {visiblePortalGroups.map((group) => {
             const GroupIcon = group.icon;
             const groupOpen = openTopnavGroup === group.id;
@@ -1860,7 +1865,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
       </header>
       <main ref={workspaceRef} className="portal-workspace">
       <header className={`portal-reportbar ${portalSection === "home" ? "home" : ""}`}>
-        <div className="portal-context"><small>{portalSection === "home" ? "Portal Financiero" : portalSection === "users" ? "Administración" : portalSection === "toolbox" || portalSection === "sales-margin" ? "Planificación Financiera" : selectedPortalGroup.label}</small><b>{selectedPortalItem.label}</b></div>
+        <div className="portal-context"><small>{portalSection === "home" ? "Portal Financiero" : portalSection === "users" ? "Administración" : portalSection === "sales-margin" ? "Planificación Financiera" : selectedPortalGroup.label}</small><b>{selectedPortalItem.label}</b></div>
         {blActive && <nav>
           <button className={activeView === "annual" ? "active" : ""} onClick={() => setView("annual")}>Comparativa anual</button>
           <button className={activeView === "detail" ? "active" : ""} onClick={() => setView("detail")}>Detalle tiendas</button>
@@ -1882,13 +1887,9 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
               <div className="portal-legend-head"><span><CircleDollarSign /></span><div><small>PLANIFICACIÓN FINANCIERA</small><h2>Venta &amp; Margen</h2><p>Ventas, margen y variaciones por período, canal, marca y clase.</p></div></div>
               <div className="portal-legend-links"><button type="button" className="available" onClick={() => setPortalSection("sales-margin")}><span><b>Abrir Venta &amp; Margen</b><small>Disponible</small></span><ChevronRight /></button></div>
             </article>}
-            {canUseToolbox && <article className="portal-legend-card toolbox-home-card">
-              <div className="portal-legend-head"><span><PackageCheck /></span><div><small>HERRAMIENTA DE PLANIFICACIÓN</small><h2>Toolbox AP</h2><p>Planificación financiera, carga de bases y herramientas operativas del área.</p></div></div>
-              <div className="portal-legend-links"><button type="button" onClick={() => setPortalSection("toolbox")}><span><b>Toolbox AP</b><small>Próximamente</small></span><ChevronRight /></button></div>
-            </article>}
             {visiblePortalGroups.map((group) => {
               const GroupIcon = group.icon;
-              return <article className="portal-legend-card" key={group.id}>
+              return <article className={`portal-legend-card${group.id === "toolbox" ? " toolbox-home-card" : ""}`} key={group.id}>
                 <div className="portal-legend-head"><span><GroupIcon /></span><div><small>ÁREA DE ANÁLISIS</small><h2>{group.label}</h2><p>{group.description}</p></div></div>
                 <div className="portal-legend-links">{group.items.map((item) => <button type="button" key={item.id} className={item.enabled ? "available" : ""} onClick={() => openPortalSection(group.id, item.id)}><span><b>{item.label}</b><small>{item.enabled ? "Disponible" : "En construcción"}</small></span><ChevronRight /></button>)}</div>
               </article>;
@@ -1920,9 +1921,9 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports }: {
       </> : portalSection === "ecommerce" ? <ChannelProfitability channel="Ecommerce" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "marketplace" ? <ChannelProfitability channel="Marketplace" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "wholesale" ? <ChannelProfitability channel="Wholesale" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "consolidada" ? <ChannelProfitability channel="Consolidado" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "paises" ? <CountryProfitability /> : portalSection === "benchmark-nacional" ? <NationalBenchmark /> : portalSection === "benchmark-internacional" ? <InternationalBenchmark /> : portalSection === "macroeconomia-ipom" ? <MacroeconomicsMarket /> : portalSection === "mercado-retail-cnc" ? <RetailCncMarket /> : portalSection === "importaciones-retail" ? <ImportacionesIndustria key="retail" /> : portalSection === "importaciones-cosmeticos" ? <ImportacionesIndustria key="cosmetics" variant="cosmetics" /> : <section className="construction-page">
         <div className="construction-card">
           <i><Building2 /></i>
-          <label>{portalSection === "toolbox" ? "Planificación Financiera" : selectedPortalGroup.label}</label>
+          <label>{selectedPortalGroup.label}</label>
           <h1>{selectedPortalItem.label}</h1>
-          <strong>{portalSection === "toolbox" ? "PRÓXIMAMENTE" : "EN CONSTRUCCIÓN"}</strong>
+          <strong>EN CONSTRUCCIÓN</strong>
           <p>Este informe formará parte del Portal Financiero. Su estructura y fuentes de datos todavía están en preparación.</p>
           {canViewHome && <button type="button" onClick={() => setPortalSection("home")}>VOLVER A LA PORTADA</button>}
         </div>

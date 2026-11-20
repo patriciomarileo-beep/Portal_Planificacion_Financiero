@@ -21,3 +21,13 @@ output "certificate" {
   description = "Certificado administrado (revisar estado con gcloud certificate-manager certificates describe)."
   value       = google_certificate_manager_certificate.app.id
 }
+
+output "servicios_adicionales" {
+  description = "Origen HTTPS y certificado de cada servicio adicional."
+  value = {
+    for k, v in var.servicios_adicionales : k => {
+      url         = "https://${v.hostname}"
+      certificate = google_certificate_manager_certificate.adicional[k].id
+    }
+  }
+}

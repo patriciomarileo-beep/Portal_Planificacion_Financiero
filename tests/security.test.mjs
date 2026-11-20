@@ -295,9 +295,9 @@ test("COMEX retains its session while SIN ROL grants no access", async () => {
 
 const expectedMenus = {
   "SIN ROL": [],
-  "ADMINISTRADOR": ["home", "sales-margin", "toolbox", "forecast", "mercado", "comex", "kpi", "users"],
-  "ANALISTA FINANCIERO": ["home", "sales-margin", "forecast", "mercado", "kpi"],
-  "PLANIFICADOR FINANCIERO": ["home", "sales-margin", "toolbox", "forecast", "mercado", "comex", "kpi"],
+  "ADMINISTRADOR": ["home", "sales-margin", "toolbox", "forecast", "mercado", "comex", "kpi", "risk-matrix", "users"],
+  "ANALISTA FINANCIERO": ["home", "sales-margin", "forecast", "mercado", "kpi", "risk-matrix"],
+  "PLANIFICADOR FINANCIERO": ["home", "sales-margin", "toolbox", "forecast", "mercado", "comex", "kpi", "risk-matrix"],
   "COMEX": ["comex"],
 };
 

@@ -38,6 +38,7 @@ import {
   RefreshCw,
   Save,
   Search,
+  ShieldAlert,
   Store,
   Waves,
   Users,
@@ -222,6 +223,15 @@ const portalGroups: { id: PortalMenu; label: string; description: string; icon: 
     icon: Building2,
     items: [
       { id: "kpi-consolidado", label: "KPI Consolidado" },
+    ],
+  },
+  {
+    id: "risk-matrix",
+    label: "Matriz Riesgo",
+    description: "Evaluación y seguimiento de los riesgos financieros y operacionales.",
+    icon: ShieldAlert,
+    items: [
+      { id: "risk-matrix", label: "Matriz Riesgo" },
     ],
   },
 ];

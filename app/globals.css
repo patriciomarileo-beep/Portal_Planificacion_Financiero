@@ -4296,7 +4296,7 @@ body {
 @media (max-width: 1180px) {
   .microsoft-shell .portal-legend-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 1100px) {
+@media (max-width: 1280px) {
   .microsoft-shell .portal-topbar { height: 62px; align-items: center; }
   .microsoft-shell .portal-brand { min-width: 0; flex: 1; border: 0; }
   .portal-mobile-toggle { width: 40px; height: 40px; display: grid; place-items: center; border: 0; background: #f1f1f1; color: #273444; }
@@ -5611,7 +5611,7 @@ body {
   }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1280px) {
   .microsoft-shell .portal-topbar {
     width: 100%;
     padding-inline: 14px;
@@ -5620,6 +5620,11 @@ body {
   .microsoft-shell .portal-brand {
     min-width: 0;
     flex: 1 1 auto;
+  }
+
+  .microsoft-shell :is(.portal-topnav > button, .portal-topnav-group > button) {
+    padding-inline: 10px;
+    font-size: 14px;
   }
 }
 

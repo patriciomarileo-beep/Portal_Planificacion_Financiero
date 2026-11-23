@@ -61,3 +61,10 @@ export const decodeProfitabilityForecast = (payload: BigQueryRowsPayload): Profi
     };
   });
 };
+
+export const decodeProfitabilityForecastRefreshedAt = (payload: BigQueryRowsPayload) => {
+  const value = rowsAsObjects(payload)[0]?.refreshed_at;
+  if (value === null || value === undefined || value === "") return null;
+  const refreshedAt = String(value);
+  return Number.isNaN(Date.parse(refreshedAt)) ? null : refreshedAt;
+};

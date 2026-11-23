@@ -9,9 +9,9 @@ import { BrandSummary, InventoryFlow, LongTermPlan, RoadmapYoy } from "./Toolbox
 
 type Toast = { kind: "success" | "error"; message: string } | null;
 
-export default function ToolboxPlanning() {
+export default function ForboxPlanning() {
   const [toast, setToast] = useState<Toast>(null);
-  const [toolboxView, setToolboxView] = useState<"summary" | "planning" | "inventory" | "roadmap" | "longterm">("planning");
+  const [forboxView, setForboxView] = useState<"summary" | "planning" | "inventory" | "roadmap" | "longterm">("planning");
   const [draft, setDraft] = useState({ hierarchy: "Clase", location: "Canal", year: "2027", period: "ANUAL", view: "Venta y Margen", plan: "NY", comparison: "TY" });
   const [focus, setFocus] = useState(draft);
   const monthsByPeriod: Record<string, PlanningMonth[]> = {
@@ -20,10 +20,10 @@ export default function ToolboxPlanning() {
   };
   const visibleMonths = useMemo(() => monthsByPeriod[focus.period] ?? [...planningMonths], [focus.period]);
   const updateDraft = (key: keyof typeof draft, value: string) => setDraft((current) => ({ ...current, [key]: value }));
-  return <section className={`toolbox-page ${toolboxView === "planning" ? "" : "results-mode"}`}>
-    <div className="toolbox-hero"><div><label>TOOLBOX AP · MIGRACIÓN WEB</label><h1>Planifica, distribuye y consolida <em>en una sola vista.</em></h1><p>Edición jerárquica de venta y margen con captura estructurada hacia BigQuery.</p></div><div className="toolbox-hero-flow"><span><GitBranch /><b>Jerarquías</b><small>Marca → Clase → Canal</small></span><i>→</i><span><Sigma /><b>Motor financiero</b><small>Roll Up · Allocate Down</small></span><i>→</i><span><Database /><b>BigQuery</b><small>Disponibilidad en tiempo real</small></span></div></div>
-    <nav className="toolbox-subtabs" aria-label="Módulos Toolbox AP"><button type="button" className={toolboxView === "planning" ? "active" : ""} onClick={() => setToolboxView("planning")}><TableProperties /> Planificación</button><button type="button" className={toolboxView === "summary" ? "active" : ""} onClick={() => setToolboxView("summary")}><BarChart3 /> Resumen Marca</button><button type="button" className={toolboxView === "inventory" ? "active" : ""} onClick={() => setToolboxView("inventory")}><Boxes /> Inventory Flow</button><button type="button" className={toolboxView === "roadmap" ? "active" : ""} onClick={() => setToolboxView("roadmap")}><BarChart3 /> Roadmap 2025–2027</button><button type="button" className={toolboxView === "longterm" ? "active" : ""} onClick={() => setToolboxView("longterm")}><CalendarRange /> Visión 2030</button></nav>
-    {toolboxView === "planning" ? <><section className="planning-focus-panel">
+  return <section className={`toolbox-page ${forboxView === "planning" ? "" : "results-mode"}`}>
+    <div className="toolbox-hero"><div><label>FORBOX · MIGRACIÓN WEB</label><h1>Planifica, distribuye y consolida <em>en una sola vista.</em></h1><p>Edición jerárquica de venta y margen con captura estructurada hacia BigQuery.</p></div><div className="toolbox-hero-flow"><span><GitBranch /><b>Jerarquías</b><small>Marca → Clase → Canal</small></span><i>→</i><span><Sigma /><b>Motor financiero</b><small>Roll Up · Allocate Down</small></span><i>→</i><span><Database /><b>BigQuery</b><small>Disponibilidad en tiempo real</small></span></div></div>
+    <nav className="toolbox-subtabs" aria-label="Módulos Forbox"><button type="button" className={forboxView === "planning" ? "active" : ""} onClick={() => setForboxView("planning")}><TableProperties /> Planificación</button><button type="button" className={forboxView === "summary" ? "active" : ""} onClick={() => setForboxView("summary")}><BarChart3 /> Resumen Marca</button><button type="button" className={forboxView === "inventory" ? "active" : ""} onClick={() => setForboxView("inventory")}><Boxes /> Inventory Flow</button><button type="button" className={forboxView === "roadmap" ? "active" : ""} onClick={() => setForboxView("roadmap")}><BarChart3 /> Roadmap 2025–2027</button><button type="button" className={forboxView === "longterm" ? "active" : ""} onClick={() => setForboxView("longterm")}><CalendarRange /> Visión 2030</button></nav>
+    {forboxView === "planning" ? <><section className="planning-focus-panel">
       <header><div><label>PLANNING FOCUS</label><h2>Merchandise Planning</h2><p>Define el nivel de planificación antes de ejecutar la vista.</p></div><span>Ambiente: <b>Producción</b></span></header>
       <div className="planning-focus-fields">
         <label>JERARQUÍA DE PRODUCTO<select value={draft.hierarchy} onChange={(e) => updateDraft("hierarchy", e.target.value)}><option>Marca + Total</option><option>Marca</option><option>Clase</option><option>Género</option><option>Tipo</option></select><small>Marca → Clase → Género → Tipo</small></label>
@@ -37,6 +37,6 @@ export default function ToolboxPlanning() {
       </div>
       <footer><span>Nivel: <b>{focus.hierarchy}</b></span><span>Localidad: <b>{focus.location}</b></span><span>Planes: <b>{focus.plan} {focus.year}</b> vs {focus.comparison}</span><span>Período: <b>{focus.period}</b></span><span>Vista: <b>{focus.view}</b></span></footer>
     </section>
-    <div className="toolbox-workspace"><FinancialPlanningGrid visibleMonths={visibleMonths} planLabel={`${focus.plan} ${focus.year} · ${focus.period}`} /><DataEntryForm toast={toast} setToast={setToast} /></div></> : toolboxView === "summary" ? <BrandSummary /> : toolboxView === "inventory" ? <InventoryFlow /> : toolboxView === "roadmap" ? <RoadmapYoy /> : <LongTermPlan />}
+    <div className="toolbox-workspace"><FinancialPlanningGrid visibleMonths={visibleMonths} planLabel={`${focus.plan} ${focus.year} · ${focus.period}`} /><DataEntryForm toast={toast} setToast={setToast} /></div></> : forboxView === "summary" ? <BrandSummary /> : forboxView === "inventory" ? <InventoryFlow /> : forboxView === "roadmap" ? <RoadmapYoy /> : <LongTermPlan />}
   </section>;
 }

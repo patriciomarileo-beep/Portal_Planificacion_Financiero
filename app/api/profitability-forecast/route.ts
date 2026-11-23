@@ -1,8 +1,8 @@
 import { requireMenuAuth } from "../_shared/auth";
-import { runQuery, validatedTablePath, type BigQueryRowsPayload } from "../_shared/bigquery";
+import { runQuery, tableLastModifiedExpression, validatedTablePath, type BigQueryRowsPayload } from "../_shared/bigquery";
 import { errorResponse, json } from "../_shared/http";
 import type { ProfitabilityForecastPayload } from "../../profitability/profitability-types";
-import { decodeProfitabilityForecast } from "./data";
+import { decodeProfitabilityForecast, decodeProfitabilityForecastRefreshedAt } from "./data";
 
 export const runtime = "nodejs";
 
@@ -31,7 +31,8 @@ export const profitabilityForecastQuery = (sourceTable: string) => `SELECT
   CAST(MARGEN AS FLOAT64) AS margin,
   CAST(COSTO_OPERACIONAL AS FLOAT64) AS operating_cost,
   CAST(ROP AS FLOAT64) AS operating_result,
-  CAST(UTILIDAD_NETA AS FLOAT64) AS utility
+  CAST(UTILIDAD_NETA AS FLOAT64) AS utility,
+  ${tableLastModifiedExpression(sourceTable)} AS refreshed_at
 FROM \`${sourceTable}\`
 WHERE CAST(ANO_2 AS STRING) IN ('2025', '2026E', '2026P', '2027P')
   AND TRIM(CAST(NEGOCIO_DETALLE AS STRING)) IN ('Brick&Life', 'Ecommerce', 'Marketplace', 'Wholesale', 'Consolidado')
@@ -56,6 +57,7 @@ export async function GET(request: Request) {
     const payload: ProfitabilityForecastPayload = {
       rows,
       source,
+      refreshedAt: decodeProfitabilityForecastRefreshedAt(result),
       queriedAt: new Date().toISOString(),
       unit: "MM$",
     };

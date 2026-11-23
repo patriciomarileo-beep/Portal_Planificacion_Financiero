@@ -23,6 +23,27 @@ test("B&L keeps its six historical frontend views enabled", () => {
   }
 });
 
+test("B&L annual comparison and M2 share the standardized empty monthly filter", () => {
+  assert.match(pageSource, /"Enero", "Febrero", "Marzo"/);
+  assert.match(pageSource, /"Octubre", "Noviembre", "Diciembre"/);
+  assert.match(pageSource, /\[selectedMonths, setSelectedMonths\] = useState<string\[\]>\(\[\]\)/);
+  assert.match(pageSource, /\[m2Months, setM2Months\] = useState<string\[\]>\(\[\]\)/);
+  assert.equal(pageSource.match(/<MonthPeriodFilter/g)?.length, 2);
+  assert.match(pageSource, /ariaLabel="Periodo del informe"/);
+  assert.match(pageSource, /ariaLabel="Periodo del análisis M2"/);
+  assert.doesNotMatch(pageSource, /m2MonthFilterRef|toggleM2Month/);
+});
+
+test("B&L replicates the Sales and Margin clear-filter control", () => {
+  assert.match(pageSource, /const blActiveFilterCount = selectedChains\.length/);
+  assert.match(pageSource, /const clearBlFilters = \(\) => \{/);
+  assert.match(pageSource, /setSelectedChains\(\[\]\)/);
+  assert.match(pageSource, /setQuery\(""\)/);
+  assert.match(pageSource, /setFwBand\(null\)/);
+  assert.match(pageSource, /className="sales-margin-clear bl-filter-clear"/);
+  assert.match(pageSource, /onClick=\{clearBlFilters\}/);
+});
+
 test("B&L BigQuery setup separates the external and native tables", () => {
   assert.match(setupSql, /TB_EXT_RENTABILIDAD_BL/);
   assert.match(setupSql, /TB_RENTABILIDAD_BL/);

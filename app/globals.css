@@ -3260,7 +3260,7 @@ footer {
 .m2-table-panel td:first-child { position: sticky; left: 0; z-index: 2; background: #fff; }
 .m2-table-panel thead th:first-child { z-index: 4; background: #f7f9fc; }
 
-/* Toolbox AP */
+/* Forbox */
 .toolbox-page { min-height: calc(100vh - 95px); padding: 28px 34px 44px; background: #f3f6fa; color: #21354f; }
 .toolbox-hero { display: flex; align-items: center; justify-content: space-between; gap: 28px; margin: -28px -34px 24px; padding: 30px 40px; background: linear-gradient(115deg, #071e43 0%, #123f75 58%, #146e91 100%); color: #fff; }
 .toolbox-hero label, .toolbox-entry-card header span, .toolbox-grid-card header span { font-size: 9px; font-weight: 800; letter-spacing: .12em; }
@@ -3349,7 +3349,7 @@ footer {
 .results-mode .toolbox-hero h1 { margin: 3px 0 0; font-size: 20px; }
 .results-mode .toolbox-hero p, .results-mode .toolbox-hero-flow { display: none; }
 
-/* Toolbox mantiene la misma cabecera en todas las hojas del portal. */
+/* Forbox mantiene la misma cabecera en todas las hojas del portal. */
 .results-mode .toolbox-hero {
   min-height: initial;
   margin-bottom: 24px;
@@ -4274,7 +4274,7 @@ body {
 .microsoft-shell .portal-legend-card:nth-child(3) .portal-legend-head { background: linear-gradient(145deg, #f4ecff, #fbf9ff); }
 .microsoft-shell .portal-legend-card:nth-child(4) .portal-legend-head { background: linear-gradient(145deg, #fff2e5, #fffaf4); }
 .microsoft-shell .sales-margin-home-card .portal-legend-head { background: linear-gradient(145deg, #e7f3ff, #f8fbff); }
-.microsoft-shell .toolbox-home-card .portal-legend-head { background: linear-gradient(145deg, #eaf6f1, #f8fcfa); }
+.microsoft-shell .forbox-home-card .portal-legend-head { background: linear-gradient(145deg, #eaf6f1, #f8fcfa); }
 .portal-legend-head > span { width: 44px; height: 44px; display: grid; place-items: center; margin-bottom: 20px; background: #fff; color: #0067b8; box-shadow: 0 4px 13px rgba(0,0,0,.08); }
 .portal-legend-head > span svg { width: 22px; }
 .microsoft-shell .portal-legend-head small { color: #0067b8; font-size: 8px; font-weight: 700; letter-spacing: .12em; }
@@ -4581,6 +4581,8 @@ body {
 .sales-margin-refresh, .sales-margin-clear { height: 38px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; border: 1px solid #1678a9; border-radius: 6px; color: #fff; background: #1678a9; font-size: 9px; font-weight: 750; text-transform: uppercase; cursor: pointer; }
 /* Diferencia visual del botón que limpia los filtros activos. */
 .sales-margin-clear { min-width: 42px; padding: 0 9px; border-color: #cbd5df; color: #52657a; background: #f4f7f9; }
+/* B&L reutiliza el control compacto de limpieza de Venta & Margen. */
+.filters > .sales-margin-clear { min-width: 42px; padding: 0 9px; border: 1px solid #cbd5df; border-radius: 6px; color: #52657a; background: #f4f7f9; font-size: 9px; font-weight: 750; text-decoration: none; }
 /* Estado deshabilitado del botón Actualizar durante una carga. */
 .sales-margin-refresh:disabled { opacity: .6; cursor: wait; }
 /* Tamaño de los iconos en los botones de la barra de herramientas. */

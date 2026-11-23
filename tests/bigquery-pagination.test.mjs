@@ -7,7 +7,15 @@ register("../scripts/test-typescript-loader.mjs", import.meta.url);
 process.env.BIGQUERY_ACCESS_TOKEN = "test-access-token";
 process.env.BIGQUERY_PROJECT_ID = "test-project";
 
-const { fetchBigQuery, runQuery } = await import("../app/api/_shared/bigquery.ts");
+const { fetchBigQuery, runQuery, tableLastModifiedExpression } = await import("../app/api/_shared/bigquery.ts");
+
+test("table metadata timestamps use only validated BigQuery identifiers", () => {
+  const expression = tableLastModifiedExpression("project-id.dataset_name.table_name");
+  assert.match(expression, /`project-id\.dataset_name\.__TABLES__`/);
+  assert.match(expression, /table_id='table_name'/);
+  assert.match(expression, /FORMAT_TIMESTAMP/);
+  assert.throws(() => tableLastModifiedExpression("project.dataset.table' OR TRUE"), /Invalid BigQuery table identifier/);
+});
 
 test("runQuery follows BigQuery page tokens when pagination is enabled", async () => {
   const originalFetch = globalThis.fetch;

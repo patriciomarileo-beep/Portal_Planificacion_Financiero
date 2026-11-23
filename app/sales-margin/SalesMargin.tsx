@@ -33,6 +33,7 @@ import {
   X,
 } from "lucide-react";
 import MonthPeriodFilter, { type MonthPeriod } from "../components/MonthPeriodFilter";
+import { formatSourceUpdatedAt } from "../source-updated-at";
 
 type Scenario = string;
 type ScenarioLabel = string;
@@ -1122,9 +1123,7 @@ export default function SalesMargin({
   const marginGrowth = margin2027 !== null && margin2026
     ? margin2027 / margin2026 - 1
     : null;
-  const refreshedAt = payload?.refreshedAt
-    ? new Intl.DateTimeFormat("es-CL", { dateStyle: "medium" }).format(new Date(`${payload.refreshedAt}T12:00:00`))
-    : "Sin fecha informada";
+  const refreshedAt = formatSourceUpdatedAt(payload?.refreshedAt);
   const hasMonthBreakdown = quarterFilter !== "ANUAL";
   const hasSecondary = view === "channel" || view === "chainBrand" || view === "brandChannel" || view === "brandClass" || (hasMonthBreakdown && view === "brand");
   const hasTertiary = hasMonthBreakdown && (view === "chainBrand" || view === "brandChannel" || view === "brandClass");
@@ -1290,6 +1289,7 @@ export default function SalesMargin({
       </div>
       <aside className="sales-margin-hero-meta">
         <b>INFORME EN MM$</b>
+        <small>FUENTE · BIGQUERY</small>
         <small>ACTUALIZACIÓN FUENTE · {payload ? refreshedAt : "Consultando…"}</small>
       </aside>
     </header>

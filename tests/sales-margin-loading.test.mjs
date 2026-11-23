@@ -7,6 +7,7 @@ import { renderToString } from "react-dom/server";
 
 register("../scripts/test-typescript-loader.mjs", import.meta.url);
 const { clearSalesMarginData, deriveDefaultScenarioYears, getSalesMarginSnapshot, loadSalesMargin, salesMarginDefaultYears, salesMarginYearOptions } = await import("../app/sales-margin/sales-margin-data.ts");
+const { formatSourceUpdatedAt } = await import("../app/source-updated-at.ts");
 const {
   appendChainGroupedBrandDetails,
   buildDisplayRows,
@@ -189,6 +190,29 @@ test("the home exposes direct access to every native Sales and Margin view", () 
   assert.match(page, /openSalesMargin\(targetView\)/);
   assert.match(report, /initialView\?: SalesMarginView/);
   assert.match(report, /useState<SalesMarginView>\(initialView\)/);
+});
+
+test("the 2027 home call to action opens the Sales and Margin consolidated view", () => {
+  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /onClick=\{\(\) => openSalesMargin\("summary"\)\}>Explora el objetivo 2027/);
+  assert.doesNotMatch(page, /Explora el objetivo 2027[\s\S]{0,150}setView\("break-even"\)/);
+});
+
+test("Forbox replaces Toolbox AP across navigation and authorization", () => {
+  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const menuAccess = readFileSync(new URL("../app/menu-access.ts", import.meta.url), "utf8");
+  const ingestRoute = readFileSync(new URL("../app/api/ingesta-bigquery/route.ts", import.meta.url), "utf8");
+  const planning = readFileSync(new URL("../app/toolbox/ToolboxPlanning.tsx", import.meta.url), "utf8");
+
+  assert.match(page, /id: "forbox",\s*label: "Forbox"/);
+  assert.match(page, /portalSection === "forbox" \? "PRÓXIMAMENTE"/);
+  assert.doesNotMatch(page, /Toolbox AP|id: "toolbox"/);
+  assert.match(menuAccess, /"forbox"/);
+  assert.doesNotMatch(menuAccess, /"toolbox"/);
+  assert.match(ingestRoute, /requireMenuAuth\(request, "forbox"\)/);
+  assert.match(ingestRoute, /origen: "forbox-web"/);
+  assert.match(planning, /FORBOX · MIGRACIÓN WEB/);
+  assert.doesNotMatch(planning, /TOOLBOX AP/);
 });
 
 test("the topbar exposes Sales and Margin as a dropdown with all its native views", () => {
@@ -793,6 +817,32 @@ test("the monthly selector renders full Spanish month names", () => {
   assert.match(report, /const monthOptions = monthOptionLabels\.map/);
   assert.match(styles, /\.month-options \{[\s\S]*font-size: 10px;/);
   assert.match(styles, /\.month-options label \{[\s\S]*font-size: 10px;/);
+});
+
+test("Sales and Margin displays the source update date and time", () => {
+  const route = readFileSync(new URL("../app/api/sales-margin/route.ts", import.meta.url), "utf8");
+  const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
+  const formatted = formatSourceUpdatedAt("2026-11-23T18:30:00.000Z");
+
+  assert.match(formatted, /23(?:-|\/|\s)11(?:-|\/|\s)2026|23\s+nov\.?\s+2026/i);
+  assert.match(formatted, /(?:15|3):30/);
+  assert.match(formatSourceUpdatedAt("2026-11-09"), /hora no informada/);
+  assert.match(route, /tableLastModifiedExpression\(sourceTable\)/);
+  assert.match(report, /ACTUALIZACIÓN FUENTE/);
+  assert.match(report, /formatSourceUpdatedAt\(payload\?\.refreshedAt\)/);
+});
+
+test("every MM$ report badge uses the standardized BigQuery source metadata", () => {
+  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const salesMargin = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
+  const forecast = readFileSync(new URL("../app/profitability/ChannelProfitability.tsx", import.meta.url), "utf8");
+  const kpi = readFileSync(new URL("../app/kpi/KpiConsolidado.tsx", import.meta.url), "utf8");
+  const standardizedBadge = /<b>INFORME EN MM\$<\/b>\s*<small>FUENTE · BIGQUERY<\/small>\s*<small>ACTUALIZACIÓN FUENTE ·/;
+
+  assert.match(page, standardizedBadge);
+  assert.match(salesMargin, standardizedBadge);
+  assert.match(forecast, standardizedBadge);
+  assert.match(kpi, standardizedBadge);
 });
 
 test("the report displays its navigation and table before the data request finishes", async () => {

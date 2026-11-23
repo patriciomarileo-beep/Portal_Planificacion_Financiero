@@ -20,6 +20,7 @@ export type ProfitabilityForecastRow = {
 export type ProfitabilityForecastPayload = {
   rows: ProfitabilityForecastRow[];
   source: string;
+  refreshedAt: string | null;
   queriedAt: string;
   unit: "MM$";
 };

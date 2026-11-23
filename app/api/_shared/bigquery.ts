@@ -54,6 +54,14 @@ export const validatedTablePath = (table: string) => {
   if (!/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+$/.test(table)) throw new Error("Invalid BigQuery table identifier.");
   return table;
 };
+
+export const tableLastModifiedExpression = (table: string) => {
+  const [projectId, datasetId, tableId] = validatedTablePath(table).split(".");
+  return `(SELECT FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E3SZ', TIMESTAMP_MILLIS(last_modified_time), 'UTC')
+    FROM \`${projectId}.${datasetId}.__TABLES__\`
+    WHERE table_id='${tableId}')`;
+};
+
 export const tablePath = () => validatedTablePath(process.env.BIGQUERY_TABLE || defaultTable);
 
 const configuredProjectId = () => process.env.BIGQUERY_PROJECT_ID || splitTable(tablePath()).projectId;

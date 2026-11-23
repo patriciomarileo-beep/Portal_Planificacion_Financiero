@@ -42,6 +42,7 @@ import {
   Store,
   Waves,
   Users,
+  X,
 } from "lucide-react";
 import { parseMarketIndicators, indicatorDateLabel, type MarketIndicator } from "./market/indicator-data";
 import type { DollarHistoryPayload } from "./market/dollar-history-data";
@@ -52,6 +53,7 @@ import { canAccessMenu, type PortalMenu } from "./menu-access";
 import { clearSalesMarginData, loadSalesMargin } from "./sales-margin/sales-margin-data";
 import type { SalesMarginView } from "./sales-margin/SalesMargin";
 import MonthPeriodFilter, { type MonthPeriod } from "./components/MonthPeriodFilter";
+import { formatSourceUpdatedAt } from "./source-updated-at";
 const reportLoading = () => <div className="portal-data-status" role="status"><RefreshCw className="spin" /><p>Cargando informe…</p></div>;
 const NationalBenchmark = dynamic(() => import("./market/NationalBenchmark"), { loading: reportLoading });
 const InternationalBenchmark = dynamic(() => import("./market/InternationalBenchmark"), { loading: reportLoading });
@@ -165,7 +167,11 @@ const monthOrder = [
   "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
 ];
-const monthPeriodOptions = monthOrder.map((month) => ({ value: month, label: month }));
+const monthNames = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+const monthPeriodOptions = monthOrder.map((month, index) => ({ value: month, label: monthNames[index] }));
 const monthShort: Record<string, string> = {
   ENERO: "Ene", FEBRERO: "Feb", MARZO: "Mar", ABRIL: "Abr",
   MAYO: "May", JUNIO: "Jun", JULIO: "Jul", AGOSTO: "Ago",
@@ -173,12 +179,12 @@ const monthShort: Record<string, string> = {
 };
 const portalGroups: { id: PortalMenu; label: string; description: string; icon: typeof BarChart3; items: PortalSection[] }[] = [
   {
-    id: "toolbox",
-    label: "Toolbox AP",
+    id: "forbox",
+    label: "Forbox",
     description: "Planificación financiera, carga de bases y herramientas operativas del área.",
     icon: PackageCheck,
     items: [
-      { id: "toolbox", label: "Toolbox AP" },
+      { id: "forbox", label: "Forbox" },
     ],
   },
   {
@@ -453,7 +459,7 @@ function Executive({
   const [chainMetric, setChainMetric] = useState<keyof Metric | "marginPct">("utility");
   const [period, setPeriod] = useState<ReportPeriod>("ANUAL");
   const [classification, setClassification] = useState<ClassificationFilter>("TOTAL");
-  const [selectedMonths, setSelectedMonths] = useState<string[]>(monthOrder);
+  const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
 
   const displayedYears: Year[] = period === "ANUAL" && classification === "TOTAL" ? years : [2026, 2027];
   const activeMonths = period === "ANUAL"
@@ -934,8 +940,7 @@ function M2Analysis({ selection }: { selection: StoreRow[] }) {
   const { storeM2, catM2SnapshotStores, catM2SnapshotTotals } = usePrivateData();
   const [m2Year, setM2Year] = useState<Year>(2027);
   const [m2Period, setM2Period] = useState<ReportPeriod>("ANUAL");
-  const [m2Months, setM2Months] = useState<string[]>(monthOrder);
-  const m2MonthFilterRef = useRef<HTMLDetailsElement>(null);
+  const [m2Months, setM2Months] = useState<string[]>([]);
 
   const activeM2Months = m2Period === "ANUAL" ? [] : m2Period === "MES" ? m2Months : quarterMonths[m2Period];
   const m2PeriodLabel = m2Period === "ANUAL"
@@ -951,12 +956,6 @@ function M2Analysis({ selection }: { selection: StoreRow[] }) {
   const selectM2Period = (period: ReportPeriod) => {
     setM2Period(period);
     if (period !== "ANUAL" && m2Year !== 2026 && m2Year !== 2027) setM2Year(2027);
-    if (period !== "MES") m2MonthFilterRef.current?.removeAttribute("open");
-  };
-  const toggleM2Month = (month: string) => {
-    setM2Period("MES");
-    if (m2Year !== 2026 && m2Year !== 2027) setM2Year(2027);
-    setM2Months((current) => current.includes(month) ? current.filter((item) => item !== month) : [...current, month]);
   };
   const m2ByCode = useMemo(() => new Map(storeM2.map((row) => [normalizeStoreKey(row.code), row])), [storeM2]);
   const m2ByName = useMemo(() => new Map(storeM2.map((row) => [normalizeStoreKey(row.name), row])), [storeM2]);
@@ -1056,7 +1055,7 @@ function M2Analysis({ selection }: { selection: StoreRow[] }) {
   );
   return (
     <>
-      <div className="title m2-title"><div><i>M2</i><span><h2>Productividad por metro cuadrado</h2><p>Venta, margen, arriendo y estructura completa del resultado normalizada por superficie</p></span></div><div className="title-actions m2-title-actions"><label className="year-select">AÑO<select value={m2Year} onChange={(e) => setM2Year(Number(e.target.value) as Year)}>{(m2Period === "ANUAL" ? years : ([2026, 2027] as Year[])).map((year) => <option key={year} value={year}>{yearLabel(year)}</option>)}</select><ChevronDown /></label><div className="quarter-filter" aria-label="Periodo del análisis M2">{(["ANUAL", "Q1", "Q2", "Q3", "Q4"] as Quarter[]).map((item) => <button key={item} className={m2Period === item ? "active" : ""} onClick={() => selectM2Period(item)}>{item}</button>)}<details data-dropdown name="portal-dropdown" className={`month-period-filter ${m2Period === "MES" ? "active" : ""}`} ref={m2MonthFilterRef}><summary onClick={() => selectM2Period("MES")}>MES</summary><div className="month-options"><div className="month-options-head"><b>{m2Months.length} MESES</b><button type="button" onClick={() => setM2Months(m2Months.length === monthOrder.length ? [] : monthOrder)}>{m2Months.length === monthOrder.length ? "LIMPIAR" : "TODOS"}</button></div>{monthOrder.map((month) => <label key={month}><input type="checkbox" checked={m2Months.includes(month)} onChange={() => toggleM2Month(month)} />{month}</label>)}</div></details></div><button className="export-button" onClick={exportM2} disabled={!matched.length}><Download /> EXPORTAR DETALLE EXCEL</button></div></div>
+      <div className="title m2-title"><div><i>M2</i><span><h2>Productividad por metro cuadrado</h2><p>Venta, margen, arriendo y estructura completa del resultado normalizada por superficie</p></span></div><div className="title-actions m2-title-actions"><label className="year-select">AÑO<select value={m2Year} onChange={(e) => setM2Year(Number(e.target.value) as Year)}>{(m2Period === "ANUAL" ? years : ([2026, 2027] as Year[])).map((year) => <option key={year} value={year}>{yearLabel(year)}</option>)}</select><ChevronDown /></label><MonthPeriodFilter period={m2Period} onPeriodChange={selectM2Period} months={monthPeriodOptions} selectedMonths={m2Months} onSelectedMonthsChange={setM2Months} ariaLabel="Periodo del análisis M2" /><button className="export-button" onClick={exportM2} disabled={!matched.length}><Download /> EXPORTAR DETALLE EXCEL</button></div></div>
       <section className="m2-kpis">
         <article><label>SUPERFICIE ANALIZADA</label><strong>{totalM2.toLocaleString("es-CL", { maximumFractionDigits: 1 })} m²</strong><span>{matched.length} tiendas con superficie</span></article>
         <article><label>VENTA / M²</label><strong>{m2Money(perM2(totals.sales, totalM2))}</strong><span>MM$ por m² · {m2PeriodLabel}</span></article>
@@ -1747,13 +1746,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
 }) {
   const privateData = useContext(PrivateDataContext);
   const baseSnapshotAt = privateData?.baseSnapshotAt ?? "";
-  const snapshotLabel = baseSnapshotAt
-    ? new Intl.DateTimeFormat("es-CL", {
-        timeZone: "America/Santiago",
-        dateStyle: "short",
-        timeStyle: "short",
-      }).format(new Date(baseSnapshotAt))
-    : "—";
+  const snapshotLabel = formatSourceUpdatedAt(baseSnapshotAt);
   const [view, setView] = useState<"annual" | "detail" | "m2" | "monitor" | "break-even" | "sensitivity">("annual");
   const [selectedChains, setSelectedChains] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -1828,6 +1821,12 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
   const toggleChain = (chain: string) => setSelectedChains((current) =>
     current.includes(chain) ? current.filter((item) => item !== chain) : [...current, chain]
   );
+  const blActiveFilterCount = selectedChains.length + (query.trim() ? 1 : 0) + (fwBand ? 1 : 0);
+  const clearBlFilters = () => {
+    setSelectedChains([]);
+    setQuery("");
+    setFwBand(null);
+  };
 
   const canManageUsers = canAccessMenu(authUser.role, "users");
   const activeView = view;
@@ -1976,7 +1975,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
       </header>
       {portalSection === "home" ? <section className="portal-home-page">
         <div className="portal-home-heading">
-          <div className="portal-home-copy"><label>INTELIGENCIA FINANCIERA · 2027</label><h1>Decisiones que avanzan.<br /><em>Resultados más fuertes.</em></h1><p>Un punto de encuentro para explorar la rentabilidad, anticipar escenarios y convertir datos del negocio en acciones.</p><button type="button" onClick={() => { openPortalSection("forecast", "bl"); setView("break-even"); }}>Explora el objetivo 2027 <ChevronRight /></button></div>
+          <div className="portal-home-copy"><label>INTELIGENCIA FINANCIERA · 2027</label><h1>Decisiones que avanzan.<br /><em>Resultados más fuertes.</em></h1><p>Un punto de encuentro para explorar la rentabilidad, anticipar escenarios y convertir datos del negocio en acciones.</p><button type="button" onClick={() => openSalesMargin("summary")}>Explora el objetivo 2027 <ChevronRight /></button></div>
           <EconomicIndicators />
         </div>
         <div className="portal-section-heading"><div><label>EXPLORA EL PORTAL</label><h2>Todo lo que necesitas, en un solo lugar</h2></div><p>Accede a los informes disponibles y conoce los próximos desarrollos.</p></div>
@@ -1996,7 +1995,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
             </article>}
             {visiblePortalGroups.map((group) => {
               const GroupIcon = group.icon;
-              return <article className={`portal-legend-card${group.id === "toolbox" ? " toolbox-home-card" : ""}`} key={group.id}>
+              return <article className={`portal-legend-card${group.id === "forbox" ? " forbox-home-card" : ""}`} key={group.id}>
                 <div className="portal-legend-head"><span><GroupIcon /></span><div><small>ÁREA DE ANÁLISIS</small><h2>{group.label}</h2><p>{group.description}</p></div></div>
                 <div className="portal-legend-links">{group.items.map((item) => <button type="button" key={item.id} className={item.enabled ? "available" : ""} onClick={() => openPortalSection(group.id, item.id)}><span><b>{item.label}</b><small>{item.enabled ? "Disponible" : "En construcción"}</small></span><ChevronRight /></button>)}</div>
               </article>;
@@ -2006,7 +2005,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
         {reportsError ? <><AlertTriangle /><h2>No pudimos cargar este informe</h2><p>{reportsError}</p><button type="button" onClick={onRetryReports}>Reintentar</button></> : <><RefreshCw className="spin" /><h2>Preparando tu informe</h2><p>Puedes seguir navegando mientras termina la carga.</p></>}
       </section> : portalSection === "users" && canManageUsers ? <div className="content"><UsuariosAdmin /></div> : blActive ? <><section className="hero">
         <div><label>PLANIFICACIÓN FINANCIERA · PRESUPUESTO 2027P</label><h1>Rentabilidad de tiendas.</h1><p>EERR Retail y riesgo Four Walls por tienda.</p></div>
-        <span className="unit-badge"><b>INFORME EN MM$</b><small>CONSULTADO  {snapshotLabel}</small></span>
+        <span className="unit-badge"><b>INFORME EN MM$</b><small>FUENTE · BIGQUERY</small><small>ACTUALIZACIÓN FUENTE · {snapshotLabel}</small></span>
       </section>
       <section className="filters">
         <b><Filter /> Segmentar vista</b>
@@ -2019,7 +2018,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
         </details>
         <div><Search /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="BUSCAR UNO O VARIOS CC / TIENDAS, SEPARADOS POR COMA..." /></div>
         {fwBand && <i className={`filter-chip band-${fwBand}`}>{analysisMetric === "utility" ? "Utilidad" : "Four Walls"} {yearLabel(quadrantYear)} · {fwBand === "negative" ? "Pérdida" : fwBand === "low" ? "Baja" : "Saludable"}</i>}
-        <button onClick={() => { setSelectedChains([]); setQuery(""); setFwBand(null); }}>Limpiar filtros</button>
+        {blActiveFilterCount > 0 && <button className="sales-margin-clear bl-filter-clear" type="button" onClick={clearBlFilters} title="Limpiar filtros"><X /> {blActiveFilterCount}</button>}
       </section>
       <div className="content">
         {activeView === "annual" ? <Executive selection={selection} universe={universe} quadrantYear={quadrantYear} setQuadrantYear={setQuadrantYear} fwBand={fwBand} setFwBand={setFwBand} analysisMetric={analysisMetric} setAnalysisMetric={setAnalysisMetric} /> : activeView === "detail" ? <Detail selection={selection} /> : activeView === "break-even" ? <BreakEven selection={selection} /> : activeView === "m2" ? <M2Analysis selection={selection} /> : activeView === "sensitivity" ? <StoreSensitivity /> : <StoreMonitor selection={selection} />}
@@ -2028,9 +2027,9 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
       </> : portalSection === "ecommerce" ? <ChannelProfitability channel="Ecommerce" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "marketplace" ? <ChannelProfitability channel="Marketplace" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "wholesale" ? <ChannelProfitability channel="Wholesale" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "consolidada" ? <ChannelProfitability channel="Consolidado" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "paises" ? <CountryProfitability /> : portalSection === "benchmark-nacional" ? <NationalBenchmark /> : portalSection === "benchmark-internacional" ? <InternationalBenchmark /> : portalSection === "macroeconomia-ipom" ? <MacroeconomicsMarket /> : portalSection === "mercado-retail-cnc" ? <RetailCncMarket /> : portalSection === "importaciones-retail" ? <ImportacionesIndustria key="retail" /> : portalSection === "importaciones-cosmeticos" ? <ImportacionesIndustria key="cosmetics" variant="cosmetics" /> : <section className="construction-page">
         <div className="construction-card">
           <i><Building2 /></i>
-          <label>{portalSection === "toolbox" ? "Planificación Financiera" : selectedPortalGroup.label}</label>
+          <label>{portalSection === "forbox" ? "Planificación Financiera" : selectedPortalGroup.label}</label>
           <h1>{selectedPortalItem.label}</h1>
-          <strong>{portalSection === "toolbox" ? "PRÓXIMAMENTE" : "EN CONSTRUCCIÓN"}</strong>
+          <strong>{portalSection === "forbox" ? "PRÓXIMAMENTE" : "EN CONSTRUCCIÓN"}</strong>
           <p>Este informe formará parte de Accountability Portal. Su estructura y fuentes de datos todavía están en preparación.</p>
           {canViewHome && <button type="button" onClick={() => setPortalSection("home")}>VOLVER A LA PORTADA</button>}
         </div>

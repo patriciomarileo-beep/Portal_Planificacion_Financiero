@@ -5,13 +5,15 @@ import { register } from "node:module";
 
 register("../scripts/test-typescript-loader.mjs", import.meta.url);
 
-const { decodeProfitabilityForecast } = await import("../app/api/profitability-forecast/data.ts");
+const { decodeProfitabilityForecast, decodeProfitabilityForecastRefreshedAt } = await import("../app/api/profitability-forecast/data.ts");
 const { profitabilityForecastQuery } = await import("../app/api/profitability-forecast/route.ts");
 const channelProfitabilitySource = readFileSync(new URL("../app/profitability/ChannelProfitability.tsx", import.meta.url), "utf8");
+const monthFilterSource = readFileSync(new URL("../app/components/MonthPeriodFilter.tsx", import.meta.url), "utf8");
+const stylesSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
 const fields = [
   "year", "quarter", "month", "channel", "brand", "sales", "margin",
-  "operating_cost", "operating_result", "utility",
+  "operating_cost", "operating_result", "utility", "refreshed_at",
 ].map((name) => ({ name, type: "STRING" }));
 
 const payload = (values) => ({
@@ -52,6 +54,18 @@ test("the forecast query is restricted to the validated BigQuery source and supp
   assert.match(query, /'Wholesale'/);
   assert.match(query, /'Consolidado'/);
   assert.match(query, /'2027P'/);
+  assert.match(query, /`project_id\.dataset_name\.__TABLES__`/);
+  assert.match(query, /AS refreshed_at/);
+});
+
+test("Rentabilidad Forecast exposes the native table update timestamp", () => {
+  const refreshedAt = "2026-11-23T18:30:00.000Z";
+  assert.equal(decodeProfitabilityForecastRefreshedAt(payload([[
+    "2027P", "Q1", "1", "Wholesale", "Consolidado", "1", "1", "-1", "0", "0", refreshedAt,
+  ]])), refreshedAt);
+  assert.equal(decodeProfitabilityForecastRefreshedAt(payload([])), null);
+  assert.match(channelProfitabilitySource, /setRefreshedAt\(payload\.refreshedAt\)/);
+  assert.match(channelProfitabilitySource, /ACTUALIZACIÓN FUENTE/);
 });
 
 test("the brand ranking calculates both annual and budget margin variations", () => {
@@ -59,4 +73,24 @@ test("the brand ranking calculates both annual and budget margin variations", ()
   assert.match(channelProfitabilitySource, /marginBudget: variation\(selected\.margin, budget\.margin\)/);
   assert.match(channelProfitabilitySource, /cell\(item\.marginAnnual\)/);
   assert.match(channelProfitabilitySource, /cell\(item\.marginBudget\)/);
+});
+
+test("Rentabilidad Forecast uses the standardized empty monthly multi-filter", () => {
+  assert.match(channelProfitabilitySource, /"Enero", "Febrero", "Marzo"/);
+  assert.match(channelProfitabilitySource, /"Octubre", "Noviembre", "Diciembre"/);
+  assert.match(channelProfitabilitySource, /useState<number\[\]>\(\[\]\)/);
+  assert.match(channelProfitabilitySource, /<MonthPeriodFilter/);
+  assert.match(monthFilterSource, /onPeriodChange\(nextSelectedMonths\.length > 0 \? "MES" : "ANUAL"\)/);
+  assert.match(stylesSource, /\.month-options \{[\s\S]*font-size: 10px;/);
+  assert.match(stylesSource, /\.month-options label \{[\s\S]*font-size: 10px;/);
+});
+
+test("Rentabilidad Forecast replicates the Sales and Margin clear-filter control", () => {
+  assert.match(channelProfitabilitySource, /const activeFilterCount = \(scenario === "2026E" \? 0 : 1\)/);
+  assert.match(channelProfitabilitySource, /const clearFilters = \(\) => \{/);
+  assert.match(channelProfitabilitySource, /setScenario\("2026E"\)/);
+  assert.match(channelProfitabilitySource, /setPeriod\("ANUAL"\)/);
+  assert.match(channelProfitabilitySource, /setSelectedMonths\(\[\]\)/);
+  assert.match(channelProfitabilitySource, /className="sales-margin-clear channel-filter-clear"/);
+  assert.match(channelProfitabilitySource, /onClick=\{clearFilters\}/);
 });

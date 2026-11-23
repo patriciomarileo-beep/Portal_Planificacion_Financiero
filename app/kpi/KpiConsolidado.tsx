@@ -25,6 +25,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { formatSourceUpdatedAt } from "../source-updated-at";
 
 type MetricRow = { metric: string; actual: number | string; budget: number | string; prior: number | string };
 type BreakdownRow = MetricRow & { business: string };
@@ -174,12 +175,6 @@ const contrastColor = (hex: string) => {
 const variation = (current: number, base: number) => base === 0 ? null : ((current / base) - 1) * 100;
 const values = (row?: MetricRow): Values => ({ actual: number(row?.actual), budget: number(row?.budget), prior: number(row?.prior) });
 const metricMap = (rows: MetricRow[]): MetricMap => Object.fromEntries(rows.map((row) => [row.metric, values(row)]));
-const formatDate = (value: string | null) => {
-  if (!value) return "Corte disponible";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
-};
-
 function Delta({ value, label }: { value: number | null; label: string }) {
   if (value === null) return <span className="channel-var neutral">Sin base</span>;
   const positive = value >= 0;
@@ -248,6 +243,7 @@ export default function KpiConsolidado() {
     return { summary, businesses };
   }, [payload]);
   const selectedBrandLabel = selection.brand === "TODAS" ? "Todas las marcas" : brandLabel(selection.brand);
+  const sourceUpdatedAt = formatSourceUpdatedAt(payload?.refreshedAt);
   const selectedBrandKey = selection.brand.trim().toUpperCase();
   const selectedBrandColor = brandColors[selectedBrandKey] ?? brandColors.TODAS;
   const selectedBrandLogo = brandLogos[selectedBrandKey] ?? brandLogos.TODAS;
@@ -276,7 +272,7 @@ export default function KpiConsolidado() {
   return <section className="channel-profitability kpi-consolidated">
     <header className="channel-hero kpi-hero">
       <div><label>INDICADORES POR NEGOCIO · FUENTE BIGQUERY</label><h1>KPI <em>Consolidado</em></h1><p>Resultados financieros consolidados y apertura por marca, con la misma lectura de las presentaciones KPI.</p></div>
-      <span><b>INFORME EN MM$</b><small>{selectedBrandLabel.toUpperCase()} · {selection.cut}</small></span>
+      <span><b>INFORME EN MM$</b><small>FUENTE · BIGQUERY</small><small>ACTUALIZACIÓN FUENTE · {loading && !payload ? "Consultando…" : sourceUpdatedAt}</small></span>
     </header>
 
     <section className="channel-filters kpi-filters">
@@ -383,7 +379,7 @@ export default function KpiConsolidado() {
           </tbody></table></div>
         </article>
 
-        <footer className="kpi-source"><span>Fuente financiera: {payload?.source}</span><span>Fuente inventario real: {payload?.inventorySource ?? "No disponible"}</span><span>Fuente PPTO inventario: {payload?.inventoryBudgetSource ?? "No disponible"}</span><span>Fuente Brick & Life: {payload?.operationalSources?.brick ?? "No disponible"}</span><span>Fuente Productividad: {payload?.operationalSources?.productivity ?? "No disponible"}</span><span>Fuente UF: {payload?.operationalSources?.uf ?? "No disponible"}</span><span>Fuente Ecommerce: {payload?.operationalSources?.ecommerce ?? "No disponible"}</span><span>Fuente Marketplace: {payload?.operationalSources?.marketplace ?? payload?.operationalSource ?? "No disponible"}</span><span>Actualización: {formatDate(payload?.refreshedAt ?? null)}</span></footer>
+        <footer className="kpi-source"><span>Fuente financiera: {payload?.source}</span><span>Fuente inventario real: {payload?.inventorySource ?? "No disponible"}</span><span>Fuente PPTO inventario: {payload?.inventoryBudgetSource ?? "No disponible"}</span><span>Fuente Brick & Life: {payload?.operationalSources?.brick ?? "No disponible"}</span><span>Fuente Productividad: {payload?.operationalSources?.productivity ?? "No disponible"}</span><span>Fuente UF: {payload?.operationalSources?.uf ?? "No disponible"}</span><span>Fuente Ecommerce: {payload?.operationalSources?.ecommerce ?? "No disponible"}</span><span>Fuente Marketplace: {payload?.operationalSources?.marketplace ?? payload?.operationalSource ?? "No disponible"}</span><span>Actualización: {sourceUpdatedAt}</span></footer>
       </>}
   </section>;
 }

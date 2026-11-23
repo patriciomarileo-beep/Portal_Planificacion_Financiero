@@ -111,7 +111,7 @@ export default function FinancialPlanningGrid({ visibleMonths = [...planningMont
     const output = rows.map((row) => ({ ID: row.id, Padre: row.parentId ?? "", Jerarquia: row.hierarchy.join(" > "), ...Object.fromEntries(planningMonths.flatMap((month) => [[`${month}_Venta`, row.values[month].sales], [`${month}_MargenPct`, row.values[month].marginPct]])) }));
     const book = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(output), "Planificación");
-    XLSX.writeFile(book, "toolbox-ap-planificacion-2027.xlsx");
+    XLSX.writeFile(book, "forbox-planificacion-2027.xlsx");
   };
   const importExcel = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

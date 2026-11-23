@@ -13,6 +13,7 @@ import {
   Search,
   TrendingDown,
   TrendingUp,
+  X,
 } from "lucide-react";
 import {
   CartesianGrid,
@@ -31,6 +32,7 @@ import {
   type ProfitabilityForecastRow,
 } from "./profitability-types";
 import MonthPeriodFilter, { type MonthPeriod } from "../components/MonthPeriodFilter";
+import { formatSourceUpdatedAt } from "../source-updated-at";
 
 type Channel = "Ecommerce" | "Marketplace" | "Wholesale" | "Consolidado";
 type Scenario = ForecastScenario;
@@ -45,9 +47,11 @@ type Totals = Record<MetricKey, number>;
 
 const scenarios: Scenario[] = [...forecastScenarios];
 const businessChannels = ["Brick&Life", "Ecommerce", "Wholesale", "Marketplace"] as const;
-const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const months = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
 const monthOptions = months.map((label, index) => ({ value: index + 1, label }));
-const allMonths = monthOptions.map(({ value }) => value);
 const metricRows: { key: MetricKey; label: string }[] = [
   { key: "sales", label: "Ventas" },
   { key: "margin", label: "Margen" },
@@ -446,12 +450,13 @@ export default function ChannelProfitability({
   onRefreshComplete?: () => void;
 }) {
   const [rows, setRows] = useState<SourceRow[]>([]);
+  const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
   const [scenario, setScenario] = useState<Scenario>("2026E");
   const [period, setPeriod] = useState<Period>("ANUAL");
-  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonths);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
   const [selectedBrandsByChannel, setSelectedBrandsByChannel] = useState<Partial<Record<Channel, string[]>>>({});
   const [focusedBrandsByChannel, setFocusedBrandsByChannel] = useState<Partial<Record<Channel, string | null>>>({});
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>("sales");
@@ -466,7 +471,10 @@ export default function ChannelProfitability({
         const payload = await response.json() as ProfitabilityForecastPayload & { error?: string };
         if (!response.ok) throw new Error(payload.error || "No fue posible consultar Rentabilidad Forecast.");
         if (!Array.isArray(payload.rows) || !payload.rows.length) throw new Error("BigQuery no devolvió registros para Rentabilidad Forecast.");
-        if (!controller.signal.aborted) setRows(payload.rows);
+        if (!controller.signal.aborted) {
+          setRows(payload.rows);
+          setRefreshedAt(payload.refreshedAt);
+        }
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : "No fue posible consultar Rentabilidad Forecast.");
@@ -599,10 +607,21 @@ export default function ChannelProfitability({
       ? selectedBrands[0]
       : `${selectedBrands.length} MARCAS`);
   const displayedBrandSelection = focusedBrand ? [focusedBrand] : selectedBrands;
+  const activeFilterCount = (scenario === "2026E" ? 0 : 1)
+    + displayedBrandSelection.length
+    + (period === "ANUAL" ? 0 : 1);
+  const clearFilters = () => {
+    setScenario("2026E");
+    setPeriod("ANUAL");
+    setSelectedMonths([]);
+    setSelectedBrandsByChannel((currentSelection) => ({ ...currentSelection, [channel]: [] }));
+    setFocusedBrandsByChannel((currentSelection) => ({ ...currentSelection, [channel]: null }));
+  };
+  const sourceUpdatedAt = formatSourceUpdatedAt(refreshedAt);
 
   const reportHeader = <header className="channel-hero">
     <div><label>RENTABILIDAD FORECAST · BASE OFICIAL</label><h1>Rentabilidad <em>{channel}</em></h1><p>Estado de resultados por canal, marca y periodo. Sin análisis Four Walls.</p></div>
-    <span><b>INFORME EN MM$</b><small>FUENTE · BIGQUERY</small></span>
+    <span><b>INFORME EN MM$</b><small>FUENTE · BIGQUERY</small><small>ACTUALIZACIÓN FUENTE · {loading ? "Consultando…" : sourceUpdatedAt}</small></span>
   </header>;
 
   const retryLoad = () => {
@@ -633,6 +652,7 @@ export default function ChannelProfitability({
       </div>
       <SearchableMultiSelect label="MARCA" options={brands} selected={displayedBrandSelection} onChange={setSelectedBrands} />
       <div className="channel-filter-note"><CircleDollarSign /><span><small>LECTURA ACTUAL</small><b>{scenarioLabel[scenario]} · {period}</b></span></div>
+      {activeFilterCount > 0 && <button className="sales-margin-clear channel-filter-clear" type="button" onClick={clearFilters} title="Limpiar filtros"><X /> {activeFilterCount}</button>}
     </section>
 
     <section className="channel-kpis">

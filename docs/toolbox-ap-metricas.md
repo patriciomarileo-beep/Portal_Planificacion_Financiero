@@ -1,4 +1,4 @@
-# Toolbox AP - métricas de inventario
+# Forbox - métricas de inventario
 
 Fuente funcional: `Ejemplo Panel Marca (002).xlsx` y `Reportes_RoadMaps_2023-Febrero_Challenge_abrilreal_rkf_vestuario_inv24.xlsx`.
 

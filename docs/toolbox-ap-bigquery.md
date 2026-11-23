@@ -1,4 +1,4 @@
-# Toolbox AP - configuración BigQuery
+# Forbox - configuración BigQuery
 
 El endpoint `POST /api/ingesta-bigquery` exige una sesión válida del Portal Financiero y valida el payload con Zod antes de ejecutar un Streaming Insert.
 

@@ -1,11 +1,11 @@
-export const portalMenus = ["home", "sales-margin", "toolbox", "forecast", "mercado", "comex", "kpi", "risk-matrix", "users"] as const;
+export const portalMenus = ["home", "sales-margin", "forbox", "forecast", "mercado", "comex", "kpi", "risk-matrix", "users"] as const;
 export type PortalMenu = typeof portalMenus[number];
 
 export const menusForRole = (role: string): readonly PortalMenu[] => {
   switch (role.trim().toUpperCase()) {
     case "ADMINISTRADOR": return portalMenus;
     case "ANALISTA FINANCIERO": return ["home", "sales-margin", "forecast", "mercado", "kpi", "risk-matrix"];
-    case "PLANIFICADOR FINANCIERO": return ["home", "sales-margin", "toolbox", "forecast", "mercado", "comex", "kpi", "risk-matrix"];
+    case "PLANIFICADOR FINANCIERO": return ["home", "sales-margin", "forbox", "forecast", "mercado", "comex", "kpi", "risk-matrix"];
     case "COMEX": return ["comex"];
     default: return [];
   }

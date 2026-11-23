@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireMenuAuth } from "../_shared/auth";
-import { runQuery, type BigQueryRowsPayload } from "../_shared/bigquery";
+import { runQuery, tableLastModifiedExpression, type BigQueryRowsPayload } from "../_shared/bigquery";
 import { errorResponse, json } from "../_shared/http";
 
 const sourceTable = "forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_CONSOLIDADA_TOOLBOX_CL";
@@ -211,7 +211,10 @@ SELECT ${temporalSelect} business, ${includeChain ? "chain" : "''"} chain, brand
   ${includeChain ? "original_brand" : "brand"} original_brand, class, scenario,
   SUM(sales_amount)/1000000 sales,
   SUM(margin_amount)/1000000 margin_amount,
-  (SELECT MAX(refreshed_at) FROM source) refreshed_at,
+  COALESCE(
+    ${tableLastModifiedExpression(sourceTable)},
+    FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E3SZ', TIMESTAMP((SELECT MAX(refreshed_at) FROM source)), 'UTC')
+  ) refreshed_at,
   IF(ROW_NUMBER() OVER (ORDER BY brand, business${includeChain ? ", chain" : ""}, class, ${temporalOrder}scenario)=1,
     (SELECT CONCAT(
       CAST(base_year AS STRING), 'R,',

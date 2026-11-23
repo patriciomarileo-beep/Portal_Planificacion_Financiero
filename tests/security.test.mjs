@@ -314,9 +314,9 @@ test("COMEX retains its session while SIN ROL grants no access", async () => {
 
 const expectedMenus = {
   "SIN ROL": [],
-  "ADMINISTRADOR": ["home", "sales-margin", "toolbox", "forecast", "mercado", "comex", "kpi", "risk-matrix", "users"],
+  "ADMINISTRADOR": ["home", "sales-margin", "forbox", "forecast", "mercado", "comex", "kpi", "risk-matrix", "users"],
   "ANALISTA FINANCIERO": ["home", "sales-margin", "forecast", "mercado", "kpi", "risk-matrix"],
-  "PLANIFICADOR FINANCIERO": ["home", "sales-margin", "toolbox", "forecast", "mercado", "comex", "kpi", "risk-matrix"],
+  "PLANIFICADOR FINANCIERO": ["home", "sales-margin", "forbox", "forecast", "mercado", "comex", "kpi", "risk-matrix"],
   "COMEX": ["comex"],
 };
 
@@ -366,7 +366,7 @@ test("COMEX cannot read financial or market endpoints, private files or write pl
   }));
 });
 
-test("analysts cannot write Toolbox entries and planners cannot administer users", async () => {
+test("analysts cannot write Forbox entries and planners cannot administer users", async () => {
   setup();
   database("ANALISTA FINANCIERO");
   const cookie = await createSessionCookie(user);
@@ -385,7 +385,7 @@ test("analysts cannot write Toolbox entries and planners cannot administer users
   assert.equal((await users(new Request("https://portal.example.com/api/usuarios", { headers: { cookie } }))).status, 403);
   const patch = new Request("https://portal.example.com/api/usuarios", { method: "PATCH", headers: { origin: "https://portal.example.com", "content-type": "application/json", cookie }, body: "{}" });
   assert.equal((await updateUser(patch)).status, 403);
-  // A planner reaches Toolbox input validation after passing authorization.
+  // A planner reaches Forbox input validation after passing authorization.
   assert.equal((await ingest(post("/api/ingesta-bigquery", {}, cookie))).status, 400);
 });
 

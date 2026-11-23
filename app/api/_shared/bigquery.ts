@@ -177,11 +177,7 @@ const serviceAccountAccessToken = async ({ clientEmail, privateKey }: { clientEm
   const header = { alg: "RS256", typ: "JWT" };
   const claim = {
     iss: clientEmail,
-    scope: [
-      "https://www.googleapis.com/auth/bigquery",
-      "https://www.googleapis.com/auth/spreadsheets.readonly",
-      "https://www.googleapis.com/auth/drive.readonly",
-    ].join(" "),
+    scope: "https://www.googleapis.com/auth/bigquery",
     aud: "https://oauth2.googleapis.com/token",
     exp: now + 3600,
     iat: now,
@@ -258,11 +254,7 @@ export const googleAccessToken = async (preferAdc = false) => {
     // Use the attached service account / Workload Identity, never serialized user ADC.
     productionAuth ??= new GoogleAuth({
       projectId: configuredProjectId(),
-      scopes: [
-        "https://www.googleapis.com/auth/cloud-platform",
-        "https://www.googleapis.com/auth/spreadsheets.readonly",
-        "https://www.googleapis.com/auth/drive.readonly",
-      ],
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
     });
     const token = await productionAuth.getAccessToken();
     if (!token) throw new Error("Cloud credentials unavailable.");

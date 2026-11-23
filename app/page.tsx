@@ -1923,7 +1923,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
       </header>
       {portalSection === "home" ? <section className="portal-home-page">
         <div className="portal-home-heading">
-          <div className="portal-home-copy"><label>INTELIGENCIA FINANCIERA · 2027</label><h1>Decisiones más claras.<br /><em>Resultados más fuertes.</em></h1><p>Un punto de encuentro para explorar la rentabilidad, anticipar escenarios y convertir datos del negocio en acciones.</p><button type="button" onClick={() => { openPortalSection("forecast", "bl"); setView("break-even"); }}>Explora el Break-Even de las tiendas <ChevronRight /></button></div>
+          <div className="portal-home-copy"><label>INTELIGENCIA FINANCIERA · 2027</label><h1>Decisiones que avanzan.<br /><em>Resultados más fuertes.</em></h1><p>Un punto de encuentro para explorar la rentabilidad, anticipar escenarios y convertir datos del negocio en acciones.</p><button type="button" onClick={() => { openPortalSection("forecast", "bl"); setView("break-even"); }}>Explora el objetivo 2027 <ChevronRight /></button></div>
           <EconomicIndicators />
         </div>
         <div className="portal-section-heading"><div><label>EXPLORA EL PORTAL</label><h2>Todo lo que necesitas, en un solo lugar</h2></div><p>Accede a los informes disponibles y conoce los próximos desarrollos.</p></div>

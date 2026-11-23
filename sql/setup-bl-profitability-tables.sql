@@ -1,0 +1,74 @@
+-- Preparacion manual de las tablas para Rentabilidad Forecast > B&L.
+--
+-- IMPORTANTE:
+-- 1. Reemplaza REEMPLAZAR_SPREADSHEET_ID por el ID real de Google Sheets.
+-- 2. Ejecuta este archivo una sola vez en BigQuery, en la ubicacion us-east4.
+-- 3. La cuenta que ejecute o programe la sincronizacion debe tener acceso de
+--    lector a la hoja. El portal no necesitara acceso a Google Drive.
+
+CREATE OR REPLACE EXTERNAL TABLE
+  `forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_EXT_RENTABILIDAD_BL`
+(
+  ANO STRING,
+  MES STRING,
+  TIPO_PERIODO STRING,
+  CC_ORIGEN STRING,
+  CC_BASE_REPORTE STRING,
+  CADENA STRING,
+  TIENDA_ORIGEN STRING,
+  TIENDA_HOMOLOGADA STRING,
+  ESTADO_HOMOLOGACION STRING,
+  FUENTE STRING,
+  VENTAS STRING,
+  MARGEN STRING,
+  REMUNERACIONES STRING,
+  ARRIENDOS STRING,
+  GASTOS_GRAL STRING,
+  DEPRECIACION STRING,
+  FEE_COMERCIAL STRING,
+  FEE_ADM STRING,
+  COSTO_OPERACIONAL STRING,
+  RESULTADO_NO_OPERACIONAL STRING,
+  UTILIDAD_FINAL STRING,
+  FOUR_WALLS STRING
+)
+OPTIONS (
+  format = 'GOOGLE_SHEETS',
+  uris = ['https://docs.google.com/spreadsheets/d/11HgKdwgtqvXdKnZDi7A7tXgCsIuqVZjmGkZE3i3BBAs'],
+  sheet_range = 'BASE_CONSOLIDADA!A:V',
+  skip_leading_rows = 1,
+  description = 'Puente controlado entre BASE_CONSOLIDADA de Google Sheets y la tabla nativa de B&L.'
+);
+
+-- CREATE TABLE IF NOT EXISTS preserva una eventual carga valida existente.
+CREATE TABLE IF NOT EXISTS
+  `forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_RENTABILIDAD_BL`
+(
+  ANO INT64 NOT NULL,
+  MES STRING NOT NULL,
+  TIPO_PERIODO STRING NOT NULL,
+  CC_ORIGEN STRING,
+  CC_BASE_REPORTE STRING,
+  CADENA STRING,
+  TIENDA_ORIGEN STRING,
+  TIENDA_HOMOLOGADA STRING,
+  ESTADO_HOMOLOGACION STRING,
+  FUENTE STRING,
+  VENTAS FLOAT64 NOT NULL,
+  MARGEN FLOAT64 NOT NULL,
+  REMUNERACIONES FLOAT64 NOT NULL,
+  ARRIENDOS FLOAT64 NOT NULL,
+  GASTOS_GRAL FLOAT64 NOT NULL,
+  DEPRECIACION FLOAT64 NOT NULL,
+  FEE_COMERCIAL FLOAT64 NOT NULL,
+  FEE_ADM FLOAT64 NOT NULL,
+  COSTO_OPERACIONAL FLOAT64 NOT NULL,
+  RESULTADO_NO_OPERACIONAL FLOAT64 NOT NULL,
+  UTILIDAD_FINAL FLOAT64 NOT NULL,
+  FOUR_WALLS FLOAT64,
+  SYNCED_AT TIMESTAMP NOT NULL
+)
+CLUSTER BY ANO, TIPO_PERIODO, CADENA, CC_BASE_REPORTE
+OPTIONS (
+  description = 'Instantanea nativa validada de Rentabilidad Forecast B&L; fuente BASE_CONSOLIDADA.'
+);

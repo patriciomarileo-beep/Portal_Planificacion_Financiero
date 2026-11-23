@@ -1,0 +1,92 @@
+-- Validacion manual, solo lectura, de la tabla externa de B&L.
+-- Ejecuta este archivo antes de instalar o invocar el procedimiento.
+
+CREATE TEMP FUNCTION parse_bl_float(value STRING)
+RETURNS FLOAT64
+AS (
+  CASE
+    WHEN value IS NULL OR TRIM(value) = '' THEN NULL
+    WHEN STRPOS(TRIM(value), ',') > 0 AND STRPOS(TRIM(value), '.') > 0 THEN
+      SAFE_CAST(REPLACE(REPLACE(TRIM(value), '.', ''), ',', '.') AS FLOAT64)
+    WHEN STRPOS(TRIM(value), ',') > 0 THEN
+      SAFE_CAST(REPLACE(TRIM(value), ',', '.') AS FLOAT64)
+    ELSE SAFE_CAST(TRIM(value) AS FLOAT64)
+  END
+);
+
+WITH source AS (
+  SELECT
+    TRIM(ANO) AS ANO,
+    UPPER(TRIM(MES)) AS MES,
+    UPPER(TRIM(TIPO_PERIODO)) AS TIPO_PERIODO,
+    TRIM(CC_ORIGEN) AS CC_ORIGEN,
+    TRIM(CC_BASE_REPORTE) AS CC_BASE_REPORTE,
+    TRIM(TIENDA_ORIGEN) AS TIENDA_ORIGEN,
+    TRIM(TIENDA_HOMOLOGADA) AS TIENDA_HOMOLOGADA,
+    TRIM(VENTAS) AS VENTAS,
+    TRIM(MARGEN) AS MARGEN,
+    TRIM(REMUNERACIONES) AS REMUNERACIONES,
+    TRIM(ARRIENDOS) AS ARRIENDOS,
+    TRIM(GASTOS_GRAL) AS GASTOS_GRAL,
+    TRIM(DEPRECIACION) AS DEPRECIACION,
+    TRIM(FEE_COMERCIAL) AS FEE_COMERCIAL,
+    TRIM(FEE_ADM) AS FEE_ADM,
+    TRIM(COSTO_OPERACIONAL) AS COSTO_OPERACIONAL,
+    TRIM(RESULTADO_NO_OPERACIONAL) AS RESULTADO_NO_OPERACIONAL,
+    TRIM(UTILIDAD_FINAL) AS UTILIDAD_FINAL,
+    TRIM(FOUR_WALLS) AS FOUR_WALLS
+  FROM
+    `forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_EXT_RENTABILIDAD_BL`
+  WHERE COALESCE(
+    NULLIF(TRIM(ANO), ''),
+    NULLIF(TRIM(MES), ''),
+    NULLIF(TRIM(TIPO_PERIODO), ''),
+    NULLIF(TRIM(CC_ORIGEN), ''),
+    NULLIF(TRIM(CC_BASE_REPORTE), ''),
+    NULLIF(TRIM(TIENDA_ORIGEN), ''),
+    NULLIF(TRIM(TIENDA_HOMOLOGADA), ''),
+    NULLIF(TRIM(VENTAS), '')
+  ) IS NOT NULL
+), validation AS (
+  SELECT
+    *,
+    COALESCE(NULLIF(CC_BASE_REPORTE, ''), NULLIF(CC_ORIGEN, '')) AS STORE_CODE,
+    COALESCE(NULLIF(TIENDA_HOMOLOGADA, ''), NULLIF(TIENDA_ORIGEN, '')) AS STORE_NAME
+  FROM source
+)
+SELECT
+  COUNT(*) AS source_rows,
+  COUNT(DISTINCT CONCAT(ANO, '|', TIPO_PERIODO, '|', MES, '|', COALESCE(STORE_CODE, ''))) AS unique_keys,
+  COUNTIF(
+    SAFE_CAST(ANO AS INT64) IS NULL OR
+    SAFE_CAST(ANO AS INT64) NOT IN (2024, 2025, 2026, 2027)
+  ) AS invalid_year_rows,
+  COUNTIF(
+    TIPO_PERIODO NOT IN ('ANUAL', 'MENSUAL') OR
+    (TIPO_PERIODO = 'ANUAL' AND MES != 'TOTAL') OR
+    (TIPO_PERIODO = 'MENSUAL' AND MES NOT IN (
+      'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
+      'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
+    ))
+  ) AS invalid_period_rows,
+  COUNTIF(STORE_CODE IS NULL OR STORE_NAME IS NULL) AS missing_store_rows,
+  COUNTIF(
+    (VENTAS != '' AND parse_bl_float(VENTAS) IS NULL) OR
+    (MARGEN != '' AND parse_bl_float(MARGEN) IS NULL) OR
+    (REMUNERACIONES != '' AND parse_bl_float(REMUNERACIONES) IS NULL) OR
+    (ARRIENDOS != '' AND parse_bl_float(ARRIENDOS) IS NULL) OR
+    (GASTOS_GRAL != '' AND parse_bl_float(GASTOS_GRAL) IS NULL) OR
+    (DEPRECIACION != '' AND parse_bl_float(DEPRECIACION) IS NULL) OR
+    (FEE_COMERCIAL != '' AND parse_bl_float(FEE_COMERCIAL) IS NULL) OR
+    (FEE_ADM != '' AND parse_bl_float(FEE_ADM) IS NULL) OR
+    (COSTO_OPERACIONAL != '' AND parse_bl_float(COSTO_OPERACIONAL) IS NULL) OR
+    (RESULTADO_NO_OPERACIONAL != '' AND parse_bl_float(RESULTADO_NO_OPERACIONAL) IS NULL) OR
+    (UTILIDAD_FINAL != '' AND parse_bl_float(UTILIDAD_FINAL) IS NULL) OR
+    (FOUR_WALLS != '' AND parse_bl_float(FOUR_WALLS) IS NULL)
+  ) AS invalid_measure_rows,
+  ARRAY_AGG(DISTINCT SAFE_CAST(ANO AS INT64) IGNORE NULLS ORDER BY SAFE_CAST(ANO AS INT64)) AS available_years,
+  ARRAY_AGG(DISTINCT TIPO_PERIODO IGNORE NULLS ORDER BY TIPO_PERIODO) AS available_period_types
+FROM validation;
+
+-- El resultado esperado antes de continuar es:
+-- source_rows > 0, source_rows = unique_keys y todos los contadores invalid_* = 0.

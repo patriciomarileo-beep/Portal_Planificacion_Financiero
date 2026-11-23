@@ -4,6 +4,7 @@ export type SalesMarginRow = {
   business: string;
   chain: string;
   brand: string;
+  originalBrand?: string;
   class: string;
   scenario: string;
   sales: number;
@@ -34,21 +35,30 @@ export type SalesMarginPayload = {
     window: string[];
     brands: { name: string; totalSalesMm: number }[];
   };
+  chainBrandGrouping?: {
+    label: "OTRAS";
+    thresholdMm: number;
+    window: string[];
+    chains: {
+      chain: string;
+      brands: { name: string; totalSalesMm: number }[];
+    }[];
+  };
   error?: string;
 };
 
 
 export const salesMarginYearOptions = [
-  "2020", "2021", "2022", "2023",
-  "2024", "2025",
+  "2017R", "2018R", "2019R",
+  "2020R", "2021R", "2022R", "2023R",
+  "2024R", "2025R",
   "2026E", "2026P",
   "2027P", "2027M", "2027E",
   "2028PS", "2029PS", "2030PS",
 ] as const;
 
 export const salesMarginDefaultYears = [
-  "2024", "2025",
-  "2026E", "2026P",
+  "2025R", "2026E", "2026P",
   "2027P", "2027M",
 ] as const;
 
@@ -57,7 +67,8 @@ export const sortSalesMarginYears = (
   values: readonly string[]
 ): string[] => {
   const priority: Record<string, number> = {
-    "": 0,
+    "": -1,
+    R: 0,
     E: 1,
     P: 2,
     M: 3,
@@ -66,7 +77,7 @@ export const sortSalesMarginYears = (
 
   return [...new Set(
     values.filter((year) =>
-      /^20\d{2}(?:PS|[PEM])?$/.test(year)
+      /^20\d{2}(?:PS|[RPEM])?$/.test(year)
     )
   )].sort((a, b) =>
     Number(a.slice(0, 4)) - Number(b.slice(0, 4)) ||
@@ -75,33 +86,21 @@ export const sortSalesMarginYears = (
   );
 };
 
-// Renombra únicamente la etiqueta.
-// El identificador técnico permanece intacto.
 export const displayScenarioLabel = (
   key: string,
-  catalog: readonly SalesMarginYearStatus[]
+  _catalog: readonly SalesMarginYearStatus[]
 ): string => {
-  const status = catalog.find((item) => item.key === key);
-
-  if (
-    /^20\d{2}E$/.test(key) &&
-    status?.realOnly &&
-    status.realMonths === 12
-  ) {
-    return key.slice(0, 4);
-  }
-
+  void _catalog;
   return key;
 };
 
-// Selecciona los dos últimos años reales completos
-// y agrega los escenarios de planificación disponibles.
+// Selecciona el último año real completo y cuatro escenarios de planificación.
 export const deriveDefaultScenarioYears = (
   catalog: readonly SalesMarginYearStatus[]
 ): string[] => {
   const completeRealYears = catalog
     .filter((item) =>
-      /^20\d{2}E?$/.test(item.key) &&
+      /^20\d{2}R$/.test(item.key) &&
       item.realOnly &&
       item.realMonths === 12
     )
@@ -117,9 +116,9 @@ export const deriveDefaultScenarioYears = (
     byYear.set(Number(item.key.slice(0, 4)), item.key);
   }
 
-  const historical = [...byYear.values()].slice(-2);
+  const historical = [...byYear.values()].slice(-1);
 
-  if (historical.length < 2) {
+  if (historical.length < 1) {
     return [...salesMarginDefaultYears];
   }
 
@@ -129,10 +128,8 @@ export const deriveDefaultScenarioYears = (
 
   const candidates = [
     ...historical,
-    ...(latest.endsWith("E") ? [`${year}P`] : []),
     `${year + 1}E`,
     `${year + 1}P`,
-    `${year + 1}M`,
     `${year + 2}P`,
     `${year + 2}M`,
   ];

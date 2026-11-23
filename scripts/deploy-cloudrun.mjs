@@ -55,7 +55,7 @@ const envVars = {
   BIGQUERY_IMPORTS_TABLE: process.env.BIGQUERY_IMPORTS_TABLE || "",
   BIGQUERY_COSMETICS_TABLE: process.env.BIGQUERY_COSMETICS_TABLE || "forus-analitica-test-datalake.silver.ft_cl_planificacion_importaciones_industria_cosmeticos",
   BIGQUERY_PROFITABILITY_FORECAST_TABLE: process.env.BIGQUERY_PROFITABILITY_FORECAST_TABLE || "forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_FORECAST_ANUAL_MARCA_CANAL",
-  BL_SHEET_ID: process.env.BL_SHEET_ID || "",
+  BIGQUERY_BL_TABLE: process.env.BIGQUERY_BL_TABLE || "forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_RENTABILIDAD_BL",
   PROJECT_ID: process.env.PROJECT_ID || "",
   DATASET_ID: process.env.DATASET_ID || "",
   TABLE_ID: process.env.TABLE_ID || "",

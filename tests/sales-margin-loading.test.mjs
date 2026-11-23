@@ -6,16 +6,20 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 
 register("../scripts/test-typescript-loader.mjs", import.meta.url);
-const { clearSalesMarginData, getSalesMarginSnapshot, loadSalesMargin, salesMarginDefaultYears, salesMarginYearOptions } = await import("../app/sales-margin/sales-margin-data.ts");
+const { clearSalesMarginData, deriveDefaultScenarioYears, getSalesMarginSnapshot, loadSalesMargin, salesMarginDefaultYears, salesMarginYearOptions } = await import("../app/sales-margin/sales-margin-data.ts");
 const {
+  appendChainGroupedBrandDetails,
   buildDisplayRows,
+  chainBrandRowsForAccordion,
   default: SalesMargin,
   reconcileSalesMarginFilters,
+  salesMarginChainDisplayName,
   salesMarginBrandsForFilters,
   salesMarginChainsForFilters,
   salesMarginChannelsForBrands,
   salesMarginChannelsForFilters,
   salesMarginClassesForFilters,
+  sortChainLabels,
 } = await import("../app/sales-margin/SalesMargin.tsx");
 
 const payload = {
@@ -24,13 +28,19 @@ const payload = {
     { month: 1, quarter: "Q1", business: "BRICK & LIFE", chain: "", brand: "MARCA", class: "CALZADO", scenario: "2027M", sales: 23456, marginAmount: 10000 },
   ],
   source: "test-table", sourceSheet: "test-sheet", refreshedAt: "2026-11-09", unit: "MM$",
-  years: ["2024", "2025", "2026E", "2026P", "2027P", "2027M"],
+  years: ["2024R", "2025R", "2026E", "2026P", "2027P", "2027M"],
   chainYears: [],
   brandGrouping: {
     label: "OTRAS",
     thresholdMm: 50,
-    window: ["2025", "2026E", "2027P"],
+    window: ["2025R", "2026E", "2027P"],
     brands: [{ name: "MARCA MENOR", totalSalesMm: 12.5 }],
+  },
+  chainBrandGrouping: {
+    label: "OTRAS",
+    thresholdMm: 50,
+    window: ["2025R", "2026E", "2027P"],
+    chains: [{ chain: "HUSH PUPPIES", brands: [{ name: "MARCA MENOR", totalSalesMm: 4.5 }] }],
   },
 };
 afterEach(() => { clearSalesMarginData(); mock.restoreAll(); });
@@ -67,6 +77,19 @@ test("estimated periods prefer the REAL plus FORECAST composition without exposi
   assert.doesNotMatch(report, /(?:current|previous): "2026"/);
 });
 
+test("historical REAL years are normalized as YYYR while 2026E remains REAL plus FORECAST", () => {
+  const route = readFileSync(new URL("../app/api/sales-margin/route.ts", import.meta.url), "utf8");
+  const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
+  assert.match(route, /source_origin='REAL' THEN CONCAT\(source_period, 'R'\)/);
+  assert.match(route, /source_origin IN \('REAL','TY_ESTIMADO','NY_ESTIMADO'\) THEN source_period/);
+  assert.match(route, /source_origin='FORECAST' THEN CONCAT\(SUBSTR\(source_period, 1, 4\), 'E'\)/);
+  assert.match(route, /allowedScenarioPattern = \/\^20\\d\{2\}\(\?:PS\|\[RPEM\]\)\?\$\//);
+  assert.match(report, /current: "2026E", previous: "2025R"/);
+  assert.deepEqual(salesMarginYearOptions.slice(0, 9), [
+    "2017R", "2018R", "2019R", "2020R", "2021R", "2022R", "2023R", "2024R", "2025R",
+  ]);
+});
+
 test("brands below fifty million use the latest complete REAL, E and P rolling window", () => {
   const route = readFileSync(new URL("../app/api/sales-margin/route.ts", import.meta.url), "utf8");
   assert.match(route, /SUM\(COALESCE\(sales_amount, 0\)\) total_sales/);
@@ -74,11 +97,57 @@ test("brands below fifty million use the latest complete REAL, E and P rolling w
   assert.match(route, /COALESCE\(brand_totals\.total_sales, 0\) < 50000000 grouped_as_other/);
   assert.doesNotMatch(route, /COALESCE\(brand_totals\.total_sales, 0\) < 25000000/);
   assert.match(route, /SELECT MAX\(base_year\) base_year/);
+  assert.match(route, /SAFE_CAST\(SUBSTR\(actual\.scenario, 1, 4\) AS INT64\) \+ 1/);
+  assert.match(route, /SAFE_CAST\(SUBSTR\(actual\.scenario, 1, 4\) AS INT64\) \+ 2/);
+  assert.doesNotMatch(route, /SAFE_CAST\(actual\.scenario AS INT64\)/);
   assert.match(route, /base_year \+ 1 AS STRING\), 'E'/);
   assert.match(route, /base_year \+ 2 AS STRING\), 'P'/);
   assert.match(route, /JOIN grouping_scenarios USING \(scenario\)/);
-  assert.match(route, /IF\(brand_classification\.grouped_as_other, 'OTRAS', source\.brand\) brand/);
+  assert.match(route, /IF\(\$\{includeChain \? "chain_brand_classification" : "brand_classification"\}\.grouped_as_other, 'OTRAS', source\.brand\) brand/);
   assert.match(route, /FROM classified/);
+});
+
+test("Chain by brand applies the fifty-million rolling threshold inside each chain", () => {
+  const route = readFileSync(new URL("../app/api/sales-margin/route.ts", import.meta.url), "utf8");
+  assert.match(route, /chain_brand_totals AS \([\s\S]*GROUP BY chain, brand/);
+  assert.match(route, /chain_brand_classification AS \([\s\S]*SELECT DISTINCT chain, brand FROM chain_source/);
+  assert.match(route, /COALESCE\(chain_brand_totals\.total_sales, 0\) < 50000000 grouped_as_other/);
+  assert.match(route, /IF\(\$\{includeChain \? "chain_brand_classification" : "brand_classification"\}\.grouped_as_other/);
+  assert.match(route, /"chain_brand_classification USING \(chain, brand\)\\n  JOIN eligible_chains USING \(chain\)"/);
+  assert.match(route, /JOIN grouping_scenarios USING \(scenario\)/);
+});
+
+test("Chain by brand excludes chains at or below fifty million from rows and filters", () => {
+  const route = readFileSync(new URL("../app/api/sales-margin/route.ts", import.meta.url), "utf8");
+  assert.match(route, /chain_totals AS \([\s\S]*GROUP BY chain/);
+  assert.match(route, /eligible_chains AS \([\s\S]*WHERE total_sales > 50000000/);
+  assert.match(route, /JOIN eligible_chains USING \(chain\)/);
+  assert.doesNotMatch(route, /ACCESORIOS HP\.CL['")]\s*,/);
+});
+
+test("Chain by brand reads only Brick & Life and preserves original grouped brands", () => {
+  const route = readFileSync(new URL("../app/api/sales-margin/route.ts", import.meta.url), "utf8");
+  assert.match(route, /sourceBusinessFilter = includeChain[\s\S]*WHERE UPPER\(TRIM\(NEGOCIO_DETALLE\)\)='BRICK & LIFE'/);
+  assert.match(route, /FROM \\`\$\{sourceTable\}\\`\$\{sourceBusinessFilter\}/);
+  assert.match(route, /chain_source AS \([\s\S]*WHERE UPPER\(TRIM\(business\)\)='BRICK & LIFE'/);
+  assert.match(route, /FROM \$\{includeChain \? "chain_source" : "source"\} source/);
+  assert.match(route, /source\.brand original_brand/);
+  assert.match(route, /originalBrand: String\(row\.original_brand \?\? row\.brand \?\? ""\)/);
+});
+
+test("Chain by brand owns a locked Brick & Life channel filter", () => {
+  const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
+  assert.match(report, /const chainBusiness = "BRICK & LIFE"/);
+  assert.match(report, /useState<string\[\]>\(\[chainBusiness\]\)/);
+  assert.match(report, /const activeChannelFilter = includeChain \? chainChannelFilter : channelFilter/);
+  assert.match(report, /locked=\{includeChain\}/);
+  assert.match(report, /!locked && <button/);
+
+  const html = renderToString(createElement(SalesMargin, {
+    sessionScope: "chain-channel-default",
+    initialView: "chainBrand",
+  }));
+  assert.match(html, /CANAL<strong>BRICK &amp; LIFE<\/strong>/);
 });
 
 test("the API and report expose the exact brands grouped as OTRAS", () => {
@@ -91,6 +160,22 @@ test("the API and report expose the exact brands grouped as OTRAS", () => {
   assert.match(report, /sales-margin-brand-glossary-trigger/);
   assert.match(report, /Composición de “OTRAS”/);
   assert.match(report, /payload\.brandGrouping\.brands\.map/);
+});
+
+test("the OTRAS glossary exposes grouped brands globally and by chain", () => {
+  const route = readFileSync(new URL("../app/api/sales-margin/route.ts", import.meta.url), "utf8");
+  const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(route, /chain_grouped_brands_json/);
+  assert.match(route, /const groupedBrandsByChain/);
+  assert.match(route, /chainBrandGrouping: \{/);
+  assert.match(report, /brandGlossarySection/);
+  assert.match(report, /Vista general<small>/);
+  assert.match(report, /Por cadena<small>/);
+  assert.match(report, /sales-margin-brand-glossary-chains/);
+  assert.match(report, /chainGlossaryGroups\.map/);
+  assert.match(styles, /\.sales-margin-brand-glossary-tabs \{/);
+  assert.match(styles, /\.sales-margin-brand-glossary-chains > details \{/);
 });
 
 test("the home exposes direct access to every native Sales and Margin view", () => {
@@ -262,7 +347,8 @@ test("chain by brand is populated from normalized BigQuery chain fields", () => 
 
   const quarterly = buildDisplayRows(rows.filter((row) => row.chain === "HUSH PUPPIES"), "chainBrand", "Q1", [1, 2, 3], false);
   assert.equal(quarterly.some((row) => row.primary === "CONSOLIDADO"), false);
-  assert.equal(quarterly.some((row) => row.secondary === "TOTAL" && row.tertiary === "Q1" && row.expandable), true);
+  assert.equal(quarterly.some((row) => row.secondary === "TOTAL" && row.tertiary === "" && !row.expandable), true);
+  assert.equal(quarterly.some((row) => row.secondary === "MARCA A" && row.tertiary === "Q1" && row.expandable), true);
 });
 
 test("temporal drilldown keeps every logical row and nests its months", () => {
@@ -303,7 +389,7 @@ test("temporal drilldown keeps every logical row and nests its months", () => {
   const styles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(report, /sales-margin-drilldown-toggle/);
   assert.match(report, /expandedTemporalRows\.has\(row\.parentKey\)/);
-  assert.match(styles, /\.sales-margin-table\.view-chainBrand tbody th \{ text-align: center; \}/);
+  assert.match(styles, /\.sales-margin-table\.view-chainBrand tbody th \{ vertical-align: middle; text-align: left; \}/);
 });
 
 test("a single-month table filter keeps unique React rows and never mixes quarters", () => {
@@ -323,7 +409,7 @@ test("a single-month table filter keeps unique React rows and never mixes quarte
     assert.equal(display.some((row) => row.expandable), false, `${view} should not show an empty accordion for one month`);
     const periodsAreSelectedMonthOrFlatTotal = display.every((row) => {
       const period = view === "channel" || view === "brand" ? row.secondary : row.tertiary;
-      const isFlatTotal = (view === "brandChannel" || view === "brandClass") && row.total && period === "";
+      const isFlatTotal = (view === "brandChannel" || view === "brandClass" || view === "chainBrand") && row.total && period === "";
       return period === "ENE" || isFlatTotal;
     });
     assert.equal(periodsAreSelectedMonthOrFlatTotal, true, `${view} must only render the selected month`);
@@ -345,8 +431,8 @@ test("the Sales and Margin month filter starts empty and keeps the annual view u
   assert.match(report, /useState<number\[\]>\(\[\]\)/);
   assert.match(report, /setSelectedMonths\(\[\]\)/);
   assert.match(html, /<b>0(?:<!-- -->)? MESES<\/b>/);
-  assert.match(html, /type="checkbox"\/>ENE/);
-  assert.match(html, /type="checkbox"\/>DIC/);
+  assert.match(html, /type="checkbox"\/>Enero/);
+  assert.match(html, /type="checkbox"\/>Diciembre/);
   assert.match(monthFilter, /<summary>MES<\/summary>/);
   assert.match(monthFilter, /onPeriodChange\(nextSelectedMonths\.length > 0 \? "MES" : "ANUAL"\)/);
 });
@@ -412,8 +498,8 @@ test("the initial query loads visible years and defers the chain dimension", () 
   ].map((match) => match[1]);
 
   assert.deepEqual(parsedYears, [
-    "2024", "2025", "2026E",
-    "2026P", "2027P", "2027M",
+    "2025R", "2026E", "2026P",
+    "2027P", "2027M",
   ]);
 
   assert.match(route, /WHERE scenario IN \(\$\{years\.map/);
@@ -423,6 +509,18 @@ test("the initial query loads visible years and defers the chain dimension", () 
   assert.match(route, /annualChainSummary = includeChain && chainMonths === null/);
   assert.match(route, /"0 month, 'ANUAL' quarter,"/);
   assert.match(route, /month IN \(\$\{chainMonths\.join\(", "\)\}\)/);
+});
+
+test("all Sales and Margin tables start with the five-period rolling structure", () => {
+  assert.deepEqual([...salesMarginDefaultYears], ["2025R", "2026E", "2026P", "2027P", "2027M"]);
+  assert.deepEqual(deriveDefaultScenarioYears([
+    { key: "2024R", realOnly: true, realMonths: 12 },
+    { key: "2025R", realOnly: true, realMonths: 12 },
+    { key: "2026E", realOnly: false, realMonths: 10 },
+    { key: "2026P", realOnly: false, realMonths: 0 },
+    { key: "2027P", realOnly: false, realMonths: 0 },
+    { key: "2027M", realOnly: false, realMonths: 0 },
+  ]), ["2025R", "2026E", "2026P", "2027P", "2027M"]);
 });
 
 test("selecting an optional year fetches and merges only the missing year", async () => {
@@ -437,13 +535,13 @@ test("selecting an optional year fetches and merges only the missing year", asyn
       rows: years.map((scenario) => ({ ...payload.rows[0], scenario })),
     });
   });
-  const defaults = ["2024", "2025", "2026E", "2026P", "2027P", "2027M"];
+  const defaults = ["2025R", "2026E", "2026P", "2027P", "2027M"];
   await loadSalesMargin("user-a", false, defaults);
-  const expanded = await loadSalesMargin("user-a", false, [...defaults, "2020"]);
-  assert.deepEqual(requests, [defaults, ["2020"]]);
-  assert.deepEqual(expanded.years, ["2020", ...defaults]);
-  assert.equal(expanded.rows.some((row) => row.scenario === "2020"), true);
-  await loadSalesMargin("user-a", false, [...defaults, "2020"]);
+  const expanded = await loadSalesMargin("user-a", false, [...defaults, "2020R"]);
+  assert.deepEqual(requests, [defaults, ["2020R"]]);
+  assert.deepEqual(expanded.years, ["2020R", ...defaults]);
+  assert.equal(expanded.rows.some((row) => row.scenario === "2020R"), true);
+  await loadSalesMargin("user-a", false, [...defaults, "2020R"]);
   assert.equal(fetch.mock.callCount(), 2);
 });
 
@@ -508,14 +606,191 @@ test("Chain by brand caches annual and selected-month datasets independently", a
   assert.equal(cachedAnnual.chainPeriodKey, "annual");
 });
 
-test("Chain by brand paginates chain groups and vertically centers their merged cell", () => {
+test("Chain by brand paginates groups and exposes a full left-aligned interactive cell", () => {
   const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
   assert.match(report, /const chainPageSize = 8/);
-  assert.match(report, /pageChains\.has\(row\.primary\)/);
+  assert.match(report, /visibleChainNames/);
+  assert.match(report, /buildDisplayRows\([\s\S]*visibleChainNames/);
   assert.match(report, /className="sales-margin-chain-pagination"/);
-  assert.match(styles, /\.sales-margin-table\.view-chainBrand tbody th\[scope="rowgroup"\][\s\S]*vertical-align: middle/);
+  assert.match(report, /sales-margin-chain-cell\$\{isExpandedChain \? " is-expanded"/);
+  assert.match(styles, /\.sales-margin-table\.view-chainBrand tbody th \{ vertical-align: middle; text-align: left; \}/);
+  assert.match(styles, /tbody th\.sales-margin-chain-cell \{[\s\S]*position: relative;[\s\S]*padding: 0;/);
+  assert.match(styles, /\.sales-margin-chain-toggle \{[\s\S]*position: absolute;[\s\S]*inset: 0;[\s\S]*justify-content: flex-start;/);
+});
+
+test("Chain by brand keeps chain totals visible and expands brands on demand", () => {
+  const rows = [
+    { ...payload.rows[0], chain: "HUSH PUPPIES", brand: "MARCA A", sales: 10 },
+    { ...payload.rows[0], chain: "HUSH PUPPIES", brand: "MARCA B", sales: 20 },
+    { ...payload.rows[0], chain: "ROCKFORD", brand: "MARCA C", sales: 30 },
+  ];
+  const display = buildDisplayRows(rows, "chainBrand");
+  const collapsed = chainBrandRowsForAccordion(display, new Set());
+  assert.equal(collapsed.some((row) => row.secondary === "MARCA A"), false);
+  assert.equal(collapsed.filter((row) => row.secondary === "TOTAL").length, 2);
+  assert.equal(collapsed.some((row) => row.primary === "CONSOLIDADO"), true);
+
+  const expanded = chainBrandRowsForAccordion(display, new Set(["HUSH PUPPIES"]));
+  assert.equal(expanded.some((row) => row.primary === "HUSH PUPPIES" && row.secondary === "MARCA A"), true);
+  assert.equal(expanded.some((row) => row.primary === "HUSH PUPPIES" && row.secondary === "MARCA B"), true);
+  assert.equal(expanded.some((row) => row.primary === "ROCKFORD" && row.secondary === "MARCA C"), false);
+});
+
+test("Chain by brand sorts chains and brands alphabetically or by scenario sales", () => {
+  const rows = [
+    { ...payload.rows[0], scenario: "2027P", chain: "CADENA B", brand: "MARCA Z", sales: 10 },
+    { ...payload.rows[0], scenario: "2027P", chain: "CADENA A", brand: "MARCA A", sales: 40 },
+  ];
+  assert.deepEqual(
+    sortChainLabels(rows, ["CADENA B", "CADENA A"], { key: "chain", direction: "asc" }, "chain"),
+    ["CADENA A", "CADENA B"],
+  );
+  assert.deepEqual(
+    sortChainLabels(rows, ["CADENA B", "CADENA A"], { key: "2027P", direction: "desc" }, "chain"),
+    ["CADENA A", "CADENA B"],
+  );
+
+  const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
+  assert.match(report, /ArrowUpDown/);
+  assert.match(report, /className="sales-margin-sort-button/);
+  assert.match(report, /changeChainSort\(key\)/);
+});
+
+test("OTRAS exposes its original brands as an independent nested accordion", () => {
+  const rows = [
+    { ...payload.rows[0], chain: "CADENA A", brand: "OTRAS", originalBrand: "MARCA MENOR A", sales: 10 },
+    { ...payload.rows[0], chain: "CADENA A", brand: "OTRAS", originalBrand: "MARCA MENOR B", sales: 20 },
+  ];
+  const display = chainBrandRowsForAccordion(buildDisplayRows(rows, "chainBrand"), new Set(["CADENA A"]));
+  const collapsed = appendChainGroupedBrandDetails(display, rows, new Set());
+  const expanded = appendChainGroupedBrandDetails(display, rows, new Set(["CADENA A"]));
+  assert.equal(collapsed.some((row) => row.key.startsWith("chain-brand-other-detail")), false);
+  assert.deepEqual(
+    expanded.filter((row) => row.key.startsWith("chain-brand-other-detail")).map((row) => row.secondary),
+    ["MARCA MENOR A", "MARCA MENOR B"],
+  );
+});
+
+test("OTRAS quarter drilldown nests the quarter months under each grouped brand", () => {
+  const rows = [
+    { ...payload.rows[0], month: 1, quarter: "Q1", chain: "CADENA A", brand: "OTRAS", originalBrand: "MARCA MENOR A", sales: 10 },
+    { ...payload.rows[0], month: 2, quarter: "Q1", chain: "CADENA A", brand: "OTRAS", originalBrand: "MARCA MENOR A", sales: 5 },
+    { ...payload.rows[0], month: 3, quarter: "Q1", chain: "CADENA A", brand: "OTRAS", originalBrand: "MARCA MENOR B", sales: 20 },
+  ];
+  const display = buildDisplayRows(rows, "chainBrand", "Q1", [1, 2, 3]);
+  const other = display.find((row) => row.primary === "CADENA A" && row.secondary === "OTRAS");
+  assert.equal(other?.expandable, false);
+  assert.equal(other?.tertiary, "Q1");
+  assert.equal(display.some((row) => row.parentKey === other?.key), false);
+
+  const chainRows = chainBrandRowsForAccordion(display, new Set(["CADENA A"]));
+  const expanded = appendChainGroupedBrandDetails(chainRows, rows, new Set(["CADENA A"]), "Q1", [1, 2, 3]);
+  const brandParents = expanded.filter((row) =>
+    row.key.startsWith("chain-brand-other-detail") && !row.parentKey
+  );
+  assert.deepEqual(brandParents.map((row) => row.secondary), ["MARCA MENOR A", "MARCA MENOR B"]);
+  assert.deepEqual(brandParents.map((row) => row.tertiary), ["Q1", "Q1"]);
+  assert.deepEqual(brandParents.map((row) => row.metrics["2027P"]?.sales), [15, 20]);
+  assert.equal(brandParents.every((row) => row.expandable), true);
+
+  const firstBrandMonths = expanded.filter((row) => row.parentKey === brandParents[0].key);
+  assert.deepEqual(firstBrandMonths.map((row) => row.tertiary), ["ENE", "FEB", "MAR"]);
+  assert.deepEqual(firstBrandMonths.map((row) => row.metrics["2027P"]?.sales ?? 0), [10, 5, 0]);
+});
+
+test("Chain by brand abbreviates display names without changing grouping keys", () => {
+  const aliases = new Map([
+    ["ACCESORIOS HP.CL", "HPA.CL"],
+    ["CATERPILLAR", "CAT"],
+    ["CATERPILLAR.CL", "CAT.CL"],
+    ["DISCOUNT HOUSE", "DH"],
+    ["HUSH PUPPIES", "HP"],
+    ["HUSH PUPPIES KIDS", "HPK"],
+    ["HUSH PUPPIES.CL", "HP.CL"],
+    ["HUSH PUPPIES KIDS.CL", "HPK.CL"],
+    ["MOUNTAIN HARDWEAR", "MH"],
+    ["MOUNTAIN HARDWEAR.CL", "MH.CL"],
+    ["UNDER ARMOUR", "UA"],
+    ["UNDER ARMOUR.CL", "UA.CL"],
+  ]);
+  for (const [source, expected] of aliases) assert.equal(salesMarginChainDisplayName(source), expected);
+  assert.equal(salesMarginChainDisplayName("ROCKFORD"), "ROCKFORD");
+
+  const display = buildDisplayRows([
+    { ...payload.rows[0], chain: "HUSH PUPPIES", brand: "MARCA A" },
+  ], "chainBrand");
+  assert.equal(display.some((row) => row.primary === "HUSH PUPPIES"), true);
+  assert.equal(display.some((row) => row.primary === "HP"), false);
+  assert.equal(display.at(-1)?.secondary, "TODAS");
+});
+
+test("Chain totals are white while collapsed and blue only when expanded", () => {
+  const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(report, /const highlightTotal = row\.total === true/);
+  assert.match(report, /\(isChainTotal && isExpandedChain\)/);
+  assert.match(report, /row\.primary === "CONSOLIDADO"/);
+  assert.match(report, /isChainTotal \? "chain-total"/);
+  assert.match(report, /isChainTotal && isExpandedChain \? "is-expanded"/);
+  assert.match(styles, /tr\.chain-total:not\(\.is-expanded\) th,[\s\S]*tr\.chain-total:not\(\.is-expanded\) td \{[\s\S]*background: #fff;/);
+  assert.match(styles, /th\.sales-margin-chain-cell\.is-expanded \{[\s\S]*background: #eaf2f8;/);
+});
+
+test("Collapsed Chain by brand totals inherit the same column weights as Brand by class", () => {
+  const styles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const collapsedRule = styles.match(
+    /\.sales-margin-table\.view-chainBrand tr\.chain-total:not\(\.is-expanded\) th,[\s\S]*?\.sales-margin-table\.view-chainBrand tr\.chain-total:not\(\.is-expanded\) td \{([^}]*)\}/,
+  );
+  const microsoftRule = styles.match(
+    /\.microsoft-shell \.sales-margin-table\.view-chainBrand tbody tr\.chain-total:not\(\.is-expanded\) th,[\s\S]*?\.microsoft-shell \.sales-margin-table\.view-chainBrand tbody tr\.chain-total:not\(\.is-expanded\) td\.variance\.negative \{([^}]*)\}/,
+  );
+  assert.ok(collapsedRule);
+  assert.ok(microsoftRule);
+  assert.doesNotMatch(collapsedRule[1], /font-weight/);
+  assert.doesNotMatch(microsoftRule[1], /font-weight/);
+  assert.match(styles, /\.microsoft-shell \.sales-margin-table tbody th \{[\s\S]*?font-weight: 700;/);
+  assert.match(styles, /\.microsoft-shell \.sales-margin-table td\.dimension \{[^}]*font-weight: 500;/);
+  assert.match(styles, /\.microsoft-shell \.sales-margin-table td\.variance \{[^}]*font-weight: 700;/);
+});
+
+test("Chain labels align their name and count and left-align the Brand header", () => {
+  const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(report, /className="sales-margin-chain-copy"[\s\S]*<span>\{displayName\}<\/span>[\s\S]*<small>/);
+  assert.match(styles, /\.sales-margin-chain-copy \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*align-items: flex-start;/);
+  assert.match(styles, /\.sales-margin-table\.view-chainBrand thead tr:first-child > th:nth-child\(2\) \{ text-align: left; \}/);
+});
+
+test("Chain by brand keeps brand drilldowns but leaves totals flat for quarter and multi-month selections", () => {
+  const rows = [
+    { ...payload.rows[0], month: 1, quarter: "Q1", chain: "HUSH PUPPIES", brand: "MARCA A", sales: 10 },
+    { ...payload.rows[0], month: 2, quarter: "Q1", chain: "HUSH PUPPIES", brand: "MARCA A", sales: 20 },
+  ];
+  for (const [period, months] of [["Q1", []], ["MES", [1, 2]]]) {
+    const display = buildDisplayRows(rows, "chainBrand", period, months);
+    const brand = display.find((row) => row.secondary === "MARCA A" && row.expandable);
+    const chainTotal = display.find((row) => row.secondary === "TOTAL");
+    const consolidated = display.find((row) => row.primary === "CONSOLIDADO");
+    assert.equal(brand?.metrics["2027P"]?.sales, 30);
+    assert.equal(display.filter((row) => row.parentKey === brand?.key).length, period === "Q1" ? 3 : 2);
+    assert.equal(chainTotal?.tertiary, "");
+    assert.equal(chainTotal?.expandable, false);
+    assert.equal(display.some((row) => row.parentKey === chainTotal?.key), false);
+    assert.equal(consolidated?.tertiary, "");
+    assert.equal(consolidated?.expandable, false);
+  }
+});
+
+test("the monthly selector renders full Spanish month names", () => {
+  const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(report, /"Enero", "Febrero", "Marzo"/);
+  assert.match(report, /"Octubre", "Noviembre", "Diciembre"/);
+  assert.match(report, /const monthOptions = monthOptionLabels\.map/);
+  assert.match(styles, /\.month-options \{[\s\S]*font-size: 10px;/);
+  assert.match(styles, /\.month-options label \{[\s\S]*font-size: 10px;/);
 });
 
 test("the report displays its navigation and table before the data request finishes", async () => {

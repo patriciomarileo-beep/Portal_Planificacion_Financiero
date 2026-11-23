@@ -15,6 +15,9 @@ import {
   type SalesMarginYearStatus,
 } from "./sales-margin-data";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   BarChart3,
   BookOpen,
   Boxes,
@@ -38,6 +41,8 @@ export type SalesMarginView = "summary" | "channel" | "chainBrand" | "brand" | "
 type QuarterFilter = MonthPeriod;
 type Metric = { sales: number; marginAmount: number };
 type ScenarioMetrics = Partial<Record<Scenario, Metric>>;
+type ChainSortKey = "chain" | "brand" | Scenario;
+export type ChainSort = { key: ChainSortKey; direction: "asc" | "desc" };
 
 type DisplayRow = {
   key: string;
@@ -52,19 +57,22 @@ type DisplayRow = {
 };
 
 const validReportScenario = (scenario: string) =>
-  /^20\d{2}(?:PS|[PEM])?$/.test(scenario);
+  /^20\d{2}(?:PS|[RPEM])?$/.test(scenario);
 
 const EMPTY_YEAR_CATALOG: SalesMarginYearStatus[] = [];
 
 const currentDefaultYears: ScenarioLabel[] = [...salesMarginDefaultYears];
 
 const comparisons: { label: string; current: Scenario; previous: Scenario }[] = [
-  { label: "21/20", current: "2021", previous: "2020" },
-  { label: "22/21", current: "2022", previous: "2021" },
-  { label: "23/22", current: "2023", previous: "2022" },
-  { label: "24/23", current: "2024", previous: "2023" },
-  { label: "25/24", current: "2025", previous: "2024" },
-  { label: "26E/25", current: "2026E", previous: "2025" },
+  { label: "18R/17R", current: "2018R", previous: "2017R" },
+  { label: "19R/18R", current: "2019R", previous: "2018R" },
+  { label: "20R/19R", current: "2020R", previous: "2019R" },
+  { label: "21R/20R", current: "2021R", previous: "2020R" },
+  { label: "22R/21R", current: "2022R", previous: "2021R" },
+  { label: "23R/22R", current: "2023R", previous: "2022R" },
+  { label: "24R/23R", current: "2024R", previous: "2023R" },
+  { label: "25R/24R", current: "2025R", previous: "2024R" },
+  { label: "26E/25R", current: "2026E", previous: "2025R" },
   { label: "26E/26P", current: "2026E", previous: "2026P" },
   { label: "27P/26E", current: "2027P", previous: "2026E" },
   { label: "27E/27P", current: "2027E", previous: "2027P" },
@@ -87,9 +95,32 @@ const visibleTabs = SHOW_CHAIN_BRAND_VIEW
   : tabs.filter((tab) => tab.id !== "chainBrand");
 
 const monthLabels = ["", "ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
-const monthOptions = monthLabels.slice(1).map((label, index) => ({ value: index + 1, label }));
+const monthOptionLabels = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+const monthOptions = monthOptionLabels.map((label, index) => ({ value: index + 1, label }));
 const allMonths = monthOptions.map(({ value }) => value);
 const chainPageSize = 8;
+const chainBusiness = "BRICK & LIFE";
+const chainDisplayAliases: Record<string, string> = {
+  "ACCESORIOS HP.CL": "HPA.CL",
+  "CATERPILLAR": "CAT",
+  "CATERPILLAR.CL": "CAT.CL",
+  "DISCOUNT HOUSE": "DH",
+  "HUSH PUPPIES": "HP",
+  "HUSH PUPPIES KIDS": "HPK",
+  "HUSH PUPPIES.CL": "HP.CL",
+  "HUSH PUPPIES KIDS.CL": "HPK.CL",
+  "MOUNTAIN HARDWEAR": "MH",
+  "MOUNTAIN HARDWEAR.CL": "MH.CL",
+  "UNDER ARMOUR": "UA",
+  "UNDER ARMOUR.CL": "UA.CL",
+};
+export const salesMarginChainDisplayName = (chain: string) => {
+  const normalized = chain.trim().toUpperCase();
+  return chainDisplayAliases[normalized] ?? chain;
+};
 const quarterMonths: Record<Exclude<QuarterFilter, "ANUAL">, number[]> = {
   Q1: [1, 2, 3],
   Q2: [4, 5, 6],
@@ -222,6 +253,7 @@ function MultiSelectFilter<T extends string>({
   onChange,
   emptySelectionLabel,
   displayOption,
+  locked = false,
 }: {
   label: string;
   plural: string;
@@ -231,17 +263,21 @@ function MultiSelectFilter<T extends string>({
   onChange: (values: T[]) => void;
   emptySelectionLabel?: string;
   displayOption?: (value: T) => string;
+  locked?: boolean;
 }) {
   const optionsId = useId();
   const optionLabel =
     displayOption ?? ((value: T) => value);
   const [optionQuery, setOptionQuery] = useState("");
   const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
-  const toggle = (option: T) => onChange(
-    selected.includes(option)
-      ? selected.filter((value) => value !== option)
-      : [...selected, option],
-  );
+  const toggle = (option: T) => {
+    if (locked) return;
+    onChange(
+      selected.includes(option)
+        ? selected.filter((value) => value !== option)
+        : [...selected, option],
+    );
+  };
   const selectionLabel = selected.length === 0
     ? emptySelectionLabel ?? allLabel
     : selected.length === 1
@@ -315,7 +351,7 @@ function MultiSelectFilter<T extends string>({
         <Search aria-hidden="true" />
         <input value={optionQuery} onChange={(event) => { setOptionQuery(event.target.value); setActiveOptionIndex(0); }} onKeyDown={handleSearchKeyDown} role="combobox" aria-autocomplete="list" aria-controls={optionsId} aria-expanded="true" placeholder={`Buscar ${label.toLocaleLowerCase("es")}`} aria-label={`Buscar ${label.toLocaleLowerCase("es")}`} />
       </div>
-      <button type="button" className={selected.length === 0 ? "active" : ""} onClick={() => onChange([])}>{emptySelectionLabel ?? allLabel}</button>
+      {!locked && <button type="button" className={selected.length === 0 ? "active" : ""} onClick={() => onChange([])}>{emptySelectionLabel ?? allLabel}</button>}
       
       {visibleOptions.map((option, index) => <label
         key={option}
@@ -324,7 +360,7 @@ function MultiSelectFilter<T extends string>({
         onMouseEnter={() => setActiveOptionIndex(index)}
       >
 
-        <input type="checkbox" checked={selected.includes(option)} onChange={() => toggle(option)} />
+        <input type="checkbox" checked={selected.includes(option)} disabled={locked} onChange={() => toggle(option)} />
         {optionLabel(option)}
       </label>)}
       {visibleOptions.length === 0 && <small className="sales-margin-option-empty">Sin coincidencias</small>}
@@ -393,12 +429,35 @@ const indexRows = (rows: ApiRow[], keyOf: (row: ApiRow) => string) => {
   return index;
 };
 
+export const sortChainLabels = (
+  rows: ApiRow[],
+  labels: readonly string[],
+  sort: ChainSort,
+  dimension: "chain" | "brand",
+) => [...labels].sort((left, right) => {
+  if (sort.key === dimension) {
+    const comparison = left.localeCompare(right, "es");
+    return sort.direction === "asc" ? comparison : -comparison;
+  }
+  if (/^20\d{2}(?:PS|[RPEM])?$/.test(sort.key)) {
+    const total = (label: string) => rows.reduce((sum, row) =>
+      (dimension === "chain" ? row.chain : row.brand) === label && row.scenario === sort.key
+        ? sum + (Number(row.sales) || 0)
+        : sum, 0);
+    const comparison = total(left) - total(right);
+    if (comparison !== 0) return sort.direction === "asc" ? comparison : -comparison;
+  }
+  return left.localeCompare(right, "es");
+});
+
 export const buildDisplayRows = (
   rows: ApiRow[],
   view: SalesMarginView,
   quarterFilter: QuarterFilter = "ANUAL",
   selectedMonths: number[] = allMonths,
   showConsolidated = true,
+  visibleChains?: readonly string[],
+  chainSort: ChainSort = { key: "chain", direction: "asc" },
 ): DisplayRow[] => {
   if (rows.length === 0) return [];
 
@@ -456,22 +515,29 @@ export const buildDisplayRows = (
         })),
       ];
     };
-    const totalForSelectedPeriod = (
+    const rowForSelectedPeriod = (
       sourceRows: ApiRow[],
       keyPrefix: string,
       primary: string,
       secondary: string,
+      total = false,
     ): DisplayRow => {
-      const aggregate = periodRows(sourceRows, keyPrefix, primary, secondary, "tertiary", true)[0];
+      const aggregate = periodRows(sourceRows, keyPrefix, primary, secondary, "tertiary", total)[0];
       return {
         ...aggregate,
-        key: `${keyPrefix}\u0000TOTAL`,
+        key: `${keyPrefix}\u0000${total ? "TOTAL" : "PERIOD"}`,
         tertiary: "",
         expandable: false,
         parentKey: undefined,
         depth: undefined,
       };
     };
+    const totalForSelectedPeriod = (
+      sourceRows: ApiRow[],
+      keyPrefix: string,
+      primary: string,
+      secondary: string,
+    ): DisplayRow => rowForSelectedPeriod(sourceRows, keyPrefix, primary, secondary, true);
     const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
 
     if (view === "summary") {
@@ -497,24 +563,43 @@ export const buildDisplayRows = (
 
     if (view === "chainBrand") {
       const rowsByChain = indexRows(rows, (row) => row.chain);
-      const chains = unique([...rowsByChain.keys()]);
-      const consolidated = periodRows(rows, "chain-brand-consolidated", "CONSOLIDADO", "TODAS LAS CADENAS", "tertiary", true);
+      const chains = visibleChains
+        ? visibleChains.filter((chain) => rowsByChain.has(chain))
+        : sortChainLabels(rows, unique([...rowsByChain.keys()]), chainSort, "chain");
+      const consolidated = rowForSelectedPeriod(
+        rows,
+        "chain-brand-consolidated",
+        "CONSOLIDADO",
+        "TODAS",
+        true,
+      );
       const detail = chains.flatMap((chain) => {
         const chainRows = rowsByChain.get(chain) ?? [];
         const rowsByBrand = indexRows(chainRows, (row) => row.brand);
-        const brands = unique([...rowsByBrand.keys()]);
+        const brands = sortChainLabels(chainRows, unique([...rowsByBrand.keys()]), chainSort, "brand");
         return [
-          ...brands.flatMap((brand) => periodRows(
-            rowsByBrand.get(brand) ?? [],
-            `chain-brand-${chain}-${brand}`,
-            chain,
-            brand,
-            "tertiary",
-          )),
-          ...periodRows(chainRows, `chain-brand-${chain}-total`, chain, "TOTAL", "tertiary", true),
+          ...brands.flatMap((brand) => brand === "OTRAS"
+            ? [{
+                ...periodRows(
+                  rowsByBrand.get(brand) ?? [],
+                  `chain-brand-${chain}-${brand}`,
+                  chain,
+                  brand,
+                  "tertiary",
+                )[0],
+                expandable: false,
+              }]
+            : periodRows(
+                rowsByBrand.get(brand) ?? [],
+                `chain-brand-${chain}-${brand}`,
+                chain,
+                brand,
+                "tertiary",
+              )),
+          rowForSelectedPeriod(chainRows, `chain-brand-${chain}-total`, chain, "TOTAL", true),
         ];
       });
-      return showConsolidated ? [...detail, ...consolidated] : detail;
+      return showConsolidated ? [...detail, consolidated] : detail;
     }
 
     const secondaryOf = view === "brandChannel" ? (row: ApiRow) => row.business : (row: ApiRow) => row.class;
@@ -589,13 +674,22 @@ export const buildDisplayRows = (
   if (view === "chainBrand") {
     const unique = (values: string[]) => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
     const rowsByChain = indexRows(rows, (row) => row.chain);
-    const chains = unique([...rowsByChain.keys()]);
-    const consolidated = groupedRows(rows, () => "CONSOLIDADO", () => "TODAS LAS CADENAS")[0];
+    const chains = visibleChains
+      ? visibleChains.filter((chain) => rowsByChain.has(chain))
+      : sortChainLabels(rows, unique([...rowsByChain.keys()]), chainSort, "chain");
+    const consolidated = groupedRows(rows, () => "CONSOLIDADO", () => "TODAS")[0];
     const detail = chains.flatMap((chain) => {
       const chainRows = rowsByChain.get(chain) ?? [];
       const chainTotal = groupedRows(chainRows, () => chain, () => "TOTAL")[0];
+      const brandOrder = sortChainLabels(
+        chainRows,
+        unique(chainRows.map((row) => row.brand)),
+        chainSort,
+        "brand",
+      );
+      const brandPosition = new Map(brandOrder.map((brand, index) => [brand, index]));
       const brands = groupedRows(chainRows, () => chain, (row) => row.brand).sort((a, b) =>
-        a.secondary.localeCompare(b.secondary, "es"),
+        (brandPosition.get(a.secondary) ?? 0) - (brandPosition.get(b.secondary) ?? 0),
       );
       return [
         ...brands,
@@ -644,6 +738,66 @@ export const buildDisplayRows = (
   ];
 };
 
+export const chainBrandRowsForAccordion = (
+  rows: DisplayRow[],
+  expandedChains: ReadonlySet<string>,
+) => rows.filter((row) =>
+  row.primary === "CONSOLIDADO"
+  || expandedChains.has(row.primary)
+  || (row.total === true && row.secondary === "TOTAL" && !row.parentKey)
+);
+
+export const appendChainGroupedBrandDetails = (
+  rows: DisplayRow[],
+  sourceRows: ApiRow[],
+  expandedGroups: ReadonlySet<string>,
+  periodLabel = "",
+  periodMonths: readonly number[] = [],
+) => {
+  if (expandedGroups.size === 0) return rows;
+  const detailsByChain = new Map<string, DisplayRow[]>();
+  for (const chain of expandedGroups) {
+    const groupedSourceRows = sourceRows.filter((row) =>
+      row.chain === chain
+      && row.brand === "OTRAS"
+      && Boolean(row.originalBrand)
+      && row.originalBrand !== "OTRAS"
+    );
+    const rowsByOriginalBrand = indexRows(groupedSourceRows, (row) => row.originalBrand ?? row.brand);
+    const detailRows = uniqueLabels([...rowsByOriginalBrand.keys()]).flatMap((brand) => {
+      const brandRows = rowsByOriginalBrand.get(brand) ?? [];
+      const parentKey = `chain-brand-other-detail\u0000${chain}\u0000${brand}`;
+      const parent = groupedRows(brandRows, () => chain, () => brand)[0];
+      const expandableMonths = periodMonths.length > 1 ? periodMonths : [];
+      return [{
+        ...parent,
+        key: parentKey,
+        tertiary: periodLabel,
+        expandable: expandableMonths.length > 0,
+        depth: 1,
+      }, ...expandableMonths.map((month) => ({
+        key: `${parentKey}\u0000month-${month}`,
+        primary: chain,
+        secondary: brand,
+        tertiary: monthLabels[month],
+        metrics: groupedRows(
+          brandRows.filter((row) => row.month === month),
+          () => chain,
+        )[0]?.metrics ?? {},
+        parentKey,
+        depth: 2,
+      }))];
+    });
+    if (detailRows.length > 0) detailsByChain.set(chain, detailRows);
+  }
+  return rows.flatMap((row, index) => {
+    const next = rows[index + 1];
+    const isLastOtherRow = row.secondary === "OTRAS"
+      && (next?.primary !== row.primary || next.secondary !== "OTRAS");
+    return isLastOtherRow ? [row, ...(detailsByChain.get(row.primary) ?? [])] : [row];
+  });
+};
+
 const salesFormatter = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 0 });
 const groupedBrandSalesFormatter = new Intl.NumberFormat("es-CL", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const percentFormatter = new Intl.NumberFormat("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -678,16 +832,21 @@ export default function SalesMargin({
   const [view, setView] = useState<SalesMarginView>(initialView);
   const [brandFilter, setBrandFilter] = useState<string[]>([]);
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
+  const [chainChannelFilter, setChainChannelFilter] = useState<string[]>([chainBusiness]);
   const [chainFilter, setChainFilter] = useState<string[]>([]);
   const [classFilter, setClassFilter] = useState<string[]>([]);
   const [yearFilter, setYearFilter] = useState<ScenarioLabel[] | null>(null);
   const [quarterFilter, setQuarterFilter] = useState<QuarterFilter>("ANUAL");
   const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
   const [expandedTemporalRows, setExpandedTemporalRows] = useState<Set<string>>(() => new Set());
+  const [expandedChains, setExpandedChains] = useState<Set<string>>(() => new Set());
+  const [expandedGroupedBrands, setExpandedGroupedBrands] = useState<Set<string>>(() => new Set());
+  const [chainSort, setChainSort] = useState<ChainSort>({ key: "chain", direction: "asc" });
   const [chainPage, setChainPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [brandGlossaryOpen, setBrandGlossaryOpen] = useState(false);
+  const [brandGlossarySection, setBrandGlossarySection] = useState<"global" | "chain">("global");
   const handledRefreshKey = useRef(refreshKey);
   
 
@@ -733,14 +892,33 @@ export default function SalesMargin({
 
 
   const includeChain = view === "chainBrand";
+  const activeChannelFilter = includeChain ? chainChannelFilter : channelFilter;
   const hasActiveChainFilter = includeChain && chainFilter.length > 0;
-  const chainMonthsForRequest = useMemo(() => {
+  const desiredChainMonths = useMemo(() => {
     if (!includeChain || quarterFilter === "ANUAL") return null;
     if (quarterFilter === "MES") return selectedMonths.length > 0 ? selectedMonths : null;
     return quarterMonths[quarterFilter];
   }, [includeChain, quarterFilter, selectedMonths]);
-  const chainPeriodKey = chainMonthsForRequest?.length ? chainMonthsForRequest.join("-") : "annual";
-  const payloadMatchesPeriod = !includeChain || payload?.chainPeriodKey === chainPeriodKey;
+  const desiredChainPeriodKey = desiredChainMonths?.length ? desiredChainMonths.join("-") : "annual";
+  const [chainRequest, setChainRequest] = useState<{ key: string; months: number[] | null }>({
+    key: "annual",
+    months: null,
+  });
+  useEffect(() => {
+    const next = {
+      key: desiredChainPeriodKey,
+      months: desiredChainMonths ? [...desiredChainMonths] : null,
+    };
+    const commit = () => setChainRequest((current) => current.key === next.key ? current : next);
+    if (!includeChain || quarterFilter !== "MES") {
+      commit();
+      return;
+    }
+    const timeout = window.setTimeout(commit, 250);
+    return () => window.clearTimeout(timeout);
+  }, [desiredChainMonths, desiredChainPeriodKey, includeChain, quarterFilter]);
+  const chainMonthsForRequest = includeChain ? chainRequest.months : null;
+  const payloadMatchesPeriod = !includeChain || payload?.chainPeriodKey === desiredChainPeriodKey;
   const payloadRows = useMemo(
     () => payloadMatchesPeriod ? payload?.rows ?? [] : [],
     [payload, payloadMatchesPeriod],
@@ -792,35 +970,59 @@ export default function SalesMargin({
     const rows = payloadRows;
     const activeChains = view === "chainBrand" ? chainFilter : [];
     return {
-      brands: salesMarginBrandsForFilters(rows, channelFilter, classFilter, activeChains),
-      channels: salesMarginChannelsForFilters(rows, brandFilter, classFilter, activeChains),
-      chains: salesMarginChainsForFilters(rows, brandFilter, channelFilter, classFilter),
-      classes: salesMarginClassesForFilters(rows, brandFilter, channelFilter, activeChains),
+      brands: salesMarginBrandsForFilters(rows, activeChannelFilter, classFilter, activeChains),
+      channels: includeChain
+        ? [chainBusiness]
+        : salesMarginChannelsForFilters(rows, brandFilter, classFilter, activeChains),
+      chains: salesMarginChainsForFilters(rows, brandFilter, activeChannelFilter, classFilter),
+      classes: salesMarginClassesForFilters(rows, brandFilter, activeChannelFilter, activeChains),
     };
-  }, [payloadRows, view, brandFilter, channelFilter, chainFilter, classFilter]);
+  }, [activeChannelFilter, payloadRows, view, brandFilter, chainFilter, classFilter, includeChain]);
   const changeFilter = (changed: SalesMarginFilterKey, values: string[]) => {
     const rows = payloadRows;
     const next = reconcileSalesMarginFilters(rows, {
       brands: brandFilter,
-      channels: channelFilter,
+      channels: activeChannelFilter,
       chains: view === "chainBrand" ? chainFilter : [],
       classes: classFilter,
-      [changed]: values,
+      [changed]: includeChain && changed === "channels" ? [chainBusiness] : values,
     }, changed);
     setBrandFilter(next.brands);
-    setChannelFilter(next.channels);
+    if (includeChain) setChainChannelFilter([chainBusiness]);
+    else setChannelFilter(next.channels);
     if (view === "chainBrand") setChainFilter(next.chains);
     setClassFilter(next.classes);
+    setExpandedChains(new Set());
+    setExpandedGroupedBrands(new Set());
     setChainPage(0);
   };
   const filteredSourceRows = useMemo(() => payloadRows.filter((row) =>
     (brandFilter.length === 0 || brandFilter.includes(row.brand))
-    && (channelFilter.length === 0 || channelFilter.includes(row.business))
+    && (includeChain
+      ? activeChannelFilter.includes(row.business)
+      : activeChannelFilter.length === 0 || activeChannelFilter.includes(row.business))
     && (view !== "chainBrand" || (Boolean(row.chain) && (chainFilter.length === 0 || chainFilter.includes(row.chain))))
     && (classFilter.length === 0 || classFilter.includes(row.class))
     && (quarterFilter === "ANUAL"
       || (quarterFilter === "MES" ? selectedMonths.includes(row.month) : row.quarter === quarterFilter))
-  ), [payloadRows, view, brandFilter, channelFilter, chainFilter, classFilter, quarterFilter, selectedMonths]);
+  ), [payloadRows, view, brandFilter, activeChannelFilter, includeChain, chainFilter, classFilter, quarterFilter, selectedMonths]);
+  const chainNames = useMemo(() => view === "chainBrand"
+    ? sortChainLabels(
+        filteredSourceRows,
+        uniqueLabels(filteredSourceRows.map((row) => row.chain)),
+        chainSort,
+        "chain",
+      )
+    : [], [chainSort, filteredSourceRows, view]);
+  const chainPageCount = Math.max(1, Math.ceil(chainNames.length / chainPageSize));
+  const safeChainPage = Math.min(chainPage, chainPageCount - 1);
+  const chainPageStart = chainNames.length === 0 ? 0 : safeChainPage * chainPageSize + 1;
+  const chainPageEnd = Math.min((safeChainPage + 1) * chainPageSize, chainNames.length);
+  const visibleChainNames = useMemo(() => {
+    if (view !== "chainBrand") return undefined;
+    const firstChain = safeChainPage * chainPageSize;
+    return chainNames.slice(firstChain, firstChain + chainPageSize);
+  }, [chainNames, safeChainPage, view]);
   const allRows = useMemo(
     () => buildDisplayRows(
       filteredSourceRows,
@@ -828,25 +1030,55 @@ export default function SalesMargin({
       quarterFilter,
       selectedMonths,
       view === "chainBrand" ? chainFilter.length !== 1 : brandFilter.length !== 1,
+      visibleChainNames,
+      chainSort,
     ),
-    [filteredSourceRows, view, quarterFilter, selectedMonths, brandFilter.length, chainFilter.length],
+    [filteredSourceRows, view, quarterFilter, selectedMonths, brandFilter.length, chainFilter.length, visibleChainNames, chainSort],
   );
-  const chainNames = useMemo(() => view === "chainBrand"
-    ? uniqueLabels(allRows.map((row) => row.primary).filter((name) => name !== "CONSOLIDADO"))
-    : [], [allRows, view]);
-  const chainPageCount = Math.max(1, Math.ceil(chainNames.length / chainPageSize));
-  const safeChainPage = Math.min(chainPage, chainPageCount - 1);
-  const chainPageStart = chainNames.length === 0 ? 0 : safeChainPage * chainPageSize + 1;
-  const chainPageEnd = Math.min((safeChainPage + 1) * chainPageSize, chainNames.length);
-  const paginatedRows = useMemo(() => {
-    if (view !== "chainBrand" || chainPageCount <= 1) return allRows;
-    const firstChain = safeChainPage * chainPageSize;
-    const pageChains = new Set(chainNames.slice(firstChain, firstChain + chainPageSize));
-    return allRows.filter((row) => row.primary === "CONSOLIDADO" || pageChains.has(row.primary));
-  }, [allRows, chainNames, chainPageCount, safeChainPage, view]);
-  const visibleRows = useMemo(() => paginatedRows.filter((row) =>
+  const accordionRows = useMemo(() => {
+    if (view !== "chainBrand") return allRows;
+    const groupedBrandPeriodLabel = quarterFilter === "ANUAL"
+      ? ""
+      : quarterFilter === "MES"
+        ? selectedMonths.length === 1
+          ? monthLabels[selectedMonths[0]]
+          : `${selectedMonths.length} MESES`
+        : quarterFilter;
+    const groupedBrandPeriodMonths = quarterFilter === "ANUAL"
+      ? []
+      : quarterFilter === "MES"
+        ? selectedMonths
+        : quarterMonths[quarterFilter];
+    return appendChainGroupedBrandDetails(
+      chainBrandRowsForAccordion(allRows, expandedChains),
+      filteredSourceRows,
+      expandedGroupedBrands,
+      groupedBrandPeriodLabel,
+      groupedBrandPeriodMonths,
+    );
+  }, [allRows, expandedChains, expandedGroupedBrands, filteredSourceRows, quarterFilter, selectedMonths, view]);
+  const visibleRows = useMemo(() => accordionRows.filter((row) =>
     !row.parentKey || expandedTemporalRows.has(row.parentKey)
-  ), [paginatedRows, expandedTemporalRows]);
+  ), [accordionRows, expandedTemporalRows]);
+  const chainBrandCounts = useMemo(() => {
+    const brandsByChain = new Map<string, Set<string>>();
+    for (const row of filteredSourceRows) {
+      if (!row.chain) continue;
+      const brands = brandsByChain.get(row.chain) ?? new Set<string>();
+      brands.add(row.originalBrand || row.brand);
+      brandsByChain.set(row.chain, brands);
+    }
+    return new Map([...brandsByChain].map(([chain, brands]) => [chain, brands.size]));
+  }, [filteredSourceRows]);
+  const chainsWithGroupedBrandDetails = useMemo(() => new Set(
+    filteredSourceRows.flatMap((row) =>
+      row.brand === "OTRAS"
+      && Boolean(row.originalBrand)
+      && row.originalBrand !== "OTRAS"
+        ? [row.chain]
+        : []
+    ),
+  ), [filteredSourceRows]);
 
   const visibleScenarios = useMemo(
     () => effectiveYearFilter.length === 0
@@ -938,6 +1170,50 @@ export default function SalesMargin({
     else next.add(key);
     return next;
   });
+  const toggleChain = (chain: string) => setExpandedChains((current) => {
+    const next = new Set(current);
+    if (next.has(chain)) next.delete(chain);
+    else next.add(chain);
+    return next;
+  });
+  const toggleGroupedBrands = (chain: string) => setExpandedGroupedBrands((current) => {
+    const next = new Set(current);
+    if (next.has(chain)) next.delete(chain);
+    else next.add(chain);
+    return next;
+  });
+  const changeChainSort = (key: ChainSortKey) => {
+    setChainSort((current) => current.key === key
+      ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+      : { key, direction: key === "chain" || key === "brand" ? "asc" : "desc" });
+    setChainPage(0);
+  };
+  const sortIcon = (key: ChainSortKey) => {
+    if (chainSort.key !== key) return ArrowUpDown;
+    return chainSort.direction === "asc" ? ArrowUp : ArrowDown;
+  };
+  const sortAria = (key: ChainSortKey): "none" | "ascending" | "descending" =>
+    chainSort.key !== key ? "none" : chainSort.direction === "asc" ? "ascending" : "descending";
+  const primaryCell = (row: DisplayRow) => {
+    if (view !== "chainBrand" || row.primary === "CONSOLIDADO") return row.primary;
+    const expanded = expandedChains.has(row.primary);
+    const brandCount = chainBrandCounts.get(row.primary) ?? 0;
+    const displayName = salesMarginChainDisplayName(row.primary);
+    return <button
+      type="button"
+      className="sales-margin-chain-toggle"
+      aria-expanded={expanded}
+      aria-label={`${expanded ? "Contraer" : "Expandir"} marcas de ${row.primary}`}
+      title={row.primary}
+      onClick={() => toggleChain(row.primary)}
+    >
+      {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+      <span className="sales-margin-chain-copy">
+        <span>{displayName}</span>
+        <small>{brandCount} {brandCount === 1 ? "marca" : "marcas"}</small>
+      </span>
+    </button>;
+  };
   const temporalCell = (row: DisplayRow, value: string) => {
     if (row.expandable) {
       const expanded = expandedTemporalRows.has(row.key);
@@ -953,8 +1229,28 @@ export default function SalesMargin({
     }
     return <span className={row.depth ? "sales-margin-drilldown-label" : undefined}>{value || "—"}</span>;
   };
+  const secondaryCell = (row: DisplayRow) => {
+    if (view === "chainBrand" && row.secondary === "OTRAS" && !row.parentKey) {
+      const hasDetails = chainsWithGroupedBrandDetails.has(row.primary);
+      if (hasDetails) {
+        const expanded = expandedGroupedBrands.has(row.primary);
+        return <button
+          type="button"
+          className="sales-margin-other-toggle"
+          aria-expanded={expanded}
+          onClick={() => toggleGroupedBrands(row.primary)}
+        >
+          {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+          <span>OTRAS</span>
+        </button>;
+      }
+    }
+    return hasMonthBreakdown && (view === "channel" || view === "brand")
+      ? temporalCell(row, row.secondary)
+      : row.secondary || "—";
+  };
   const activeFilterCount = brandFilter.length
-    + channelFilter.length
+    + (includeChain ? 0 : channelFilter.length)
     + (view === "chainBrand" ? chainFilter.length : 0)
     + classFilter.length
     + (yearFilter === null ? 0 : Math.max(yearFilter.length, 1))
@@ -963,20 +1259,27 @@ export default function SalesMargin({
     setLoading(true);
     setError("");
     setYearFilter(years);
+    setExpandedChains(new Set());
+    setExpandedGroupedBrands(new Set());
     setChainPage(0);
   };
   const clearFilters = () => {
     setBrandFilter([]);
     setChannelFilter([]);
+    setChainChannelFilter([chainBusiness]);
     setChainFilter([]);
     setClassFilter([]);
     setYearFilter(null);
     setQuarterFilter("ANUAL");
     setSelectedMonths([]);
     setExpandedTemporalRows(new Set());
+    setExpandedChains(new Set());
+    setExpandedGroupedBrands(new Set());
     setChainPage(0);
   };
   const initialLoading = loading && (!payload || !payloadMatchesPeriod);
+  const chainGlossaryGroups = payload?.chainBrandGrouping?.chains ?? [];
+  const chainGlossaryBrandCount = chainGlossaryGroups.reduce((total, group) => total + group.brands.length, 0);
 
   return <section className="sales-margin-module">
     <header className="sales-margin-hero">
@@ -1024,6 +1327,8 @@ export default function SalesMargin({
                 || !requestedYears.every((year) => payload?.chainYears?.includes(year))
               )) setLoading(true);
               setExpandedTemporalRows(new Set());
+              setExpandedChains(new Set());
+              setExpandedGroupedBrands(new Set());
               setChainPage(0);
               setView(tab.id);
             }}>
@@ -1040,16 +1345,17 @@ export default function SalesMargin({
             options={filterOptions.brands}
             selected={brandFilter}
             onChange={(values) => changeFilter("brands", values)}
-            emptySelectionLabel={dependentSelectionLabel(filterOptions.brands, "MARCAS", channelFilter.length > 0 || hasActiveChainFilter || classFilter.length > 0)}
+            emptySelectionLabel={dependentSelectionLabel(filterOptions.brands, "MARCAS", activeChannelFilter.length > 0 || hasActiveChainFilter || classFilter.length > 0)}
           />
           <MultiSelectFilter
             label="CANAL"
             plural="CANALES"
             allLabel="TODOS"
             options={filterOptions.channels}
-            selected={channelFilter}
+            selected={activeChannelFilter}
             onChange={(values) => changeFilter("channels", values)}
-            emptySelectionLabel={dependentSelectionLabel(filterOptions.channels, "CANALES", brandFilter.length > 0 || hasActiveChainFilter || classFilter.length > 0)}
+            emptySelectionLabel={includeChain ? chainBusiness : dependentSelectionLabel(filterOptions.channels, "CANALES", brandFilter.length > 0 || hasActiveChainFilter || classFilter.length > 0)}
+            locked={includeChain}
           />
           {view === "chainBrand" && <MultiSelectFilter
             label="CADENA"
@@ -1058,7 +1364,7 @@ export default function SalesMargin({
             options={filterOptions.chains}
             selected={chainFilter}
             onChange={(values) => changeFilter("chains", values)}
-            emptySelectionLabel={dependentSelectionLabel(filterOptions.chains, "CADENAS", brandFilter.length > 0 || channelFilter.length > 0 || classFilter.length > 0)}
+            emptySelectionLabel={dependentSelectionLabel(filterOptions.chains, "CADENAS", brandFilter.length > 0 || activeChannelFilter.length > 0 || classFilter.length > 0)}
           />}
           <MultiSelectFilter
             label="CLASE"
@@ -1067,7 +1373,7 @@ export default function SalesMargin({
             options={filterOptions.classes}
             selected={classFilter}
             onChange={(values) => changeFilter("classes", values)}
-            emptySelectionLabel={dependentSelectionLabel(filterOptions.classes, "CLASES", brandFilter.length > 0 || channelFilter.length > 0 || hasActiveChainFilter)}
+            emptySelectionLabel={dependentSelectionLabel(filterOptions.classes, "CLASES", brandFilter.length > 0 || activeChannelFilter.length > 0 || hasActiveChainFilter)}
           />
           <MultiSelectFilter 
             label="AÑO" 
@@ -1081,6 +1387,8 @@ export default function SalesMargin({
             period={quarterFilter}
             onPeriodChange={(period) => {
               setExpandedTemporalRows(new Set());
+              setExpandedChains(new Set());
+              setExpandedGroupedBrands(new Set());
               if (includeChain) setLoading(true);
               setChainPage(0);
               setQuarterFilter(period);
@@ -1089,6 +1397,8 @@ export default function SalesMargin({
             selectedMonths={selectedMonths}
             onSelectedMonthsChange={(months) => {
               setExpandedTemporalRows(new Set());
+              setExpandedChains(new Set());
+              setExpandedGroupedBrands(new Set());
               if (includeChain) setLoading(true);
               setChainPage(0);
               setSelectedMonths(months);
@@ -1109,15 +1419,38 @@ export default function SalesMargin({
             >
               <thead>
                 <tr>
-                  <th rowSpan={2}>{primaryLabel}</th>
-                  {hasSecondary && <th rowSpan={2} className={hasMonthBreakdown && (view === "channel" || view === "brand") ? "period-dimension" : ""}>{secondaryLabel}</th>}
+                  <th rowSpan={2} aria-sort={view === "chainBrand" ? sortAria("chain") : undefined}>
+                    {view === "chainBrand" ? (() => {
+                      const SortIcon = sortIcon("chain");
+                      return <button type="button" className="sales-margin-sort-button dimension-sort" onClick={() => changeChainSort("chain")}>
+                        <span>{primaryLabel}</span><SortIcon aria-hidden="true" />
+                      </button>;
+                    })() : primaryLabel}
+                  </th>
+                  {hasSecondary && <th
+                    rowSpan={2}
+                    aria-sort={view === "chainBrand" ? sortAria("brand") : undefined}
+                    className={hasMonthBreakdown && (view === "channel" || view === "brand") ? "period-dimension" : ""}
+                  >{view === "chainBrand" ? (() => {
+                    const SortIcon = sortIcon("brand");
+                    return <button type="button" className="sales-margin-sort-button dimension-sort" onClick={() => changeChainSort("brand")}>
+                      <span>{secondaryLabel}</span><SortIcon aria-hidden="true" />
+                    </button>;
+                  })() : secondaryLabel}</th>}
                   {hasTertiary && <th rowSpan={2} className="period-dimension">Período</th>}
                   {visibleScenarios.map(({ key, label }) => <th key={key} colSpan={2} className={`scenario scenario-${key.replace("_", "-")}`}>{label}</th>)}
                   {visibleComparisons.map((item) => <th key={item.label} rowSpan={2} className="comparison">{item.label}<small>Var. venta</small></th>)}
                 </tr>
                 <tr>
                   {visibleScenarios.flatMap(({ key }) => [
-                    <th key={`${key}-sales`} className="subhead">Ventas</th>,
+                    <th key={`${key}-sales`} className="subhead" aria-sort={view === "chainBrand" ? sortAria(key) : undefined}>
+                      {view === "chainBrand" ? (() => {
+                        const SortIcon = sortIcon(key);
+                        return <button type="button" className="sales-margin-sort-button" onClick={() => changeChainSort(key)}>
+                          <span>Ventas</span><SortIcon aria-hidden="true" />
+                        </button>;
+                      })() : "Ventas"}
+                    </th>,
                     <th key={`${key}-margin`} className="subhead">Mg %</th>,
                   ])}
                 </tr>
@@ -1130,10 +1463,31 @@ export default function SalesMargin({
                 {visibleRows.map((row, index) => {
                   const rowSpan = primaryRowSpan(index);
                   const secondarySpan = secondaryRowSpan(index);
-                  return <tr key={row.key} className={`${row.total ? "total " : ""}${row.expandable ? "temporal-parent " : ""}${row.depth ? "temporal-child" : ""}`.trim()}>
-                  {rowSpan > 0 && <th scope={mergePrimaryCells ? "rowgroup" : "row"} rowSpan={rowSpan}>{row.primary}</th>}
+                  const isChainRow = view === "chainBrand" && row.primary !== "CONSOLIDADO";
+                  const isExpandedChain = isChainRow && expandedChains.has(row.primary);
+                  const isChainTotal = isChainRow && row.total === true && row.secondary === "TOTAL";
+                  const isGroupedBrandDetail = row.key.startsWith("chain-brand-other-detail");
+                  const highlightTotal = row.total === true && (
+                    view !== "chainBrand"
+                    || row.primary === "CONSOLIDADO"
+                    || (isChainTotal && isExpandedChain)
+                  );
+                  const rowClassName = [
+                    highlightTotal ? "total" : "",
+                    isChainTotal ? "chain-total" : "",
+                    isChainTotal && isExpandedChain ? "is-expanded" : "",
+                    isGroupedBrandDetail ? "grouped-brand-child" : "",
+                    row.expandable ? "temporal-parent" : "",
+                    row.depth ? "temporal-child" : "",
+                  ].filter(Boolean).join(" ");
+                  return <tr key={row.key} className={rowClassName}>
+                  {rowSpan > 0 && <th
+                    scope={mergePrimaryCells ? "rowgroup" : "row"}
+                    rowSpan={rowSpan}
+                    className={isChainRow ? `sales-margin-chain-cell${isExpandedChain ? " is-expanded" : ""}` : undefined}
+                  >{primaryCell(row)}</th>}
                   {hasSecondary && secondarySpan > 0 && <td rowSpan={secondarySpan} className={`dimension${hasMonthBreakdown && (view === "channel" || view === "brand") ? " period-dimension" : ""}`}>
-                    {hasMonthBreakdown && (view === "channel" || view === "brand") ? temporalCell(row, row.secondary) : row.secondary || "—"}
+                    {secondaryCell(row)}
                   </td>}
                   {hasTertiary && <td className="dimension period-dimension">{temporalCell(row, row.tertiary)}</td>}
                   {visibleScenarios.flatMap(({ key }) => {
@@ -1167,7 +1521,10 @@ export default function SalesMargin({
           <button
             type="button"
             className="sales-margin-brand-glossary-trigger"
-            onClick={() => setBrandGlossaryOpen(true)}
+            onClick={() => {
+              setBrandGlossarySection(view === "chainBrand" ? "chain" : "global");
+              setBrandGlossaryOpen(true);
+            }}
             disabled={!payload}
             aria-haspopup="dialog"
           >
@@ -1191,29 +1548,86 @@ export default function SalesMargin({
           onMouseDown={(event) => event.stopPropagation()}
         >
           <header>
-            <div>
-              <small>GLOSARIO DE MARCAS</small>
-              <h2 id="sales-margin-brand-glossary-title">Composición de “OTRAS”</h2>
+            <div className="sales-margin-brand-glossary-heading">
+              <i><BookOpen aria-hidden="true" /></i>
+              <div>
+                <small>GLOSARIO DE AGRUPACIÓN</small>
+                <h2 id="sales-margin-brand-glossary-title">Composición de “OTRAS”</h2>
+              </div>
             </div>
             <button type="button" onClick={() => setBrandGlossaryOpen(false)} aria-label="Cerrar glosario"><X /></button>
           </header>
-          <p>
-            Incluye las marcas con ventas acumuladas inferiores a <b>MM${payload.brandGrouping.thresholdMm}</b>
-            {payload.brandGrouping.window.length > 0 && <> en la ventana <b>{payload.brandGrouping.window.join(" · ")}</b></>}.
-          </p>
-          <div className="sales-margin-brand-glossary-summary">
-            <span>Marcas agrupadas</span>
-            <strong>{payload.brandGrouping.brands.length}</strong>
-          </div>
-          <div className="sales-margin-brand-glossary-list" role="list" aria-label="Marcas agrupadas como OTRAS">
-            {payload.brandGrouping.brands.map((brand) => <div key={brand.name} role="listitem">
-              <span>{brand.name}</span>
-              <strong>{groupedBrandSalesFormatter.format(brand.totalSalesMm)} MM$</strong>
-            </div>)}
-            {payload.brandGrouping.brands.length === 0 && <p>No hay marcas agrupadas para la ventana vigente.</p>}
+          <div className="sales-margin-brand-glossary-body">
+            <p className="sales-margin-brand-glossary-intro">
+              Consulta las marcas con ventas acumuladas inferiores a <b>MM${payload.brandGrouping.thresholdMm}</b>
+              {payload.brandGrouping.window.length > 0 && <> en la ventana <b>{payload.brandGrouping.window.join(" · ")}</b></>}.
+            </p>
+            <nav className="sales-margin-brand-glossary-tabs" role="tablist" aria-label="Nivel de agrupación">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={brandGlossarySection === "global"}
+                className={brandGlossarySection === "global" ? "active" : ""}
+                onClick={() => setBrandGlossarySection("global")}
+              >
+                <Layers3 aria-hidden="true" />
+                <span>Vista general<small>Agrupación transversal</small></span>
+                <b>{payload.brandGrouping.brands.length}</b>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={brandGlossarySection === "chain"}
+                className={brandGlossarySection === "chain" ? "active" : ""}
+                onClick={() => setBrandGlossarySection("chain")}
+              >
+                <Store aria-hidden="true" />
+                <span>Por cadena<small>Composición específica</small></span>
+                <b>{chainGlossaryGroups.length}</b>
+              </button>
+            </nav>
+
+            {brandGlossarySection === "global" ? <>
+              <div className="sales-margin-brand-glossary-summary">
+                <span>Marcas agrupadas globalmente<small>Conservan sus ventas dentro de OTRAS</small></span>
+                <strong>{payload.brandGrouping.brands.length}</strong>
+              </div>
+              <div className="sales-margin-brand-glossary-list" role="list" aria-label="Marcas agrupadas globalmente como OTRAS">
+                {payload.brandGrouping.brands.map((brand) => <div key={brand.name} role="listitem">
+                  <span>{brand.name}</span>
+                  <strong>{groupedBrandSalesFormatter.format(brand.totalSalesMm)} MM$</strong>
+                </div>)}
+                {payload.brandGrouping.brands.length === 0 && <p>No hay marcas agrupadas para la ventana vigente.</p>}
+              </div>
+            </> : <>
+              <div className="sales-margin-brand-glossary-summary">
+                <span>Cadenas con agrupación<small>{chainGlossaryBrandCount} relaciones marca–cadena bajo el umbral</small></span>
+                <strong>{chainGlossaryGroups.length}</strong>
+              </div>
+              <div className="sales-margin-brand-glossary-chains" aria-label="Marcas agrupadas como OTRAS por cadena">
+                {chainGlossaryGroups.map((group) => {
+                  const groupedSales = group.brands.reduce((total, brand) => total + brand.totalSalesMm, 0);
+                  return <details key={group.chain}>
+                    <summary title={group.chain}>
+                      <Store aria-hidden="true" />
+                      <span><b>{salesMarginChainDisplayName(group.chain)}</b><small>{group.brands.length} {group.brands.length === 1 ? "marca agrupada" : "marcas agrupadas"}</small></span>
+                      <strong>{groupedBrandSalesFormatter.format(groupedSales)} MM$</strong>
+                      <ChevronDown aria-hidden="true" />
+                    </summary>
+                    <div role="list" aria-label={`Marcas agrupadas en ${group.chain}`}>
+                      {group.brands.map((brand) => <div key={brand.name} role="listitem">
+                        <span>{brand.name}</span>
+                        <strong>{groupedBrandSalesFormatter.format(brand.totalSalesMm)} MM$</strong>
+                      </div>)}
+                    </div>
+                  </details>;
+                })}
+                {chainGlossaryGroups.length === 0 && <p>No hay agrupaciones por cadena para la ventana vigente.</p>}
+              </div>
+            </>}
           </div>
           <footer>
-            <small>Los montos corresponden a la suma utilizada para aplicar la regla de agrupación.</small>
+            <small>Los montos corresponden a la ventana usada para aplicar la regla de agrupación.</small>
             <button type="button" onClick={() => setBrandGlossaryOpen(false)}>Cerrar</button>
           </footer>
         </section>

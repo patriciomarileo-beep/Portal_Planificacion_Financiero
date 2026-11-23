@@ -7,11 +7,11 @@ const sourceTable = "forus-analitica-test-datalake.silver.ft_cl_planificacion_TB
 const cacheDurationMs = 5 * 60 * 1000;
 
 const defaultYears = [
-  "2024", "2025", "2026E", 
-  "2026P", "2027P", "2027M",
+  "2025R", "2026E", "2026P",
+  "2027P", "2027M",
 ] as const;
 
-const allowedScenarioPattern = /^20\d{2}(?:PS|[PEM])?$/;
+const allowedScenarioPattern = /^20\d{2}(?:PS|[RPEM])?$/;
 
 type CachedPayload = {
   expiresAt: number;
@@ -32,6 +32,9 @@ const rowsAsObjects = (payload: BigQueryRowsPayload) => (payload.rows ?? []).map
 
 export const queryForYears = (years: string[], includeChain: boolean, chainMonths: number[] | null) => {
   const annualChainSummary = includeChain && chainMonths === null;
+  const sourceBusinessFilter = includeChain
+    ? "\n  WHERE UPPER(TRIM(NEGOCIO_DETALLE))='BRICK & LIFE'"
+    : "";
   const temporalFilter = includeChain && chainMonths?.length
     ? ` AND month IN (${chainMonths.join(", ")})`
     : "";
@@ -54,12 +57,12 @@ export const queryForYears = (years: string[], includeChain: boolean, chainMonth
     VENTA_NETA sales_amount,
     MARGEN_CONTABILIDAD margin_amount,
     FECHA_EJECUCION refreshed_at
-  FROM \`${sourceTable}\`
+  FROM \`${sourceTable}\`${sourceBusinessFilter}
 ),
 mapped AS (
   SELECT
     CASE
-      WHEN REGEXP_CONTAINS(source_period, r'^\\d{4}$') AND source_origin='REAL' THEN source_period
+      WHEN REGEXP_CONTAINS(source_period, r'^\\d{4}$') AND source_origin='REAL' THEN CONCAT(source_period, 'R')
       WHEN REGEXP_CONTAINS(source_period, r'^\\d{4}P$') AND source_origin='PRESUPUESTO' THEN source_period
       WHEN REGEXP_CONTAINS(source_period, r'^\\d{4}M$') AND source_origin='PRESUPUESTO' THEN source_period
       WHEN REGEXP_CONTAINS(source_period, r'^\\d{4}E$') AND source_origin IN ('REAL','TY_ESTIMADO','NY_ESTIMADO') THEN source_period
@@ -98,6 +101,12 @@ source AS (
   WHERE estimate_priority IS NULL OR estimate_priority=selected_estimate_priority
 ),
 
+chain_source AS (
+  SELECT *
+  FROM source
+  WHERE UPPER(TRIM(business))='BRICK & LIFE'
+),
+
 scenario_status AS (
   SELECT
     scenario,
@@ -111,16 +120,22 @@ scenario_status AS (
 ),
 
 grouping_window_candidates AS (
-  SELECT DISTINCT SAFE_CAST(actual.scenario AS INT64) base_year
+  SELECT DISTINCT SAFE_CAST(SUBSTR(actual.scenario, 1, 4) AS INT64) base_year
   FROM source actual
-  WHERE REGEXP_CONTAINS(actual.scenario, r'^\\d{4}$')
+  WHERE REGEXP_CONTAINS(actual.scenario, r'^\\d{4}R$')
     AND EXISTS (
       SELECT 1 FROM source estimated
-      WHERE estimated.scenario=CONCAT(CAST(SAFE_CAST(actual.scenario AS INT64) + 1 AS STRING), 'E')
+      WHERE estimated.scenario=CONCAT(
+        CAST(SAFE_CAST(SUBSTR(actual.scenario, 1, 4) AS INT64) + 1 AS STRING),
+        'E'
+      )
     )
     AND EXISTS (
       SELECT 1 FROM source projected
-      WHERE projected.scenario=CONCAT(CAST(SAFE_CAST(actual.scenario AS INT64) + 2 AS STRING), 'P')
+      WHERE projected.scenario=CONCAT(
+        CAST(SAFE_CAST(SUBSTR(actual.scenario, 1, 4) AS INT64) + 2 AS STRING),
+        'P'
+      )
     )
 ),
 active_grouping_window AS (
@@ -128,7 +143,7 @@ active_grouping_window AS (
   FROM grouping_window_candidates
 ),
 grouping_scenarios AS (
-  SELECT CAST(base_year AS STRING) scenario FROM active_grouping_window
+  SELECT CONCAT(CAST(base_year AS STRING), 'R') scenario FROM active_grouping_window
   UNION ALL
   SELECT CONCAT(CAST(base_year + 1 AS STRING), 'E') FROM active_grouping_window
   UNION ALL
@@ -149,12 +164,42 @@ brand_classification AS (
   FROM (SELECT DISTINCT brand FROM source) brands
   LEFT JOIN brand_totals USING (brand)
 ),
+chain_totals AS (
+  SELECT chain, SUM(COALESCE(sales_amount, 0)) total_sales
+  FROM chain_source
+  JOIN grouping_scenarios USING (scenario)
+  GROUP BY chain
+),
+eligible_chains AS (
+  SELECT chain
+  FROM chain_totals
+  WHERE total_sales > 50000000
+),
+chain_brand_totals AS (
+  SELECT chain, brand, SUM(COALESCE(sales_amount, 0)) total_sales
+  FROM chain_source
+  JOIN grouping_scenarios USING (scenario)
+  GROUP BY chain, brand
+),
+chain_brand_classification AS (
+  SELECT
+    chain_brands.chain,
+    chain_brands.brand,
+    COALESCE(chain_brand_totals.total_sales, 0) total_sales,
+    UPPER(TRIM(chain_brands.brand)) IN ('OTRO', 'OTRAS')
+      OR COALESCE(chain_brand_totals.total_sales, 0) < 50000000 grouped_as_other
+  FROM (SELECT DISTINCT chain, brand FROM chain_source) chain_brands
+  LEFT JOIN chain_brand_totals USING (chain, brand)
+),
 classified AS (
   SELECT
     source.* EXCEPT (brand),
-    IF(brand_classification.grouped_as_other, 'OTRAS', source.brand) brand
-  FROM source
-  JOIN brand_classification USING (brand)
+    source.brand original_brand,
+    IF(${includeChain ? "chain_brand_classification" : "brand_classification"}.grouped_as_other, 'OTRAS', source.brand) brand
+  FROM ${includeChain ? "chain_source" : "source"} source
+  JOIN ${includeChain
+    ? "chain_brand_classification USING (chain, brand)\n  JOIN eligible_chains USING (chain)"
+    : "brand_classification USING (brand)"}
 ),
 filtered AS (
   SELECT *
@@ -162,13 +207,14 @@ filtered AS (
   WHERE scenario IN (${years.map((year) => `'${year}'`).join(", ")})${temporalFilter}
 )
 
-SELECT ${temporalSelect} business, ${includeChain ? "chain" : "''"} chain, brand, class, scenario,
+SELECT ${temporalSelect} business, ${includeChain ? "chain" : "''"} chain, brand,
+  ${includeChain ? "original_brand" : "brand"} original_brand, class, scenario,
   SUM(sales_amount)/1000000 sales,
   SUM(margin_amount)/1000000 margin_amount,
   (SELECT MAX(refreshed_at) FROM source) refreshed_at,
   IF(ROW_NUMBER() OVER (ORDER BY brand, business${includeChain ? ", chain" : ""}, class, ${temporalOrder}scenario)=1,
     (SELECT CONCAT(
-      CAST(base_year AS STRING), ',',
+      CAST(base_year AS STRING), 'R,',
       CAST(base_year + 1 AS STRING), 'E,',
       CAST(base_year + 2 AS STRING), 'P'
     ) FROM active_grouping_window),
@@ -183,6 +229,18 @@ SELECT ${temporalSelect} business, ${includeChain ? "chain" : "''"} chain, brand
     WHERE grouped_as_other),
     NULL
   ) grouped_brands_json,
+
+  IF(ROW_NUMBER() OVER (ORDER BY brand, business${includeChain ? ", chain" : ""}, class, ${temporalOrder}scenario)=1,
+    (SELECT TO_JSON_STRING(ARRAY_AGG(STRUCT(
+      chain,
+      brand AS name,
+      ROUND(total_sales / 1000000, 2) AS totalSalesMm
+    ) ORDER BY chain, brand))
+    FROM chain_brand_classification
+    JOIN eligible_chains USING (chain)
+    WHERE grouped_as_other),
+    NULL
+  ) chain_grouped_brands_json,
 
   IF(
     ROW_NUMBER() OVER (
@@ -204,18 +262,19 @@ SELECT ${temporalSelect} business, ${includeChain ? "chain" : "''"} chain, brand
       FROM scenario_status
       WHERE REGEXP_CONTAINS(
         scenario,
-        r'^\\d{4}(PS|[PEM])?$'
+        r'^\\d{4}(PS|[RPEM])?$'
       )
     ),
     NULL
   ) year_catalog_json
 
 FROM filtered
-GROUP BY ${temporalGroup}business${includeChain ? ", chain" : ""}, brand, class, scenario
+GROUP BY ${temporalGroup}business${includeChain ? ", chain, original_brand" : ""}, brand, class, scenario
 ORDER BY brand, business${includeChain ? ", chain" : ""}, class, ${temporalOrder}scenario`;
 };
 
 type GroupedBrand = { name: string; totalSalesMm: number };
+type ChainGroupedBrand = GroupedBrand & { chain: string };
 
 const groupedBrandsFrom = (value: unknown): GroupedBrand[] => {
   if (typeof value !== "string") return [];
@@ -231,6 +290,38 @@ const groupedBrandsFrom = (value: unknown): GroupedBrand[] => {
   } catch {
     return [];
   }
+};
+
+const chainGroupedBrandsFrom = (value: unknown): ChainGroupedBrand[] => {
+  if (typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((entry) => {
+      if (!entry || typeof entry !== "object") return [];
+      const { chain, name, totalSalesMm } = entry as {
+        chain?: unknown;
+        name?: unknown;
+        totalSalesMm?: unknown;
+      };
+      if (typeof chain !== "string" || typeof name !== "string") return [];
+      return [{ chain, name, totalSalesMm: Number(totalSalesMm ?? 0) }];
+    });
+  } catch {
+    return [];
+  }
+};
+
+const groupedBrandsByChain = (value: unknown) => {
+  const groups = new Map<string, GroupedBrand[]>();
+  for (const { chain, name, totalSalesMm } of chainGroupedBrandsFrom(value)) {
+    const brands = groups.get(chain) ?? [];
+    brands.push({ name, totalSalesMm });
+    groups.set(chain, brands);
+  }
+  return [...groups]
+    .sort(([left], [right]) => left.localeCompare(right, "es"))
+    .map(([chain, brands]) => ({ chain, brands }));
 };
 
 
@@ -294,7 +385,8 @@ const requestedYears = (request: NextRequest) => {
   }
 
   const priority: Record<string, number> = {
-    "": 0,
+    "": -1,
+    R: 0,
     E: 1,
     P: 2,
     M: 3,
@@ -345,6 +437,7 @@ export async function GET(request: NextRequest) {
         business: String(row.business ?? ""),
         chain: String(row.chain ?? ""),
         brand: String(row.brand ?? ""),
+        originalBrand: String(row.original_brand ?? row.brand ?? ""),
         class: String(row.class ?? ""),
         scenario: String(row.scenario ?? ""),
         sales: Number(row.sales ?? 0),
@@ -365,6 +458,12 @@ export async function GET(request: NextRequest) {
         thresholdMm: 50,
         window: groupingWindow,
         brands: groupedBrandsFrom(records[0]?.grouped_brands_json),
+      },
+      chainBrandGrouping: {
+        label: "OTRAS",
+        thresholdMm: 50,
+        window: groupingWindow,
+        chains: groupedBrandsByChain(records[0]?.chain_grouped_brands_json),
       },
     };
     cache.set(cacheKey, { expiresAt: Date.now() + cacheDurationMs, payload });

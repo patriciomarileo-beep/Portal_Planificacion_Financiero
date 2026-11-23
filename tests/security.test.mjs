@@ -24,23 +24,20 @@ const originalEnv = { ...process.env };
 afterEach(() => { mock.restoreAll(); for (const key of Object.keys(process.env))
     if (!(key in originalEnv))
         delete process.env[key]; Object.assign(process.env, originalEnv); });
-const setup = () => Object.assign(process.env, { NODE_ENV: "production", AUTH_SESSION_SECRET: "test-only-" + "x".repeat(48), APP_ORIGIN: "https://portal.example.com", GOOGLE_OAUTH_CLIENT_ID: "test.apps.googleusercontent.com", DISABLE_GOOGLE_LOGIN: "false", BL_SHEET_ID: "test-sheet-id" });
+const setup = () => Object.assign(process.env, { NODE_ENV: "production", AUTH_SESSION_SECRET: "test-only-" + "x".repeat(48), APP_ORIGIN: "https://portal.example.com", GOOGLE_OAUTH_CLIENT_ID: "test.apps.googleusercontent.com", DISABLE_GOOGLE_LOGIN: "false", BIGQUERY_BL_TABLE: "forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_RENTABILIDAD_BL" });
 const user = { email: "persona@forus.cl", name: "María Muñoz", role: "ADMINISTRADOR", personId: "42" };
 const post = (path, body, cookie = "") => new Request("https://portal.example.com" + path, { method: "POST", headers: { origin: "https://portal.example.com", "content-type": "application/json", cookie }, body: JSON.stringify(body) });
 const catalogRoles = ["SIN ROL", "ADMINISTRADOR", "ANALISTA FINANCIERO", "PLANIFICADOR FINANCIERO", "COMEX"];
-const storeSheetHeaders = [
-    "AÑO", "MES", "TIPO_PERIODO", "CC_ORIGEN", "CC_BASE_REPORTE", "CADENA", "TIENDA_ORIGEN", "TIENDA_HOMOLOGADA", "ESTADO_HOMOLOGACIÓN", "FUENTE", "VENTAS", "MARGEN", "REMUNERACIONES", "ARRIENDOS", "GASTOS_GRAL", "DEPRECIACIÓN", "FEE_COMERCIAL", "FEE_ADM", "COSTO_OPERACIONAL", "RESULTADO_NO_OPERACIONAL", "UTILIDAD_FINAL", "FOUR_WALLS",
-];
-const storeSheetValues = [
-    storeSheetHeaders,
-    ...[2024, 2025, 2026, 2027].map(year => [year, "TOTAL", "ANUAL", `CC-${year}`, `CC-${year}`, "HP", `Tienda ${year}`, `Tienda ${year}`, "OK", "TEST", 100, 50, -10, -10, -5, -2, -1, -1, -29, 0, 21, 25]),
-];
+const storeBigQueryRows = [2024, 2025, 2026, 2027].map(year => ({
+    f: [year, "TOTAL", "ANUAL", `CC-${year}`, "HP", `Tienda ${year}`, 100, 50, -10, -10, -5, -2, -1, -1, -29, 0, 21, 25, "2026-11-20T12:00:00.000Z"]
+        .map(value => ({ v: value === null ? null : String(value) })),
+}));
 const database = (role = "ADMINISTRADOR", active = true, roles = catalogRoles) => {
     mock.method(GoogleAuth.prototype, "getAccessToken", async () => "test-access-token");
     return mock.method(globalThis, "fetch", async (_url, options) => {
         if (String(_url).startsWith("https://www.googleapis.com/oauth2/v1/certs?")) return Response.json({ "rotated-key": "test-certificate" });
-        if (String(_url).startsWith("https://sheets.googleapis.com/")) return Response.json({ values: storeSheetValues });
         const query = JSON.parse(options.body).query;
+        if (query.includes("ft_cl_planificacion_TB_RENTABILIDAD_BL")) return Response.json({ rows: storeBigQueryRows });
         if (query.includes("ft_cl_planificacion_TB_ROLES_PLT_FINAN")) return Response.json({ rows: roles.map(v => ({ f: [{ v }] })) });
         if (query.startsWith("SELECT id_persona")) return Response.json({ rows: active ? [{ f: ["42", "María", "Muñoz", "", role].map(v => ({ v })) }] : [] });
         if (query.startsWith("SELECT *")) return Response.json({
@@ -51,11 +48,16 @@ const database = (role = "ADMINISTRADOR", active = true, roles = catalogRoles) =
         throw Error("Unexpected database query in test");
     });
 };
-test("B&L reads Google Sheets without a local data fallback and refreshes asynchronously", () => {
+test("B&L reads native BigQuery without a local or Sheets fallback and refreshes asynchronously", () => {
     const routeSource = readFileSync(new URL("../app/api/portal-data/route.ts", import.meta.url), "utf8");
+    const adapterSource = readFileSync(new URL("../app/api/_shared/store-bigquery.ts", import.meta.url), "utf8");
     const pageSource = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
-    assert.match(routeSource, /const storeData = await getStoreSheetData\(\)/);
+    assert.match(routeSource, /const storeData = await getStoreBigQueryData\(\)/);
     assert.doesNotMatch(routeSource, /base-consolidada|baseConsolidada|baseSnapshotAt/);
+    assert.match(adapterSource, /BIGQUERY_BL_TABLE/);
+    assert.match(adapterSource, /paginate: true/);
+    assert.match(adapterSource, /MAX\(SYNCED_AT\) OVER\(\)/);
+    assert.doesNotMatch(adapterSource, /sheets\.googleapis\.com|BL_SHEET_ID/);
     assert.doesNotMatch(pageSource, /window\.location\.reload/);
     assert.match(pageSource, /onRefreshReports\(\)\.finally\(\(\) => setRefreshing\(false\)\)/);
 });
@@ -369,7 +371,15 @@ test("analysts cannot write Toolbox entries and planners cannot administer users
   database("ANALISTA FINANCIERO");
   const cookie = await createSessionCookie(user);
   assert.equal((await ingest(post("/api/ingesta-bigquery", {}, cookie))).status, 403);
-  assert.equal((await portalData(new Request("https://portal.example.com/api/portal-data", { headers: { cookie } }))).status, 200);
+  const portalResponse = await portalData(new Request("https://portal.example.com/api/portal-data", { headers: { cookie } }));
+  assert.equal(portalResponse.status, 200);
+  const portalPayload = await portalResponse.json();
+  assert.equal(portalPayload.baseConsolidada.length, 4);
+  assert.deepEqual(portalPayload.baseConsolidada[0], [
+    2024, "TOTAL", "ANUAL", "CC-2024", "HP", "Tienda 2024",
+    100, 50, -10, -10, -5, -2, -1, -1, -29, 0, 21, 25,
+  ]);
+  assert.equal(portalPayload.baseSnapshotAt, "2026-11-20T12:00:00.000Z");
   mock.restoreAll();
   database("PLANIFICADOR FINANCIERO");
   assert.equal((await users(new Request("https://portal.example.com/api/usuarios", { headers: { cookie } }))).status, 403);

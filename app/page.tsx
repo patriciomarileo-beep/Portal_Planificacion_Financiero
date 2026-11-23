@@ -38,6 +38,7 @@ import {
   RefreshCw,
   Save,
   Search,
+  ShieldAlert,
   Store,
   Waves,
   Users,
@@ -172,6 +173,15 @@ const monthShort: Record<string, string> = {
 };
 const portalGroups: { id: PortalMenu; label: string; description: string; icon: typeof BarChart3; items: PortalSection[] }[] = [
   {
+    id: "toolbox",
+    label: "Toolbox AP",
+    description: "Planificación financiera, carga de bases y herramientas operativas del área.",
+    icon: PackageCheck,
+    items: [
+      { id: "toolbox", label: "Toolbox AP" },
+    ],
+  },
+  {
     id: "forecast",
     label: "Rentabilidad Forecast",
     description: "Rentabilidad, resultados y desempeño por canal, país y consolidado.",
@@ -225,9 +235,18 @@ const portalGroups: { id: PortalMenu; label: string; description: string; icon: 
       { id: "kpi-consolidado", label: "KPI Consolidado" },
     ],
   },
+  {
+    id: "risk-matrix",
+    label: "Matriz Riesgo",
+    description: "Evaluación y seguimiento de los riesgos financieros y operacionales.",
+    icon: ShieldAlert,
+    items: [
+      { id: "risk-matrix", label: "Matriz Riesgo" },
+    ],
+  },
 ];
 const menuForSection = (section: string): PortalMenu | undefined => {
-  if (section === "home" || section === "sales-margin" || section === "toolbox" || section === "users") return section;
+  if (section === "home" || section === "sales-margin" || section === "users") return section;
   return portalGroups.find(group => group.items.some(item => item.id === section))?.id;
 };
 const hiddenUserColumns = new Set([
@@ -1752,7 +1771,6 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
   useEffect(() => {
     if (canViewSalesMargin) void loadSalesMargin(salesMarginScope).catch(() => { /* Retry when the report is opened. */ });
   }, [canViewSalesMargin, salesMarginScope]);
-  const canUseToolbox = canAccessMenu(authUser.role, "toolbox");
   const defaultSection = canViewHome ? "home" : visiblePortalGroups[0]?.items[0]?.id ?? "";
   const [requestedPortalSection, setPortalSection] = useState("home");
   const requestedMenu = menuForSection(requestedPortalSection);
@@ -1819,8 +1837,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
       ? { id: "sales-margin", label: "Venta & Margen", enabled: true }
     : portalSection === "users"
       ? { id: "users", label: "Usuarios", enabled: true }
-    : portalSection === "toolbox"
-      ? { id: "toolbox", label: "Toolbox AP", enabled: false }
+
     : portalGroups.flatMap((group) => group.items).find((item) => item.id === portalSection) ?? portalGroups[0].items[0];
   const selectedPortalGroup = portalGroups.find((group) => group.items.some((item) => item.id === portalSection)) ?? portalGroups[0];
   const openPortalSection = (groupId: string, itemId: string) => {
@@ -1857,11 +1874,26 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
               }
             }}
           >
-            <button type="button" className={portalSection === "sales-margin" ? "active" : ""} aria-haspopup="true" aria-expanded={openTopnavGroup === "sales-margin"} onClick={() => setOpenTopnavGroup("sales-margin")}>
-              <CircleDollarSign /><span>Venta &amp; Margen</span><ChevronDown />
+            <button
+              type="button"
+              className={portalSection === "sales-margin" ? "active" : ""}
+              aria-haspopup="true"
+              aria-expanded={openTopnavGroup === "sales-margin"}
+              onClick={() => setOpenTopnavGroup("sales-margin")}
+            >
+              <CircleDollarSign />
+              <span>Venta &amp; Margen</span>
+              <ChevronDown />
             </button>
+
             <div className="portal-mega-menu">
-              <div className="portal-mega-intro"><CircleDollarSign /><small>ÁREA</small><strong>Venta &amp; Margen</strong><p>Ventas, margen y variaciones por período, canal, marca y clase.</p></div>
+              <div className="portal-mega-intro">
+                <CircleDollarSign />
+                <small>ÁREA</small>
+                <strong>Venta &amp; Margen</strong>
+                <p>Ventas, margen y variaciones por período, canal, marca y clase.</p>
+              </div>
+
               <div className="portal-mega-links">
                 {([
                   ["summary", "Consolidado"],
@@ -1870,13 +1902,23 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
                   ["brandChannel", "Marca × Canal"],
                   ["brandClass", "Marca × Clase"],
                   ["chainBrand", "Cadena × Marca"],
-                ] as [SalesMarginView, string][]).map(([targetView, label]) => <button type="button" className="available" key={targetView} onClick={() => openSalesMargin(targetView)}>
-                  <span><b>{label}</b><small>Disponible</small></span><ChevronRight />
-                </button>)}
+                ] as [SalesMarginView, string][]).map(([targetView, label]) => (
+                  <button
+                    type="button"
+                    className="available"
+                    key={targetView}
+                    onClick={() => openSalesMargin(targetView)}
+                  >
+                    <span>
+                      <b>{label}</b>
+                      <small>Disponible</small>
+                    </span>
+                    <ChevronRight />
+                </button>
+                ))}
               </div>
             </div>
           </div>}
-          {canUseToolbox && <button type="button" className={`upcoming ${portalSection === "toolbox" ? "active" : ""}`} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("toolbox"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}><span>Toolbox AP</span><small>Próximamente</small></button>}
           {visiblePortalGroups.map((group) => {
             const GroupIcon = group.icon;
             const groupOpen = openTopnavGroup === group.id;
@@ -1910,7 +1952,18 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
       </header>
       <main ref={workspaceRef} className="portal-workspace">
       <header className={`portal-reportbar ${portalSection === "home" ? "home" : ""}`}>
-        <div className="portal-context"><small>{portalSection === "home" ? "Accountability Portal" : portalSection === "users" ? "Administración" : portalSection === "toolbox" || portalSection === "sales-margin" ? "Planificación Financiera" : selectedPortalGroup.label}</small><b>{selectedPortalItem.label}</b></div>
+        <div className="portal-context">
+          <small>
+            {portalSection === "home"
+              ? "Accountability Portal"
+              : portalSection === "users"
+                ? "Administración"
+                : portalSection === "sales-margin"
+                  ? "Planificación Financiera"
+                  : selectedPortalGroup.label}
+          </small>
+          <b>{selectedPortalItem.label}</b>
+        </div>
         {blActive && <nav>
           <button className={activeView === "annual" ? "active" : ""} onClick={() => setView("annual")}>Comparativa anual</button>
           <button className={activeView === "detail" ? "active" : ""} onClick={() => setView("detail")}>Detalle tiendas</button>
@@ -1941,13 +1994,9 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
                 ] as [SalesMarginView, string][]).map(([targetView, label]) => <button type="button" className="available" key={targetView} onClick={() => openSalesMargin(targetView)}><span><b>{label}</b><small>Disponible</small></span><ChevronRight /></button>)}
               </div>
             </article>}
-            {canUseToolbox && <article className="portal-legend-card toolbox-home-card">
-              <div className="portal-legend-head"><span><PackageCheck /></span><div><small>HERRAMIENTA DE PLANIFICACIÓN</small><h2>Toolbox AP</h2><p>Planificación financiera, carga de bases y herramientas operativas del área.</p></div></div>
-              <div className="portal-legend-links"><button type="button" onClick={() => setPortalSection("toolbox")}><span><b>Toolbox AP</b><small>Próximamente</small></span><ChevronRight /></button></div>
-            </article>}
             {visiblePortalGroups.map((group) => {
               const GroupIcon = group.icon;
-              return <article className="portal-legend-card" key={group.id}>
+              return <article className={`portal-legend-card${group.id === "toolbox" ? " toolbox-home-card" : ""}`} key={group.id}>
                 <div className="portal-legend-head"><span><GroupIcon /></span><div><small>ÁREA DE ANÁLISIS</small><h2>{group.label}</h2><p>{group.description}</p></div></div>
                 <div className="portal-legend-links">{group.items.map((item) => <button type="button" key={item.id} className={item.enabled ? "available" : ""} onClick={() => openPortalSection(group.id, item.id)}><span><b>{item.label}</b><small>{item.enabled ? "Disponible" : "En construcción"}</small></span><ChevronRight /></button>)}</div>
               </article>;

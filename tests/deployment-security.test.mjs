@@ -19,6 +19,7 @@ test("deployment requires an immutable image and scans that same digest before d
   assert.ok(config.securityScan.args.includes("HIGH,CRITICAL"));
   assert.equal(config.securityScan.args[config.securityScan.args.indexOf("--exit-code") + 1], "1");
   assert.ok(config.deployment.args.includes("--no-allow-unauthenticated"));
+  assert.equal(config.deployment.args[config.deployment.args.indexOf("--ingress") + 1], "internal");
   assert.ok(!config.deployment.args.includes("--source"));
   assert.equal(config.deployment.args[config.deployment.args.indexOf("--image") + 1], image);
 });

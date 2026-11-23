@@ -1,3 +1,4 @@
 # Code owners - el equipo DevOps es responsable de la config de CI.
 # Cambios a .gitlab-ci.yml requieren aprobación de DevOps.
 /.gitlab-ci.yml @forus-corp/devops
+/infra/ @forus-corp/devops

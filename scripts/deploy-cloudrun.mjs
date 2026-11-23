@@ -30,7 +30,7 @@ if (missing.length) {
 const gcloudConfig = process.env.CLOUDSDK_CONFIG || join(root, ".gcloud");
 mkdirSync(gcloudConfig, { recursive: true });
 
-const service = process.env.CLOUD_RUN_SERVICE || "rentabilidad-tiendas-2027";
+const service = process.env.CLOUD_RUN_SERVICE || "plataforma-planificacion-financiera";
 const image = process.env.CLOUD_RUN_IMAGE.trim();
 if (!/^(?:[a-z0-9-]+-docker\.pkg\.dev|gcr\.io)\/[a-zA-Z0-9_./-]+@sha256:[a-f0-9]{64}$/.test(image)) {
   console.error("CLOUD_RUN_IMAGE debe identificar una imagen de Artifact Registry/GCR fijada por digest sha256.");
@@ -80,6 +80,8 @@ const args = [
 ];
 
 args.push(allowUnauthenticated ? "--allow-unauthenticated" : "--no-allow-unauthenticated");
+// Solo tráfico interno: el acceso de usuarios entra por el LB interno (infra/).
+args.push("--ingress", "internal");
 if (process.env.CLOUD_RUN_SERVICE_ACCOUNT) {
   args.push("--service-account", process.env.CLOUD_RUN_SERVICE_ACCOUNT);
 }

@@ -50,3 +50,9 @@ next-env.d.ts
 /.npm/
 *.xlsx
 Presupuesto Arriendo tiendas 2027_v13092026 - Detalle Presupuesto 2027.csv
+
+# terraform (infra/)
+.terraform/
+*.tfstate
+*.tfstate.*
+plan.cache

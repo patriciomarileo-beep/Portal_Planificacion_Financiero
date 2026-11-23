@@ -40,7 +40,9 @@ const payload = {
     label: "OTRAS",
     thresholdMm: 50,
     window: ["2025R", "2026E", "2027P"],
-    chains: [{ chain: "HUSH PUPPIES", brands: [{ name: "MARCA MENOR", totalSalesMm: 4.5 }] }],
+    chains: [{
+      chain: "HUSH PUPPIES",
+      brands: [{ name: "MARCA MENOR", totalSalesMm: 4.5 }] }],
   },
 };
 afterEach(() => { clearSalesMarginData(); mock.restoreAll(); });

@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
+import type { AuthUser } from "@/modules/identity/domain/auth-user";
 import {
   Bar,
   BarChart,
@@ -49,7 +51,12 @@ import type { DollarHistoryPayload } from "./market/dollar-history-data";
 import type { BaseRow } from "./base-consolidada-types";
 import { PrivateDataContext, usePrivateData, type PrivateData } from "./private-data-context";
 import { storeClassification, type StoreClassification } from "./store-classification";
-import { canAccessMenu, type PortalMenu } from "./menu-access";
+
+import { 
+  canAccessMenu, 
+  type PortalMenu 
+} from "@/modules/identity/domain/menu-access";
+
 import { clearSalesMarginData, loadSalesMargin } from "./sales-margin/sales-margin-data";
 import type { SalesMarginView } from "./sales-margin/SalesMargin";
 import MonthPeriodFilter, { type MonthPeriod } from "./components/MonthPeriodFilter";
@@ -119,12 +126,7 @@ type UserDraft = {
   rol: string;
   activo: boolean;
 };
-type AuthUser = {
-  email: string;
-  name: string;
-  role: string;
-  personId: string;
-};
+
 type GoogleCredentialResponse = {
   credential?: string;
 };
@@ -849,51 +851,6 @@ function StoreModal({ store, onClose }: { store: StoreRow; onClose: () => void }
         </div>
       </section>
     </div>
-  );
-}
-
-function Monthly({ selection }: { selection: StoreRow[] }) {
-  const monthly = monthOrder.map((month) => {
-    const sum = (year: 2026 | 2027) => selection.reduce((a, s) => addMetric(a, s.monthly[year][month] ?? emptyMetric()), emptyMetric());
-    const y26 = sum(2026), y27 = sum(2027);
-    return { month: monthShort[month], sales26: y26.sales, sales27: y27.sales, variation: variation(y27.sales, y26.sales) ?? 0, margin26: pct(y26.margin, y26.sales), margin27: pct(y27.margin, y27.sales) };
-  });
-  const total26 = monthly.reduce((a, x) => a + x.sales26, 0);
-  const total27 = monthly.reduce((a, x) => a + x.sales27, 0);
-  return (
-    <>
-      <div className="title"><div><i>01</i><span><h2>Comparativa mensual</h2><p>BASE 2027P vs BASE 2026E · apertura mensual real de BASE_CONSOLIDADA</p></span></div></div>
-      <section className="panel">
-        <label>VENTAS Y VARIACIÓN INTERANUAL</label><h3>Evolución mensual</h3>
-        <div className="chart monthly">
-          <ResponsiveContainer>
-            <BarChart data={monthly}>
-              <CartesianGrid stroke="#e7ebf1" vertical={false} />
-              <XAxis dataKey="month" /><YAxis tickFormatter={(v) => Math.round(v / 1000).toLocaleString("es-CL")} />
-              <YAxis yAxisId="pct" orientation="right" tickFormatter={(v) => `${v}%`} />
-              <Tooltip content={<Tip />} /><Legend />
-              <Bar dataKey="sales26" name="BASE 2026E" fill="#9aabc3" radius={[4,4,0,0]} />
-              <Bar dataKey="sales27" name="BASE 2027P" fill="#285eb2" radius={[4,4,0,0]} />
-              <Line yAxisId="pct" type="monotone" dataKey="variation" name="Variación" stroke="#16a36a" strokeWidth={3} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-      <div className="monthly-kpis">
-        <article><label>VENTA 2026E</label><strong>{money(total26)}</strong></article>
-        <article><label>VENTA 2027P</label><strong>{money(total27)}</strong></article>
-        <article><label>VARIACIÓN</label><strong className={(variation(total27,total26) ?? 0) >= 0 ? "pos" : "neg"}>{variation(total27,total26)?.toFixed(1) ?? "—"}%</strong></article>
-      </div>
-      <section className="panel">
-        <label>DETALLE MENSUAL</label><h3>Ventas y margen / venta</h3>
-        <div className="scroll">
-          <table>
-            <thead><tr><th>MES</th><th>VENTA 2026E</th><th>MARGEN 2026E</th><th>VENTA 2027P</th><th>MARGEN 2027P</th><th>VAR. VENTA</th></tr></thead>
-            <tbody>{monthly.map((m) => <tr key={m.month}><td><b>{m.month}</b></td><td>{money(m.sales26)}</td><td>{m.margin26.toFixed(2)}%</td><td>{money(m.sales27)}</td><td>{m.margin27.toFixed(2)}%</td><td className={m.variation >= 0 ? "pos" : "neg"}>{m.variation.toFixed(1)}%</td></tr>)}</tbody>
-          </table>
-        </div>
-      </section>
-    </>
   );
 }
 
@@ -1684,7 +1641,7 @@ function LoginForm({ onLogin }: { onLogin: (user: AuthUser) => void | Promise<vo
   return (
     <main className="login-shell">
       <section className="login-panel login-access-panel">
-        <div className="brand login-brand"><img src="/forus.png" alt="Forus" /><b>PLANIFICACIÓN <span>FINANCIERA</span><small>Intelligence portal</small></b></div>
+        <div className="brand login-brand"><Image src="/forus.png" alt="Forus" width={68} height={34} preload /><b>PLANIFICACIÓN <span>FINANCIERA</span><small>Intelligence portal</small></b></div>
         <div className="login-copy">
           <label>ACCOUNTABILITY PORTAL · ACCESO CORPORATIVO</label>
           <h1>Del desempeño interno al pulso de la industria.</h1>
@@ -1857,7 +1814,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
     <div className="portal-shell microsoft-shell">
       <header className="portal-topbar">
         <button className="portal-brand" type="button" onClick={() => { setPortalSection(defaultSection); setOpenTopnavGroup(null); setMobileNavOpen(false); }} aria-label={canViewHome ? "Ir a la portada" : "Ir a Comex"}>
-          <img src="/forus.png" alt="Forus" />
+          <Image src="/forus.png" alt="Forus" width={54} height={34} preload />
           <span><b>Accountability Portal</b><small>Planificación · Forus</small></span>
         </button>
         <button className="portal-mobile-toggle" type="button" onClick={() => { setMobileNavOpen((current) => !current); setOpenTopnavGroup(null); }} aria-expanded={mobileNavOpen} aria-label="Abrir menú"><Menu /></button>

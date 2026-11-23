@@ -200,7 +200,14 @@ test("the 2027 home call to action opens the Sales and Margin consolidated view"
 
 test("Forbox replaces Toolbox AP across navigation and authorization", () => {
   const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
-  const menuAccess = readFileSync(new URL("../app/menu-access.ts", import.meta.url), "utf8");
+  
+  const menuAccess = readFileSync(
+    new URL(
+      "../modules/identity/domain/menu-access.ts", 
+      import.meta.url), 
+      "utf8"
+    )
+    ;
   const ingestRoute = readFileSync(new URL("../app/api/ingesta-bigquery/route.ts", import.meta.url), "utf8");
   const planning = readFileSync(new URL("../app/toolbox/ToolboxPlanning.tsx", import.meta.url), "utf8");
 

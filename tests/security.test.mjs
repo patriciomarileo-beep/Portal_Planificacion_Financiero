@@ -5,7 +5,13 @@ import { OAuth2Client, GoogleAuth } from "google-auth-library";
 import { NextRequest } from "next/server";
 import { createSessionCookie, clearSessionCookie, readSession } from "../app/api/_shared/session";
 import { requireAuth, requireMenuAuth } from "../app/api/_shared/auth";
-import { canAccessMenu, menusForRole, portalMenus } from "../app/menu-access";
+
+import { 
+  canAccessMenu, 
+  menusForRole, 
+  portalMenus 
+} from "../modules/identity/domain/menu-access";
+
 import { HttpError, readJson, requireSameOrigin } from "../app/api/_shared/http";
 import { POST as emailLogin } from "../app/api/auth/email/route";
 import { POST as googleLogin } from "../app/api/auth/google/route";

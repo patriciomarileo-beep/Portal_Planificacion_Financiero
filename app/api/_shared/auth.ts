@@ -2,7 +2,11 @@ import { parameter, runQuery, tablePath, type BigQueryRowsPayload } from "./bigq
 import { readSession } from "./session";
 import { HttpError } from "./http";
 import { getUserRoles, normalizedUserRole } from "./user-roles";
-import { canAccessMenu, menusForRole, type PortalMenu } from "../../menu-access";
+import { 
+  canAccessMenu, 
+  menusForRole, 
+  type PortalMenu } 
+from "../../../modules/identity/domain/menu-access";
 
 export const activeUser = async (email: string) => {
   const payload = await runQuery<BigQueryRowsPayload>(

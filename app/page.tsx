@@ -4,12 +4,19 @@ import { usePortalNavigation } from "@/modules/portal-shell/hooks/usePortalNavig
 import { PortalHome } from "@/modules/portal-shell/ui/PortalHome";
 import { PortalReportbar } from "@/modules/portal-shell/ui/PortalReportbar";
 import { PortalTopbar } from "@/modules/portal-shell/ui/PortalTopbar";
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import type { AuthUser } from "@/modules/identity/domain/auth-user";
 import { canAccessMenu } from "@/modules/identity/domain/menu-access";
 import { UserMenu } from "@/modules/identity/ui/UserMenu";
 import { LoginForm } from "@/modules/identity/ui/LoginForm";
+import { 
+  closeAuthSession, 
+  loadAuthSession, 
+} from "@/modules/identity/services/auth-service";
+
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+
+
 import {
   Bar,
   BarChart,
@@ -1765,17 +1772,33 @@ export default function Home() {
     setUser(authenticatedUser);
     if (canAccessMenu(authenticatedUser.role, "forecast")) void loadPortalData();
   }, [loadPortalData]);
-  const loadSession = useCallback(async (signal: AbortSignal) => {
-    const response = await fetch("/api/auth/session", { cache: "no-store", signal });
-    if (!response.ok) throw new Error("No fue posible validar el acceso.");
-    const payload = await response.json() as { user: AuthUser | null };
-    if (signal.aborted) return;
-    if (!payload.user) { clearSalesMarginData(); setUser(null); setData(null); return; }
-    acceptUser(payload.user);
-  }, [acceptUser]);
+
+  const loadSession = useCallback(
+    async (signal: AbortSignal) => {
+      const authenticatedUser =
+        await loadAuthSession(signal);
+
+      if (signal.aborted) {
+        return;
+      }
+
+      if (!authenticatedUser) {
+        clearSalesMarginData();
+        setUser(null);
+        setData(null);
+        return;
+      }
+
+      acceptUser(authenticatedUser);
+    },
+    [acceptUser],
+  );
+
+
   const logout = async () => {
-    const response = await fetch("/api/auth/logout", { method: "POST", cache: "no-store" });
-    if (!response.ok) throw new Error("No fue posible cerrar sesión.");
+
+    await closeAuthSession();
+
     dataRequestRef.current?.abort();
     clearSalesMarginData();
     setError("");

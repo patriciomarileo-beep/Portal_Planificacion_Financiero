@@ -11,6 +11,11 @@ import Image from "next/image";
 import { AlertTriangle } from "lucide-react";
 
 import type { AuthUser } from "../domain/auth-user";
+import {
+  authenticateWithGoogle,
+  loadAuthConfig,
+} from "../services/auth-service";
+
 
 type GoogleCredentialResponse = {
   credential?: string;
@@ -70,30 +75,29 @@ export function LoginForm({
     useState(false);
 
   useEffect(() => {
-    let active = true;
-
-    fetch("/api/config")
-      .then(async (response) => {
-        const payload = await response.json() as {
-          googleClientId?: string;
-        };
-
-        if (active && response.ok) {
-          setGoogleClientId(
-            payload.googleClientId ?? "",
-          );
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setConfigLoaded(true);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
+      const controller = new AbortController();
+    
+      void loadAuthConfig(controller.signal)
+        .then((clientId) => {
+          if (!controller.signal.aborted) {
+            setGoogleClientId(clientId);
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setGoogleClientId("");
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setConfigLoaded(true);
+          }
+        });
+    
+      return () => {
+        controller.abort();
+      };
+    }, []);
 
   useEffect(() => {
     if (!configLoaded || !googleClientId) {
@@ -128,38 +132,13 @@ export function LoginForm({
           setError("");
 
           try {
-            const authResponse = await fetch(
-              "/api/auth/google",
-              {
-                method: "POST",
-                headers: {
-                  "content-type":
-                    "application/json",
-                },
-                body: JSON.stringify({
-                  credential:
-                    response.credential,
-                }),
-              },
-            );
-
-            const payload =
-              await authResponse.json() as {
-                user?: AuthUser;
-                error?: string;
-              };
-
-            if (
-              !authResponse.ok ||
-              !payload.user
-            ) {
-              throw new Error(
-                payload.error ||
-                  "No se pudo iniciar sesión.",
+            
+            const authenticatedUser =
+              await authenticateWithGoogle(
+                response.credential,
               );
-            }
-
-            await onLogin(payload.user);
+          
+            await onLogin(authenticatedUser);
           } catch (authenticationError) {
             setError(
               authenticationError instanceof Error

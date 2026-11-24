@@ -1,14 +1,10 @@
-export type CatM2SnapshotStore = {
-  name: string;
-  squareMeters: number;
-  sales: number;
-  salesPerM2: number;
-  operatingResult: number;
-  operatingResultPerM2: number;
-  productMix: [number, number, number] | null;
-};
+import type {
+  CatM2SnapshotStore,
+  CatM2SnapshotTotals,
+} from "@/modules/profitability-bl/domain/profitability-bl-data";
 
-export const catM2SnapshotTotals = {
+export const catM2SnapshotTotals:
+  CatM2SnapshotTotals = {
   sales: 20333,
   operatingResult: 2489,
   squareMeters: 3460,

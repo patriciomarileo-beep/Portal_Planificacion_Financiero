@@ -1,9 +1,6 @@
-export type StoreM2Row = {
-  code: string;
-  name: string;
-  squareMeters: number;
-};
-
+import type {
+  StoreM2Row,
+} from "@/modules/profitability-bl/domain/profitability-bl-data";
 // Fuente: https://docs.google.com/spreadsheets/d/1CWYpxnTBJicUUj-lGB3I9We4iFOu4Zk-ev3hWc7UM5I/edit?gid=0
 // Se conserva por CC el ultimo m2_total valido disponible en la historia mensual.
 export const storeM2: StoreM2Row[] = [

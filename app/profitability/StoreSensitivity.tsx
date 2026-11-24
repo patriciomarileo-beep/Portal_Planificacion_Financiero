@@ -2,8 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { Download, SlidersHorizontal } from "lucide-react";
-import type { BaseRow } from "../base-consolidada-types";
-import { usePrivateData } from "../private-data-context";
+
+import type {
+  BaseRow,
+} from "@/modules/profitability-bl/domain/profitability-bl-data";
+
+import {
+  useProfitabilityBlData,
+} from "@/modules/profitability-bl/context/profitability-bl-data-context";
+
+
 import { buildForecast2030, type ForecastYear } from "../forecast-2028-2030";
 
 type DisplayYear = 2026 | 2027 | ForecastYear;
@@ -32,7 +40,7 @@ function historicalStores(baseConsolidada: BaseRow[]) {
 }
 
 export default function StoreSensitivity() {
-  const { baseConsolidada, storeContractEnd } = usePrivateData();
+  const { baseConsolidada, storeContractEnd } = useProfitabilityBlData();
   const [macroAdjustment, setMacroAdjustment] = useState(0), [payrollGrowth, setPayrollGrowth] = useState(6), [contractLimit, setContractLimit] = useState(2030);
   const [closed, setClosed] = useState<Set<string>>(new Set());
   const rows = useMemo(() => buildForecast2030(baseConsolidada, { scenarioAdjustment: macroAdjustment / 100, payrollGrowth: payrollGrowth / 100 }), [baseConsolidada, macroAdjustment, payrollGrowth]);

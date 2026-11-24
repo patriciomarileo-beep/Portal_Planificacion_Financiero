@@ -1,4 +1,6 @@
-import type { BaseRow } from "../../base-consolidada-types";
+import type {
+  BaseRow,
+} from "@/modules/profitability-bl/domain/profitability-bl-data";
 import {
   runQuery,
   validatedTablePath,

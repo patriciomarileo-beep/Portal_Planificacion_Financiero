@@ -7,7 +7,9 @@ import {
   useState,
 } from "react";
 
-import type { PrivateData } from "@/app/private-data-context";
+import type {
+  ProfitabilityBlData,
+} from "../domain/profitability-bl-data";
 
 import {
   PortalDataUnauthorizedError,
@@ -20,7 +22,7 @@ type UsePortalDataOptions = {
 };
 
 type UsePortalDataResult = {
-  data: PrivateData | null;
+  data: ProfitabilityBlData | null;
   error: string;
   refresh: () => Promise<void>;
   reset: () => void;
@@ -31,7 +33,7 @@ export function usePortalData({
   onUnauthorized,
 }: UsePortalDataOptions): UsePortalDataResult {
   const [data, setData] =
-    useState<PrivateData | null>(null);
+    useState<ProfitabilityBlData | null>(null);
 
   const [error, setError] = useState("");
 

@@ -1,4 +1,6 @@
-import type { PrivateData } from "@/app/private-data-context";
+import type {
+  ProfitabilityBlData,
+} from "../domain/profitability-bl-data";
 
 export class PortalDataUnauthorizedError extends Error {
   constructor() {
@@ -9,7 +11,7 @@ export class PortalDataUnauthorizedError extends Error {
 
 export async function requestPortalData(
   signal?: AbortSignal,
-): Promise<PrivateData> {
+): Promise<ProfitabilityBlData> {
   const response = await fetch("/api/portal-data", {
     cache: "no-store",
     signal,
@@ -25,5 +27,5 @@ export async function requestPortalData(
     );
   }
 
-  return await response.json() as PrivateData;
+  return await response.json() as ProfitabilityBlData;
 }

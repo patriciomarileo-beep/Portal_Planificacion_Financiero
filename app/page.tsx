@@ -10,6 +10,11 @@ import { UserMenu } from "@/modules/identity/ui/UserMenu";
 import { LoginForm } from "@/modules/identity/ui/LoginForm";
 import { useAuthSession } from "@/modules/identity/hooks/useAuthSession";
 import { usePortalData } from "@/modules/profitability-bl/hooks/usePortalData";
+import type { BaseRow } from "@/modules/profitability-bl/domain/profitability-bl-data";
+import {
+  ProfitabilityBlDataContext,
+  useProfitabilityBlData,
+} from "@/modules/profitability-bl/context/profitability-bl-data-context";
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -54,12 +59,7 @@ import {
 
 import { parseMarketIndicators, indicatorDateLabel, type MarketIndicator } from "./market/indicator-data";
 import type { DollarHistoryPayload } from "./market/dollar-history-data";
-import type { BaseRow } from "./base-consolidada-types";
 
-import {
-  PrivateDataContext,
-  usePrivateData,
-} from "./private-data-context";
 
 
 import { storeClassification, type StoreClassification } from "./store-classification";
@@ -795,7 +795,7 @@ const normalizeStoreKey = (value: string) => value
   .toUpperCase();
 
 function M2Analysis({ selection }: { selection: StoreRow[] }) {
-  const { storeM2, catM2SnapshotStores, catM2SnapshotTotals } = usePrivateData();
+  const { storeM2, catM2SnapshotStores, catM2SnapshotTotals } = useProfitabilityBlData();
   const [m2Year, setM2Year] = useState<Year>(2027);
   const [m2Period, setM2Period] = useState<ReportPeriod>("ANUAL");
   const [m2Months, setM2Months] = useState<string[]>([]);
@@ -1050,7 +1050,7 @@ const mallOf = (name: string) => {
 };
 
 function StoreMonitor({ selection }: { selection: StoreRow[] }) {
-  const { storeM2, storeContractEnd } = usePrivateData();
+  const { storeM2, storeContractEnd } = useProfitabilityBlData();
   const [classificationFilter, setClassificationFilter] = useState<ClassificationFilter>("TOTAL");
   const [monitorFilter, setMonitorFilter] = useState<MonitorFilter>("TOTAL");
   const [monitorYear, setMonitorYear] = useState<2026 | 2027>(2027);
@@ -1461,7 +1461,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
   onRetryReports: () => void;
   onRefreshReports: () => Promise<void>;
 }) {
-  const privateData = useContext(PrivateDataContext);
+  const privateData = useContext(ProfitabilityBlDataContext);
   const baseSnapshotAt = privateData?.baseSnapshotAt ?? "";
   const snapshotLabel = formatSourceUpdatedAt(baseSnapshotAt);
   const [view, setView] = useState<"annual" | "detail" | "m2" | "monitor" | "break-even" | "sensitivity">("annual");
@@ -1820,7 +1820,7 @@ export default function Home() {
   }
 
   return (
-    <PrivateDataContext.Provider value={data}>
+    <ProfitabilityBlDataContext.Provider value={data}>
       <Portal
         authUser={user}
         onLogout={handleLogout}
@@ -1828,6 +1828,6 @@ export default function Home() {
         onRetryReports={() => void refreshPortalData()}
         onRefreshReports={refreshPortalData}
       />
-    </PrivateDataContext.Provider>
+    </ProfitabilityBlDataContext.Provider>
   );
 }

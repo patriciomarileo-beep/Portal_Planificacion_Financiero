@@ -1,5 +1,7 @@
 "use client";
 
+import { usePortalNavigation } from "@/modules/portal-shell/hooks/usePortalNavigation";
+import { PortalTopbar } from "@/modules/portal-shell/ui/PortalTopbar";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -32,31 +34,22 @@ import {
   CircleDollarSign,
   Filter,
   Download,
-  Globe2,
   Landmark,
   LogOut,
-  Menu,
-  PackageCheck,
   RefreshCw,
   Save,
   Search,
-  ShieldAlert,
   Store,
   Waves,
-  Users,
   X,
 } from "lucide-react";
+
+import { canAccessMenu } from "@/modules/identity/domain/menu-access";
 import { parseMarketIndicators, indicatorDateLabel, type MarketIndicator } from "./market/indicator-data";
 import type { DollarHistoryPayload } from "./market/dollar-history-data";
 import type { BaseRow } from "./base-consolidada-types";
 import { PrivateDataContext, usePrivateData, type PrivateData } from "./private-data-context";
 import { storeClassification, type StoreClassification } from "./store-classification";
-
-import { 
-  canAccessMenu, 
-  type PortalMenu 
-} from "@/modules/identity/domain/menu-access";
-
 import { clearSalesMarginData, loadSalesMargin } from "./sales-margin/sales-margin-data";
 import type { SalesMarginView } from "./sales-margin/SalesMargin";
 import MonthPeriodFilter, { type MonthPeriod } from "./components/MonthPeriodFilter";
@@ -79,11 +72,6 @@ type Quarter = "ANUAL" | "Q1" | "Q2" | "Q3" | "Q4";
 type ReportPeriod = MonthPeriod;
 type ClassificationFilter = "TOTAL" | StoreClassification;
 type MonitorFilter = "TOTAL" | "CHAIN_OTHER" | "DUPLICATE" | "ACTIVE_YEAR" | "NO_CONTRACT" | "NO_M2" | "SSS_YEAR" | "NS_YEAR" | "REMODELED";
-type PortalSection = {
-  id: string;
-  label: string;
-  enabled?: boolean;
-};
 type Metric = {
   sales: number;
   margin: number;
@@ -178,84 +166,6 @@ const monthShort: Record<string, string> = {
   ENERO: "Ene", FEBRERO: "Feb", MARZO: "Mar", ABRIL: "Abr",
   MAYO: "May", JUNIO: "Jun", JULIO: "Jul", AGOSTO: "Ago",
   SEPTIEMBRE: "Sep", OCTUBRE: "Oct", NOVIEMBRE: "Nov", DICIEMBRE: "Dic",
-};
-const portalGroups: { id: PortalMenu; label: string; description: string; icon: typeof BarChart3; items: PortalSection[] }[] = [
-  {
-    id: "forbox",
-    label: "Forbox",
-    description: "Planificación financiera, carga de bases y herramientas operativas del área.",
-    icon: PackageCheck,
-    items: [
-      { id: "forbox", label: "Forbox" },
-    ],
-  },
-  {
-    id: "forecast",
-    label: "Rentabilidad Forecast",
-    description: "Rentabilidad, resultados y desempeño por canal, país y consolidado.",
-    icon: BarChart3,
-    items: [
-      { id: "bl", label: "B&L", enabled: true },
-      { id: "ecommerce", label: "Ecommerce", enabled: true },
-      { id: "marketplace", label: "Marketplace", enabled: true },
-      { id: "wholesale", label: "Wholesale", enabled: true },
-      { id: "consolidada", label: "Consolidada", enabled: true },
-      { id: "paises", label: "Países", enabled: true },
-    ],
-  },
-  {
-    id: "mercado",
-    label: "Mercado",
-    description: "Benchmarks, contexto macroeconómico, retail e importaciones.",
-    icon: Globe2,
-    items: [
-      { id: "benchmark-nacional", label: "Benchmark Nacional", enabled: true },
-      { id: "benchmark-internacional", label: "Benchmark Internacional", enabled: true },
-      { id: "macroeconomia-ipom", label: "Macroeconomía e IPoM", enabled: true },
-      { id: "mercado-retail-cnc", label: "Mercado Retail · CNC", enabled: true },
-      { id: "importaciones-retail", label: "Importaciones Industria Retail", enabled: true },
-      { id: "importaciones-cosmeticos", label: "Importaciones Cosméticos", enabled: true },
-    ],
-  },
-  {
-    id: "comex",
-    label: "Comex",
-    description: "Seguimiento de compras, embarques, pagos, proveedores e importaciones.",
-    icon: PackageCheck,
-    items: [
-      { id: "programacion", label: "Programación" },
-      { id: "email-no-emb-marca", label: "Email No Emb x Marca" },
-      { id: "oc-s-originales", label: "OC S/Originales" },
-      { id: "seguimiento-fpago", label: "Seguimiento FPago" },
-      { id: "oc-sin-originales-etd", label: "OC Sin Originales Por ETD" },
-      { id: "responsables-comex", label: "Responsables Comex" },
-      { id: "otb-oc-sin-originales-etd", label: "OTB - OC Sin Originales Por ETD" },
-      { id: "proveedores-extranjeros", label: "Proveedores - Extranjeros" },
-      { id: "seg-importaciones-invoice", label: "Seg Importaciones Invoice" },
-    ],
-  },
-  {
-    id: "kpi",
-    label: "KPI Consolidado",
-    description: "Indicadores clave de gestión financiera y operacional.",
-    icon: Building2,
-    items: [
-      { id: "kpi-consolidado", label: "KPI Consolidado" },
-    ],
-  },
-  {
-    id: "risk-matrix",
-    label: "Matriz Riesgo",
-    description: "Evaluación y seguimiento de los riesgos financieros y operacionales.",
-    icon: ShieldAlert,
-    items: [
-      { id: "risk-matrix", label: "Matriz Riesgo" },
-    ],
-  },
-];
-const menuForSection = (section: string): PortalMenu | undefined => {
-  if (section === "home" || section === "sales-margin" || section === "users") return section;
-  return portalGroups.find(group => group.items.some(item => item.id === section))?.id;
 };
 const hiddenUserColumns = new Set([
   "fecha_creacion",
@@ -1714,23 +1624,35 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
   const [salesMarginRefreshKey, setSalesMarginRefreshKey] = useState(0);
   const [salesMarginInitialView, setSalesMarginInitialView] = useState<SalesMarginView>("summary");
   const [profitabilityRefreshKey, setProfitabilityRefreshKey] = useState(0);
-  const visiblePortalGroups = portalGroups.filter(group => canAccessMenu(authUser.role, group.id));
-  const canViewHome = canAccessMenu(authUser.role, "home");
-  const canViewSalesMargin = canAccessMenu(authUser.role, "sales-margin");
+  const {
+    portalSection,
+    setPortalSection,
+    visiblePortalGroups,
+    selectedPortalGroup,
+    selectedPortalItem,
+    defaultSection,
+    canViewHome,
+    canViewSalesMargin,
+    canManageUsers,
+    mobileNavOpen,
+    setMobileNavOpen,
+    openTopnavGroup,
+    setOpenTopnavGroup,
+    openPortalSection,
+  } = usePortalNavigation({
+    role: authUser.role,
+  });
   const salesMarginScope = `${authUser.personId}:${authUser.email}:${authUser.role}`;
   useEffect(() => {
     if (canViewSalesMargin) void loadSalesMargin(salesMarginScope).catch(() => { /* Retry when the report is opened. */ });
   }, [canViewSalesMargin, salesMarginScope]);
-  const defaultSection = canViewHome ? "home" : visiblePortalGroups[0]?.items[0]?.id ?? "";
-  const [requestedPortalSection, setPortalSection] = useState("home");
-  const requestedMenu = menuForSection(requestedPortalSection);
-  const portalSection = requestedMenu && canAccessMenu(authUser.role, requestedMenu) ? requestedPortalSection : defaultSection;
+
+  
   const blActive = portalSection === "bl";
   const profitabilityForecastActive = ["ecommerce", "marketplace", "wholesale", "consolidada"].includes(portalSection);
   const needsPrivateData = blActive;
   const stores = useMemo(() => blActive && privateData ? buildStores(privateData.baseConsolidada) : [], [blActive, privateData]);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [openTopnavGroup, setOpenTopnavGroup] = useState<PortalMenu | null>(null);
+
   const workspaceRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -1785,24 +1707,9 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
     setFwBand(null);
   };
 
-  const canManageUsers = canAccessMenu(authUser.role, "users");
+  
   const activeView = view;
-  const selectedPortalItem = portalSection === "home"
-    ? { id: "home", label: "Portada", enabled: true }
-    : portalSection === "sales-margin"
-      ? { id: "sales-margin", label: "Venta & Margen", enabled: true }
-    : portalSection === "users"
-      ? { id: "users", label: "Usuarios", enabled: true }
 
-    : portalGroups.flatMap((group) => group.items).find((item) => item.id === portalSection) ?? portalGroups[0].items[0];
-  const selectedPortalGroup = portalGroups.find((group) => group.items.some((item) => item.id === portalSection)) ?? portalGroups[0];
-  const openPortalSection = (groupId: string, itemId: string) => {
-    const group = visiblePortalGroups.find(group => group.id === groupId);
-    if (group?.items.some(item => item.id === itemId)) {
-      setPortalSection(itemId);
-      setOpenTopnavGroup(null);
-    }
-  };
   const openSalesMargin = (targetView: SalesMarginView = "summary") => {
     setSalesMarginInitialView(targetView);
     setPortalSection("sales-margin");
@@ -1812,100 +1719,30 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
 
   return (
     <div className="portal-shell microsoft-shell">
-      <header className="portal-topbar">
-        <button className="portal-brand" type="button" onClick={() => { setPortalSection(defaultSection); setOpenTopnavGroup(null); setMobileNavOpen(false); }} aria-label={canViewHome ? "Ir a la portada" : "Ir a Comex"}>
-          <Image src="/forus.png" alt="Forus" width={54} height={34} preload />
-          <span><b>Accountability Portal</b><small>Planificación · Forus</small></span>
-        </button>
-        <button className="portal-mobile-toggle" type="button" onClick={() => { setMobileNavOpen((current) => !current); setOpenTopnavGroup(null); }} aria-expanded={mobileNavOpen} aria-label="Abrir menú"><Menu /></button>
-        <nav className={`portal-topnav ${mobileNavOpen ? "open" : ""}`} aria-label="Informes financieros">
-          {canViewHome && <button type="button" className={portalSection === "home" ? "active" : ""} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("home"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Inicio</button>}
-          {canViewSalesMargin && <div
-            className={`portal-topnav-group sales-margin-topnav-group ${openTopnavGroup === "sales-margin" ? "open" : ""}`}
-            onMouseEnter={() => setOpenTopnavGroup("sales-margin")}
-            onMouseLeave={() => setOpenTopnavGroup((current) => current === "sales-margin" ? null : current)}
-            onBlur={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                setOpenTopnavGroup((current) => current === "sales-margin" ? null : current);
-              }
-            }}
-          >
-            <button
-              type="button"
-              className={portalSection === "sales-margin" ? "active" : ""}
-              aria-haspopup="true"
-              aria-expanded={openTopnavGroup === "sales-margin"}
-              onClick={() => setOpenTopnavGroup("sales-margin")}
-            >
-              <CircleDollarSign />
-              <span>Venta &amp; Margen</span>
-              <ChevronDown />
-            </button>
 
-            <div className="portal-mega-menu">
-              <div className="portal-mega-intro">
-                <CircleDollarSign />
-                <small>ÁREA</small>
-                <strong>Venta &amp; Margen</strong>
-                <p>Ventas, margen y variaciones por período, canal, marca y clase.</p>
-              </div>
+      <PortalTopbar
+        portalSection={portalSection}
+        defaultSection={defaultSection}
+        canViewHome={canViewHome}
+        canViewSalesMargin={canViewSalesMargin}
+        canManageUsers={canManageUsers}
+        visiblePortalGroups={visiblePortalGroups}
+        mobileNavOpen={mobileNavOpen}
+        setMobileNavOpen={setMobileNavOpen}
+        openTopnavGroup={openTopnavGroup}
+        setOpenTopnavGroup={setOpenTopnavGroup}
+        setPortalSection={setPortalSection}
+        openPortalSection={openPortalSection}
+        openSalesMargin={openSalesMargin}
+        userMenu={
+      <UserMenu
+        user={authUser}
+        onLogout={onLogout}
+      />
+    }
+  />
 
-              <div className="portal-mega-links">
-                {([
-                  ["summary", "Consolidado"],
-                  ["channel", "Canal"],
-                  ["brand", "Marca"],
-                  ["brandChannel", "Marca × Canal"],
-                  ["brandClass", "Marca × Clase"],
-                  ["chainBrand", "Cadena × Marca"],
-                ] as [SalesMarginView, string][]).map(([targetView, label]) => (
-                  <button
-                    type="button"
-                    className="available"
-                    key={targetView}
-                    onClick={() => openSalesMargin(targetView)}
-                  >
-                    <span>
-                      <b>{label}</b>
-                      <small>Disponible</small>
-                    </span>
-                    <ChevronRight />
-                </button>
-                ))}
-              </div>
-            </div>
-          </div>}
-          {visiblePortalGroups.map((group) => {
-            const GroupIcon = group.icon;
-            const groupOpen = openTopnavGroup === group.id;
-            return <div
-              className={`portal-topnav-group ${groupOpen ? "open" : ""}`}
-              key={group.id}
-              onMouseEnter={() => setOpenTopnavGroup(group.id)}
-              onMouseLeave={() => setOpenTopnavGroup((current) => current === group.id ? null : current)}
-              onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                  setOpenTopnavGroup((current) => current === group.id ? null : current);
-                }
-              }}
-            >
-              <button type="button" className={group.items.some((item) => item.id === portalSection) ? "active" : ""} aria-haspopup="true" aria-expanded={groupOpen} onClick={() => setOpenTopnavGroup(group.id)}>
-                <GroupIcon /><span>{group.label}</span><ChevronDown />
-              </button>
-              <div className="portal-mega-menu">
-                <div className="portal-mega-intro"><GroupIcon /><small>ÁREA</small><strong>{group.label}</strong><p>{group.description}</p></div>
-                <div className="portal-mega-links">
-                  {group.items.map((item) => <button type="button" key={item.id} className={item.enabled ? "available" : ""} onClick={() => { openPortalSection(group.id, item.id); setMobileNavOpen(false); }}>
-                    <span><b>{item.label}</b><small>{item.enabled ? "Disponible" : "Próximamente"}</small></span><ChevronRight />
-                  </button>)}
-                </div>
-              </div>
-            </div>;
-          })}
-          {canManageUsers && <button type="button" className={portalSection === "users" ? "active" : ""} aria-current={portalSection === "users" ? "page" : undefined} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("users"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}><Users /> Usuarios</button>}
-        </nav>
-        <UserMenu user={authUser} onLogout={onLogout} />
-      </header>
+
       <main ref={workspaceRef} className="portal-workspace">
       <header className={`portal-reportbar ${portalSection === "home" ? "home" : ""}`}>
         <div className="portal-context">

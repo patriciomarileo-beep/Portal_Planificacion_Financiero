@@ -23,6 +23,22 @@ const {
   sortChainLabels,
 } = await import("../app/sales-margin/SalesMargin.tsx");
 
+const navigation = readFileSync(
+  new URL(
+    "../modules/portal-shell/model/portal-navigation.ts",
+    import.meta.url,
+  ),
+  "utf8",
+)
+
+const portalTopbar = readFileSync(
+  new URL(
+    "../modules/portal-shell/ui/PortalTopbar.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
 const payload = {
   rows: [
     { month: 1, quarter: "Q1", business: "BRICK & LIFE", chain: "", brand: "MARCA", class: "CALZADO", scenario: "2027P", sales: 12345, marginAmount: 5000 },
@@ -211,8 +227,7 @@ test("Forbox replaces Toolbox AP across navigation and authorization", () => {
   const ingestRoute = readFileSync(new URL("../app/api/ingesta-bigquery/route.ts", import.meta.url), "utf8");
   const planning = readFileSync(new URL("../app/toolbox/ToolboxPlanning.tsx", import.meta.url), "utf8");
 
-  assert.match(page, /id: "forbox",\s*label: "Forbox"/);
-  assert.match(page, /portalSection === "forbox" \? "PRÓXIMAMENTE"/);
+assert.match(navigation, /id: "forbox",\s*label: "Forbox"/);  assert.match(page, /portalSection === "forbox" \? "PRÓXIMAMENTE"/);
   assert.doesNotMatch(page, /Toolbox AP|id: "toolbox"/);
   assert.match(menuAccess, /"forbox"/);
   assert.doesNotMatch(menuAccess, /"toolbox"/);
@@ -223,15 +238,53 @@ test("Forbox replaces Toolbox AP across navigation and authorization", () => {
 });
 
 test("the topbar exposes Sales and Margin as a dropdown with all its native views", () => {
-  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
-  assert.match(page, /portal-topnav-group sales-margin-topnav-group/);
-  assert.match(page, /openTopnavGroup === "sales-margin"/);
-  assert.match(page, /aria-haspopup="true"/);
-  for (const label of ["Consolidado", "Canal", "Marca", "Marca × Canal", "Marca × Clase", "Cadena × Marca"]) {
-    assert.match(page, new RegExp(`"${label}"`));
+  const page = readFileSync(
+    new URL("../app/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  const topbarSources = `${page}\n${portalTopbar}`;
+
+  assert.match(
+    portalTopbar,
+    /sales-margin-topnav-group/,
+  );
+
+  assert.match(
+    portalTopbar,
+    /openTopnavGroup === "sales-margin"/,
+  );
+
+  assert.match(
+    portalTopbar,
+    /aria-haspopup="true"/,
+  );
+
+  for (const label of [
+    "Consolidado",
+    "Canal",
+    "Marca",
+    "Marca × Canal",
+    "Marca × Clase",
+    "Cadena × Marca",
+  ]) {
+    assert.match(
+      portalTopbar,
+      new RegExp(`"${label}"`),
+    );
   }
-  assert.equal(page.match(/\["chainBrand", "Cadena × Marca"\]/g)?.length, 2);
-  assert.doesNotMatch(page, /brandClassChannel/);
+
+  assert.equal(
+    topbarSources.match(
+      /\["chainBrand", "Cadena × Marca"\]/g,
+    )?.length,
+    2,
+  );
+
+  assert.doesNotMatch(
+    topbarSources,
+    /brandClassChannel/,
+  );
 });
 
 test("direct access to Chain by brand activates its Sales and Margin tab", () => {

@@ -2,6 +2,7 @@
 
 import { usePortalNavigation } from "@/modules/portal-shell/hooks/usePortalNavigation";
 import { PortalTopbar } from "@/modules/portal-shell/ui/PortalTopbar";
+import { PortalHome } from "@/modules/portal-shell/ui/PortalHome";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -30,7 +31,6 @@ import {
   BarChart3,
   Building2,
   ChevronDown,
-  ChevronRight,
   CircleDollarSign,
   Filter,
   Download,
@@ -1744,7 +1744,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
 
 
       <main ref={workspaceRef} className="portal-workspace">
-      <header className={`portal-reportbar ${portalSection === "home" ? "home" : ""}`}>
+        <header className={`portal-reportbar ${portalSection === "home" ? "home" : ""}`}>
         <div className="portal-context">
           <small>
             {portalSection === "home"
@@ -1767,35 +1767,23 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
         </nav>}
         {(blActive || portalSection === "sales-margin" || profitabilityForecastActive) && <button className="refresh-button" onClick={refreshView} disabled={refreshing} title="Recargar la última versión disponible"><RefreshCw className={refreshing ? "spin" : ""} /> {refreshing ? "ACTUALIZANDO…" : "ACTUALIZAR"}</button>}
       </header>
-      {portalSection === "home" ? <section className="portal-home-page">
-        <div className="portal-home-heading">
-          <div className="portal-home-copy"><label>INTELIGENCIA FINANCIERA · 2027</label><h1>Decisiones que avanzan.<br /><em>Resultados más fuertes.</em></h1><p>Un punto de encuentro para explorar la rentabilidad, anticipar escenarios y convertir datos del negocio en acciones.</p><button type="button" onClick={() => openSalesMargin("summary")}>Explora el objetivo 2027 <ChevronRight /></button></div>
-          <EconomicIndicators />
-        </div>
-        <div className="portal-section-heading"><div><label>EXPLORA EL PORTAL</label><h2>Todo lo que necesitas, en un solo lugar</h2></div><p>Accede a los informes disponibles y conoce los próximos desarrollos.</p></div>
-        <div className="portal-legend-grid">
-            {canViewSalesMargin && <article className="portal-legend-card sales-margin-home-card">
-              <div className="portal-legend-head"><span><CircleDollarSign /></span><div><small>PLANIFICACIÓN FINANCIERA</small><h2>Venta &amp; Margen</h2><p>Ventas, margen y variaciones por período, canal, marca y clase.</p></div></div>
-              <div className="portal-legend-links">
-                {([
-                  ["summary", "Consolidado"],
-                  ["channel", "Canal"],
-                  ["brand", "Marca"],
-                  ["brandChannel", "Marca × Canal"],
-                  ["brandClass", "Marca × Clase"],
-                  ["chainBrand", "Cadena × Marca"],
-                ] as [SalesMarginView, string][]).map(([targetView, label]) => <button type="button" className="available" key={targetView} onClick={() => openSalesMargin(targetView)}><span><b>{label}</b><small>Disponible</small></span><ChevronRight /></button>)}
-              </div>
-            </article>}
-            {visiblePortalGroups.map((group) => {
-              const GroupIcon = group.icon;
-              return <article className={`portal-legend-card${group.id === "forbox" ? " forbox-home-card" : ""}`} key={group.id}>
-                <div className="portal-legend-head"><span><GroupIcon /></span><div><small>ÁREA DE ANÁLISIS</small><h2>{group.label}</h2><p>{group.description}</p></div></div>
-                <div className="portal-legend-links">{group.items.map((item) => <button type="button" key={item.id} className={item.enabled ? "available" : ""} onClick={() => openPortalSection(group.id, item.id)}><span><b>{item.label}</b><small>{item.enabled ? "Disponible" : "En construcción"}</small></span><ChevronRight /></button>)}</div>
-              </article>;
-            })}
-        </div>
-      </section> : portalSection === "sales-margin" ? <SalesMargin key={`${salesMarginScope}:${salesMarginInitialView}`} sessionScope={salesMarginScope} initialView={salesMarginInitialView} refreshKey={salesMarginRefreshKey} onRefreshComplete={completeSalesMarginRefresh} /> : needsPrivateData && !privateData ? <section className="portal-data-status" aria-live="polite">
+      {portalSection === "home" ? (
+        <PortalHome
+          canViewSalesMargin={canViewSalesMargin}
+          visiblePortalGroups={visiblePortalGroups}
+          onOpenSalesMargin={openSalesMargin}
+          onOpenPortalSection={openPortalSection}
+          economicIndicators={<EconomicIndicators />}
+        />
+      ) : portalSection === "sales-margin" ? (
+      <SalesMargin
+        key={`${salesMarginScope}:${salesMarginInitialView}`}
+        sessionScope={salesMarginScope}
+        initialView={salesMarginInitialView}
+        refreshKey={salesMarginRefreshKey}
+        onRefreshComplete={completeSalesMarginRefresh}
+      />) : needsPrivateData && !privateData ? <section className="portal-data-status" aria-live="polite">
+
         {reportsError ? <><AlertTriangle /><h2>No pudimos cargar este informe</h2><p>{reportsError}</p><button type="button" onClick={onRetryReports}>Reintentar</button></> : <><RefreshCw className="spin" /><h2>Preparando tu informe</h2><p>Puedes seguir navegando mientras termina la carga.</p></>}
       </section> : portalSection === "users" && canManageUsers ? <div className="content"><UsuariosAdmin /></div> : blActive ? <><section className="hero">
         <div><label>PLANIFICACIÓN FINANCIERA · PRESUPUESTO 2027P</label><h1>Rentabilidad de tiendas.</h1><p>EERR Retail y riesgo Four Walls por tienda.</p></div>

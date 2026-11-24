@@ -39,6 +39,14 @@ const portalTopbar = readFileSync(
   "utf8",
 );
 
+const portalHome = readFileSync(
+  new URL(
+    "../modules/portal-shell/ui/PortalHome.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
 const payload = {
   rows: [
     { month: 1, quarter: "Q1", business: "BRICK & LIFE", chain: "", brand: "MARCA", class: "CALZADO", scenario: "2027P", sales: 12345, marginAmount: 5000 },
@@ -198,20 +206,19 @@ test("the OTRAS glossary exposes grouped brands globally and by chain", () => {
 });
 
 test("the home exposes direct access to every native Sales and Margin view", () => {
-  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
   for (const view of ["summary", "channel", "brand", "brandChannel", "brandClass", "chainBrand"]) {
-    assert.match(page, new RegExp(`\\["${view}",`));
+    assert.match(portalHome, new RegExp(`\\["${view}",`));
   }
-  assert.match(page, /openSalesMargin\(targetView\)/);
+  assert.match(portalHome, /onOpenSalesMargin\(targetView\)/);
   assert.match(report, /initialView\?: SalesMarginView/);
   assert.match(report, /useState<SalesMarginView>\(initialView\)/);
 });
 
 test("the 2027 home call to action opens the Sales and Margin consolidated view", () => {
-  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
-  assert.match(page, /onClick=\{\(\) => openSalesMargin\("summary"\)\}>Explora el objetivo 2027/);
-  assert.doesNotMatch(page, /Explora el objetivo 2027[\s\S]{0,150}setView\("break-even"\)/);
+  assert.match(portalHome, /onOpenSalesMargin\("summary"\)/);
+  assert.match(portalHome, /Explora el objetivo 2027/);
+  assert.doesNotMatch(portalHome, /Explora el objetivo 2027[\s\S]{0,150}setView\("break-even"\)/);
 });
 
 test("Forbox replaces Toolbox AP across navigation and authorization", () => {
@@ -238,12 +245,7 @@ assert.match(navigation, /id: "forbox",\s*label: "Forbox"/);  assert.match(page,
 });
 
 test("the topbar exposes Sales and Margin as a dropdown with all its native views", () => {
-  const page = readFileSync(
-    new URL("../app/page.tsx", import.meta.url),
-    "utf8",
-  );
-
-  const topbarSources = `${page}\n${portalTopbar}`;
+  const topbarSources = `${portalHome}\n${portalTopbar}`;
 
   assert.match(
     portalTopbar,

@@ -1,5 +1,8 @@
 export type StoreClassification = "SSS" | "NS";
 
+export type ClassificationFilter =
+  "TOTAL" | StoreClassification;
+
 const newStoresByMonth: Record<2026 | 2027, Record<string, Set<string>>> = {
   2026: {
     ENERO: new Set(["210302","228301","228504","222706","222101","222502","221806","230301","223506","226801","231302","231501","231502","233201","233301"]),
@@ -31,6 +34,23 @@ const newStoresByMonth: Record<2026 | 2027, Record<string, Set<string>>> = {
   },
 };
 
-export const storeClassification = (code: string, year: 2026 | 2027, month: string): StoreClassification =>
-  newStoresByMonth[year][month]?.has(code) ? "NS" : "SSS";
+export const storeClassification = (
+  code: string,
+  year: 2026 | 2027,
+  month: string,
+): StoreClassification =>
+  newStoresByMonth[year][month]?.has(code)
+    ? "NS"
+    : "SSS";
+
+export const openingType = (
+  store: { code: string },
+  year: 2026 | 2027,
+  month = "DICIEMBRE",
+): StoreClassification =>
+  storeClassification(
+    store.code,
+    year,
+    month,
+  );
 

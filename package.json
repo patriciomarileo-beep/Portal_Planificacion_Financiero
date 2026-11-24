@@ -28,7 +28,7 @@
     "test:security:assets": "node scripts/check-public-data.mjs",
     "test:market": "node scripts/test-market-indicators.mjs",
     "test:imports": "node scripts/test-imports.mjs",
-    "test:profitability-bl": "node --test tests/profitability-bl-analysis.test.mjs"
+    "test:profitability-bl": "node --test tests/profitability-bl-classification.test.mjs"
   },
   "dependencies": {
     "@google-cloud/bigquery": "^9.1.0",

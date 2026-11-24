@@ -24,6 +24,11 @@ import {
   type Year,
 } from "@/modules/profitability-bl/domain/store-analysis";
 
+import {
+  openingType,
+  type ClassificationFilter,
+} from "@/modules/profitability-bl/domain/store-classification";
+
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -71,7 +76,6 @@ import type { DollarHistoryPayload } from "./market/dollar-history-data";
 
 
 
-import { storeClassification, type StoreClassification } from "./store-classification";
 import { clearSalesMarginData, loadSalesMargin } from "./sales-margin/sales-margin-data";
 import type { SalesMarginView } from "./sales-margin/SalesMargin";
 import MonthPeriodFilter, { type MonthPeriod } from "./components/MonthPeriodFilter";
@@ -91,7 +95,6 @@ type FwBand = "negative" | "low" | "high" | null;
 type ProfitMetric = "fourWalls" | "utility";
 type Quarter = "ANUAL" | "Q1" | "Q2" | "Q3" | "Q4";
 type ReportPeriod = MonthPeriod;
-type ClassificationFilter = "TOTAL" | StoreClassification;
 type MonitorFilter = "TOTAL" | "CHAIN_OTHER" | "DUPLICATE" | "ACTIVE_YEAR" | "NO_CONTRACT" | "NO_M2" | "SSS_YEAR" | "NS_YEAR" | "REMODELED";
 
 
@@ -196,8 +199,7 @@ const downloadExcel = (filename: string, headers: string[], rows: (string | numb
   link.click();
   URL.revokeObjectURL(url);
 };
-const openingType = (store: StoreRow, year: 2026 | 2027, month = "DICIEMBRE") =>
-  storeClassification(store.code, year, month);
+
 const fwBandOf = (store: StoreRow, year: Year, metric: ProfitMetric): FwBand => {
   if (store.annual[year].sales === 0) return null;
   const value = metric === "utility" ? store.annual[year].utility : (store.annual[year].fourWalls ?? 0);

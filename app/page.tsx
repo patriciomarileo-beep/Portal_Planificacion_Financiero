@@ -9,6 +9,7 @@ import { canAccessMenu } from "@/modules/identity/domain/menu-access";
 import { UserMenu } from "@/modules/identity/ui/UserMenu";
 import { LoginForm } from "@/modules/identity/ui/LoginForm";
 import { useAuthSession } from "@/modules/identity/hooks/useAuthSession";
+import { usePortalData } from "@/modules/profitability-bl/hooks/usePortalData";
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -54,7 +55,13 @@ import {
 import { parseMarketIndicators, indicatorDateLabel, type MarketIndicator } from "./market/indicator-data";
 import type { DollarHistoryPayload } from "./market/dollar-history-data";
 import type { BaseRow } from "./base-consolidada-types";
-import { PrivateDataContext, usePrivateData, type PrivateData } from "./private-data-context";
+
+import {
+  PrivateDataContext,
+  usePrivateData,
+} from "./private-data-context";
+
+
 import { storeClassification, type StoreClassification } from "./store-classification";
 import { clearSalesMarginData, loadSalesMargin } from "./sales-margin/sales-margin-data";
 import type { SalesMarginView } from "./sales-margin/SalesMargin";
@@ -1727,11 +1734,10 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
   );
 }
 
-// B&L se actualiza desde Google Sheets mediante /api/portal-data.
+// B&L se actualiza desde la tabla nativa de BigQuery mediante /api/portal-data.
 // El estado se reemplaza en memoria para conservar la vista y los filtros activos.
 
 export default function Home() {
-  
   const {
     user,
     checking,
@@ -1741,96 +1747,51 @@ export default function Home() {
     logout: closeAuthenticatedSession,
   } = useAuthSession();
 
-  const [data, setData] =
-    useState<PrivateData | null>(null);
-
-  const [reportsError, setReportsError] = useState("");
-  const dataRequestRef = useRef<AbortController | null>(null);
-  const resetPortalData = useCallback(() => {
-    dataRequestRef.current?.abort();
+  const handleUnauthorized = useCallback(() => {
     clearSalesMarginData();
-    setReportsError("");
-    setData(null);
-  }, []);
 
-  const loadPortalData = useCallback(async () => {
-    dataRequestRef.current?.abort();
-
-    const controller = new AbortController();
-    dataRequestRef.current = controller;
-
-    try {
-      const response = await fetch(
-        "/api/portal-data", 
-        { 
-          cache: "no-store", 
-          signal: controller.signal 
-        }
-      );
-
-      if (response.status === 401) {
-        if (!controller.signal.aborted) {
-          clearSalesMarginData();
-          setData(null);
-
-          invalidateSession(
-            "Tu sesión ya no está disponible. Ingresa nuevamente.",
-          );
-        }
-        return;
-      }
-      if (!response.ok) throw new Error("No fue posible cargar los informes. Intenta nuevamente.");
-      const payload = await response.json() as PrivateData;
-      if (!controller.signal.aborted) setData(payload);
-    } catch (error) {
-      if (!controller.signal.aborted) setReportsError(error instanceof Error ? error.message : "No fue posible cargar los informes.");
-    }
+    invalidateSession(
+      "Tu sesión ya no está disponible. Ingresa nuevamente.",
+    );
   }, [invalidateSession]);
 
-  const refreshPortalData = useCallback(async () => {
-    setReportsError("");
-    await loadPortalData();
-  }, [loadPortalData]);
+  const reportsEnabled = Boolean(
+    user &&
+      canAccessMenu(user.role, "forecast"),
+  );
+
+  const {
+    data,
+    error: reportsError,
+    refresh: refreshPortalData,
+    reset: resetPortalData,
+  } = usePortalData({
+    enabled: reportsEnabled,
+    onUnauthorized: handleUnauthorized,
+  });
 
   const handleLogin = useCallback(
     (authenticatedUser: AuthUser) => {
+      clearSalesMarginData();
       resetPortalData();
       storeAuthenticatedUser(authenticatedUser);
     },
-    [resetPortalData, storeAuthenticatedUser],
+    [
+      resetPortalData,
+      storeAuthenticatedUser,
+    ],
   );
 
   const handleLogout = useCallback(async () => {
     await closeAuthenticatedSession();
+
+    clearSalesMarginData();
     resetPortalData();
   }, [
     closeAuthenticatedSession,
     resetPortalData,
   ]);
-
-  useEffect(() => {
-
-    let active = true;
-
-    dataRequestRef.current?.abort();
-    clearSalesMarginData();
-
-    if (
-      user &&
-      canAccessMenu(user.role, "forecast")
-    ) {
-      void Promise.resolve().then(() => {
-        if (active) {
-          return loadPortalData();
-        } 
-      });
-    }
-    return () => {
-      active = false;
-      dataRequestRef.current?.abort();
-    };
-  }, [user, loadPortalData]);
-
+  
   if (checking) {
     return (
       <main className="login-shell">
@@ -1841,8 +1802,8 @@ export default function Home() {
     );
   }
 
-  if (!user) { 
-    return ( 
+  if (!user) {
+    return (
       <>
         {error && (
           <p role="alert">
@@ -1850,12 +1811,23 @@ export default function Home() {
           </p>
         )}
         
-        <LoginForm 
+        <LoginForm
           onLogin={handleLogin}
-          visual = {<DollarLoginPanel />} 
-          />
-        </>
-        );
-      }
-  return <PrivateDataContext.Provider value={data}><Portal authUser={user} onLogout={handleLogout} reportsError={reportsError} onRetryReports={() => void refreshPortalData()} onRefreshReports={refreshPortalData} /></PrivateDataContext.Provider>;
+          visual={<DollarLoginPanel />}
+        />
+      </>
+    );
+  }
+
+  return (
+    <PrivateDataContext.Provider value={data}>
+      <Portal
+        authUser={user}
+        onLogout={handleLogout}
+        reportsError={reportsError}
+        onRetryReports={() => void refreshPortalData()}
+        onRefreshReports={refreshPortalData}
+      />
+    </PrivateDataContext.Provider>
+  );
 }

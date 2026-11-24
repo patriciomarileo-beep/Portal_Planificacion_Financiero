@@ -10,11 +10,20 @@ import { UserMenu } from "@/modules/identity/ui/UserMenu";
 import { LoginForm } from "@/modules/identity/ui/LoginForm";
 import { useAuthSession } from "@/modules/identity/hooks/useAuthSession";
 import { usePortalData } from "@/modules/profitability-bl/hooks/usePortalData";
-import type { BaseRow } from "@/modules/profitability-bl/domain/profitability-bl-data";
 import {
   ProfitabilityBlDataContext,
   useProfitabilityBlData,
 } from "@/modules/profitability-bl/context/profitability-bl-data-context";
+
+import {
+  addMetric,
+  buildStores,
+  emptyMetric,
+  type Metric,
+  type StoreRow,
+  type Year,
+} from "@/modules/profitability-bl/domain/store-analysis";
+
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -78,34 +87,14 @@ const CountryProfitability = dynamic(() => import("./profitability/CountryProfit
 const StoreSensitivity = dynamic(() => import("./profitability/StoreSensitivity"), { loading: reportLoading });
 const SalesMargin = dynamic(() => import("./sales-margin/SalesMargin"), { loading: reportLoading });
 
-type Year = 2024 | 2025 | 2026 | 2027;
 type FwBand = "negative" | "low" | "high" | null;
 type ProfitMetric = "fourWalls" | "utility";
 type Quarter = "ANUAL" | "Q1" | "Q2" | "Q3" | "Q4";
 type ReportPeriod = MonthPeriod;
 type ClassificationFilter = "TOTAL" | StoreClassification;
 type MonitorFilter = "TOTAL" | "CHAIN_OTHER" | "DUPLICATE" | "ACTIVE_YEAR" | "NO_CONTRACT" | "NO_M2" | "SSS_YEAR" | "NS_YEAR" | "REMODELED";
-type Metric = {
-  sales: number;
-  margin: number;
-  payroll: number;
-  rent: number;
-  general: number;
-  operatingCost: number;
-  operatingResult: number;
-  nonOperating: number;
-  utility: number;
-  ebitda: number;
-  fourWalls: number | null;
-  fwAvailable: number;
-};
-type StoreRow = {
-  code: string;
-  chain: string;
-  name: string;
-  annual: Record<Year, Metric>;
-  monthly: Record<2026 | 2027, Record<string, Metric>>;
-};
+
+
 type UserCell = string | number | boolean | null;
 type UserRow = {
   id: string;
@@ -173,113 +162,13 @@ const quarterMonths: Record<Exclude<Quarter, "ANUAL">, string[]> = {
   Q3: ["JULIO", "AGOSTO", "SEPTIEMBRE"],
   Q4: ["OCTUBRE", "NOVIEMBRE", "DICIEMBRE"],
 };
-const chainNames: Record<string, string> = {
-  HP: "Hush Puppies", DH: "D.House", HPK: "Hush Puppies Kids", RK: "Rockford",
-  COL: "Columbia", MHW: "Mountain Hardwear", MER: "Merrell",
-  FUN: "Funsport", BSOUL: "Bsoul", CAT: "Caterpillar", SE: "Shoe Express",
-  AZ: "Azaleia", "7V": "7Veinte", VANS: "Vans", LOP: "LOP",
-  CROCS: "Crocs", UA: "Under Armour", PRF: "Parfois", BIL: "Billabong", BLL: "Billabong",
-};
+
 const chains = [
   "Hush Puppies", "D.House", "Hush Puppies Kids", "Rockford", "Columbia",
   "Mountain Hardwear", "Merrell", "Funsport", "Bsoul", "Caterpillar",
   "Shoe Express", "Azaleia", "7Veinte", "Vans", "LOP", "Crocs",
   "Under Armour", "Parfois", "Billabong", "OTROS",
 ];
-const emptyMetric = (): Metric => ({
-  sales: 0, margin: 0, payroll: 0, rent: 0, general: 0,
-  operatingCost: 0, operatingResult: 0, nonOperating: 0, utility: 0,
-  ebitda: 0,
-  fourWalls: null, fwAvailable: 0,
-});
-const metricFrom = (r: BaseRow): Metric => {
-  const officialFourWalls = r[17];
-  const operatingCost = -Math.abs(r[14]);
-  // Respaldo controlado: V presenta errores #N/A en parte de 2026/2027.
-  // Se conserva V cuando es numérico; si falla, se aplica la fórmula de negocio
-  // con los componentes de la misma fila (los gastos vienen con signo negativo).
-  const fourWalls = officialFourWalls ?? (r[16] - (r[11] + r[12] + r[13]));
-  return {
-    sales: r[6], margin: r[7], payroll: -Math.abs(r[8]), rent: -Math.abs(r[9]), general: r[10],
-    operatingCost, operatingResult: r[7] + operatingCost,
-    nonOperating: r[15], utility: r[16],
-    // RESULTADO NO OPERACIONAL se usa como proxy conjunto de intereses e impuestos;
-    // la fuente no expone una columna separada de amortización.
-    ebitda: r[16] - r[15] + Math.abs(r[11]),
-    fourWalls,
-    fwAvailable: officialFourWalls === null ? 0 : 1,
-  };
-};
-const addMetric = (a: Metric, b: Metric): Metric => ({
-  sales: a.sales + b.sales,
-  margin: a.margin + b.margin,
-  payroll: a.payroll + b.payroll,
-  rent: a.rent + b.rent,
-  general: a.general + b.general,
-  operatingCost: a.operatingCost + b.operatingCost,
-  operatingResult: a.operatingResult + b.operatingResult,
-  nonOperating: a.nonOperating + b.nonOperating,
-  utility: a.utility + b.utility,
-  ebitda: a.ebitda + b.ebitda,
-  fourWalls:
-    a.fourWalls === null && b.fourWalls === null
-      ? null
-      : (a.fourWalls ?? 0) + (b.fourWalls ?? 0),
-  fwAvailable: a.fwAvailable + b.fwAvailable,
-});
-const chainLabel = (raw: string, storeName = "") => {
-  const normalizedRaw = raw.trim().toUpperCase();
-  if (normalizedRaw === "WLS" || normalizedRaw === "WE LOVE SHOES") return "OTROS";
-  const mapped = chainNames[normalizedRaw];
-  if (mapped) return mapped;
-  const name = storeName.trim().toUpperCase();
-  if (name.startsWith("MERRELL")) return "Merrell";
-  if (name.startsWith("BSOUL")) return "Bsoul";
-  if (name.startsWith("KIDS")) return "Hush Puppies Kids";
-  if (name.startsWith("HPK")) return "Hush Puppies Kids";
-  if (name.startsWith("PARFOIS")) return "Parfois";
-  if (name.startsWith("FUNSPORT")) return "Funsport";
-  if (name.startsWith("FS")) return "Funsport";
-  if (name.startsWith("AZA")) return "Azaleia";
-  if (name.startsWith("7VEINTE")) return "7Veinte";
-  if (name.startsWith("BIL") || name.startsWith("BLL")) return "Billabong";
-  if (name.startsWith("CAR") || name.startsWith("CAT")) return "Caterpillar";
-  if (name.startsWith("WLS")) return "OTROS";
-  if (name.startsWith("VANS")) return "Vans";
-  if (name.startsWith("COLUMBIA")) return "Columbia";
-  return "OTROS";
-};
-const invalidSourceValue = (value: unknown) => {
-  const text = String(value ?? "").trim().toUpperCase();
-  return !text || text.includes("#N/A") || text.includes("#REF") || text.includes("#VALUE") || text.includes("ARRAY RESULT") || text.includes("ERROR");
-};
-
-const buildStores = (baseConsolidada: BaseRow[]): StoreRow[] => {
-  const map = new Map<string, StoreRow>();
-  for (const r of baseConsolidada) {
-    const year = r[0] as Year;
-    const code = r[3];
-    if (invalidSourceValue(code) || invalidSourceValue(r[5])) continue;
-    if (!map.has(code)) {
-      map.set(code, {
-        code,
-        chain: chainLabel(r[4], r[5]),
-        name: r[5] || `Tienda ${code}`,
-        annual: { 2024: emptyMetric(), 2025: emptyMetric(), 2026: emptyMetric(), 2027: emptyMetric() },
-        monthly: { 2026: {}, 2027: {} },
-      });
-    }
-    const store = map.get(code)!;
-    if (store.chain === "OTROS" && chainLabel(r[4], r[5]) !== "OTROS") store.chain = chainLabel(r[4], r[5]);
-    if (r[2] === "ANUAL" || r[1] === "TOTAL") {
-      store.annual[year] = addMetric(store.annual[year], metricFrom(r));
-    } else if ((year === 2026 || year === 2027) && r[2] === "MENSUAL") {
-      const month = r[1].toUpperCase();
-      store.monthly[year][month] = addMetric(store.monthly[year][month] ?? emptyMetric(), metricFrom(r));
-    }
-  }
-  return [...map.values()];
-};
 
 const money = (n: number) =>
   `${n < 0 ? "-" : ""}$${Math.round(Math.abs(n) / 1000).toLocaleString("es-CL")}`;

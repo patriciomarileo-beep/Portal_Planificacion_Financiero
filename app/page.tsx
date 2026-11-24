@@ -1,8 +1,9 @@
 "use client";
 
 import { usePortalNavigation } from "@/modules/portal-shell/hooks/usePortalNavigation";
-import { PortalTopbar } from "@/modules/portal-shell/ui/PortalTopbar";
 import { PortalHome } from "@/modules/portal-shell/ui/PortalHome";
+import { PortalReportbar } from "@/modules/portal-shell/ui/PortalReportbar";
+import { PortalTopbar } from "@/modules/portal-shell/ui/PortalTopbar";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -1710,13 +1711,84 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
   
   const activeView = view;
 
-  const openSalesMargin = (targetView: SalesMarginView = "summary") => {
+  const openSalesMargin = (
+    targetView: SalesMarginView = "summary",
+  ) => {
     setSalesMarginInitialView(targetView);
     setPortalSection("sales-margin");
     setOpenTopnavGroup(null);
     setMobileNavOpen(false);
   };
 
+  const reportNavigation = blActive ? (
+    <nav>
+      <button
+        type="button"
+        className={
+          activeView === "annual" ? "active" : ""
+        }
+        onClick={() => setView("annual")}
+      >
+        Comparativa anual
+      </button>
+
+      <button
+        type="button"
+        className={
+          activeView === "detail" ? "active" : ""
+        }
+        onClick={() => setView("detail")}
+      >
+        Detalle tiendas
+      </button>
+
+      <button
+        type="button"
+        className={
+          activeView === "break-even"
+            ? "active"
+            : ""
+        }
+        onClick={() => setView("break-even")}
+      >
+        Break-Even
+      </button>
+
+      <button
+        type="button"
+        className={
+          activeView === "m2" ? "active" : ""
+        }
+        onClick={() => setView("m2")}
+      >
+        m2
+      </button>
+
+      <button
+        type="button"
+        className={
+          activeView === "sensitivity"
+            ? "active"
+            : ""
+        }
+        onClick={() => setView("sensitivity")}
+      >
+        Sensibilidad tiendas
+      </button>
+
+      <button
+        type="button"
+        className={
+          activeView === "monitor"
+            ? "active"
+            : ""
+        }
+        onClick={() => setView("monitor")}
+      >
+        Monitor tiendas
+      </button>
+    </nav>
+  ) : undefined;
   return (
     <div className="portal-shell microsoft-shell">
 
@@ -1744,29 +1816,21 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
 
 
       <main ref={workspaceRef} className="portal-workspace">
-        <header className={`portal-reportbar ${portalSection === "home" ? "home" : ""}`}>
-        <div className="portal-context">
-          <small>
-            {portalSection === "home"
-              ? "Accountability Portal"
-              : portalSection === "users"
-                ? "Administración"
-                : portalSection === "sales-margin"
-                  ? "Planificación Financiera"
-                  : selectedPortalGroup.label}
-          </small>
-          <b>{selectedPortalItem.label}</b>
-        </div>
-        {blActive && <nav>
-          <button className={activeView === "annual" ? "active" : ""} onClick={() => setView("annual")}>Comparativa anual</button>
-          <button className={activeView === "detail" ? "active" : ""} onClick={() => setView("detail")}>Detalle tiendas</button>
-          <button className={activeView === "break-even" ? "active" : ""} onClick={() => setView("break-even")}>Break-Even</button>
-          <button className={activeView === "m2" ? "active" : ""} onClick={() => setView("m2")}>m2</button>
-          <button className={activeView === "sensitivity" ? "active" : ""} onClick={() => setView("sensitivity")}>Sensibilidad tiendas</button>
-          <button className={activeView === "monitor" ? "active" : ""} onClick={() => setView("monitor")}>Monitor tiendas</button>
-        </nav>}
-        {(blActive || portalSection === "sales-margin" || profitabilityForecastActive) && <button className="refresh-button" onClick={refreshView} disabled={refreshing} title="Recargar la última versión disponible"><RefreshCw className={refreshing ? "spin" : ""} /> {refreshing ? "ACTUALIZANDO…" : "ACTUALIZAR"}</button>}
-      </header>
+        
+        <PortalReportbar
+          portalSection={portalSection}
+          selectedPortalGroup={selectedPortalGroup}
+          selectedPortalItem={selectedPortalItem}
+          navigation={reportNavigation}
+          showRefresh={
+            blActive ||
+            portalSection === "sales-margin" ||
+            profitabilityForecastActive
+          }
+          refreshing={refreshing}
+          onRefresh={refreshView}
+        />
+
       {portalSection === "home" ? (
         <PortalHome
           canViewSalesMargin={canViewSalesMargin}

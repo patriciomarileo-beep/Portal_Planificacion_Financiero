@@ -6,10 +6,10 @@ import { PortalReportbar } from "@/modules/portal-shell/ui/PortalReportbar";
 import { PortalTopbar } from "@/modules/portal-shell/ui/PortalTopbar";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import type { AuthUser } from "@/modules/identity/domain/auth-user";
 import { canAccessMenu } from "@/modules/identity/domain/menu-access";
 import { UserMenu } from "@/modules/identity/ui/UserMenu";
+import { LoginForm } from "@/modules/identity/ui/LoginForm";
 import {
   Bar,
   BarChart,
@@ -117,9 +117,7 @@ type UserDraft = {
   activo: boolean;
 };
 
-type GoogleCredentialResponse = {
-  credential?: string;
-};
+
 type TipPayloadItem = {
   dataKey: string;
   name: string;
@@ -131,26 +129,6 @@ type ScatterPointClick = {
   store?: StoreRow;
 };
 
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: {
-            client_id: string;
-            callback: (response: GoogleCredentialResponse) => void;
-            hosted_domain?: string;
-            ux_mode?: "popup" | "redirect";
-          }) => void;
-          renderButton: (
-            element: HTMLElement,
-            options: { theme: string; size: string; width?: number; text?: string },
-          ) => void;
-        };
-      };
-    };
-  }
-}
 
 const years: Year[] = [2024, 2025, 2026, 2027];
 const yearLabel = (year: Year) =>
@@ -1464,118 +1442,6 @@ function DollarLoginPanel() {
   </div>;
 }
 
-function LoginForm({ onLogin }: { onLogin: (user: AuthUser) => void | Promise<void> }) {
-  const buttonRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [googleClientId, setGoogleClientId] = useState("");
-  const [configLoaded, setConfigLoaded] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    fetch("/api/config")
-      .then(async (response) => {
-        const payload = await response.json() as { googleClientId?: string };
-        if (active && response.ok) setGoogleClientId(payload.googleClientId ?? "");
-      })
-      .finally(() => {
-        if (active) setConfigLoaded(true);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!configLoaded || !googleClientId) return;
-
-    const initializeGoogle = () => {
-      if (!window.google || !buttonRef.current) return;
-      buttonRef.current.innerHTML = "";
-      window.google.accounts.id.initialize({
-        client_id: googleClientId,
-        hosted_domain: "forus.cl",
-        ux_mode: "popup",
-        callback: async (response) => {
-          if (!response.credential) {
-            setError("Google no devolvio una credencial valida.");
-            return;
-          }
-          setLoading(true);
-          setError("");
-          try {
-            const authResponse = await fetch("/api/auth/google", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ credential: response.credential }),
-            });
-            const payload = await authResponse.json() as { user?: AuthUser; error?: string };
-            if (!authResponse.ok || !payload.user) throw new Error(payload.error || "No se pudo iniciar sesion.");
-            await onLogin(payload.user);
-          } catch (err) {
-            setError(err instanceof Error ? err.message : "No se pudo iniciar sesion.");
-          } finally {
-            setLoading(false);
-          }
-        },
-      });
-      window.google.accounts.id.renderButton(buttonRef.current, {
-        theme: "outline",
-        size: "large",
-        width: 360,
-        text: "signin_with",
-      });
-    };
-
-    if (window.google) {
-      initializeGoogle();
-      return;
-    }
-
-    const existing = document.getElementById("google-identity");
-    if (existing) {
-      existing.addEventListener("load", initializeGoogle, { once: true });
-      return () => existing.removeEventListener("load", initializeGoogle);
-    }
-
-    const script = document.createElement("script");
-    script.id = "google-identity";
-    script.src = "https://accounts.google.com/gsi/client";
-    script.nonce = document.querySelector<HTMLMetaElement>('meta[name="csp-nonce"]')?.content ?? "";
-    script.async = true;
-    script.defer = true;
-    script.onload = initializeGoogle;
-    script.onerror = () => setError("No se pudo cargar Google Identity Services.");
-    document.head.appendChild(script);
-  }, [configLoaded, googleClientId, onLogin]);
-
-  return (
-    <main className="login-shell">
-      <section className="login-panel login-access-panel">
-        <div className="brand login-brand"><Image src="/forus.png" alt="Forus" width={68} height={34} preload /><b>PLANIFICACIÓN <span>FINANCIERA</span><small>Intelligence portal</small></b></div>
-        <div className="login-copy">
-          <label>ACCOUNTABILITY PORTAL · ACCESO CORPORATIVO</label>
-          <h1>Del desempeño interno al pulso de la industria.</h1>
-          <p>Rentabilidad, forecast y señales de la macroindustria para apoyar decisiones con una mirada integral.</p>
-        </div>
-        <div className="login-access">
-          {googleClientId && <div ref={buttonRef} className={loading ? "login-button loading" : "login-button"} />}
-          {loading && <span className="login-status">Validando usuario...</span>}
-          {configLoaded && !googleClientId && <span className="login-status">El acceso corporativo no está disponible. Contacta al administrador.</span>}
-          {error && <div className="data-warning login-error"><AlertTriangle /><span>{error}</span></div>}
-        </div>
-        <div className="login-security"><i>01</i><span><b>ACCESO PROTEGIDO</b>Disponible para colaboradores @forus.cl habilitados.</span></div>
-        <small className="login-legal">Planificación Financiera · Forus Chile</small>
-      </section>
-      <aside className="login-visual" aria-label="Inteligencia financiera y de mercado">
-        <DollarLoginPanel />
-      </aside>
-    </main>
-  );
-}
-
-
 
 function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshReports }: {
   authUser: AuthUser;
@@ -1923,6 +1789,21 @@ export default function Home() {
     return () => { controller.abort(); dataRequestRef.current?.abort(); };
   }, [loadSession]);
   if (checking) return <main className="login-shell"><span className="login-status">Validando acceso...</span></main>;
-  if (!user) return <>{error && <p role="alert">{error}</p>}<LoginForm onLogin={acceptUser} /></>;
+  if (!user) { 
+    return ( 
+      <>
+        {error && (
+          <p role="alert">
+            {error}
+          </p>
+        )}
+        
+        <LoginForm 
+          onLogin={acceptUser}
+          visual = {<DollarLoginPanel />} 
+          />
+        </>
+        );
+      }
   return <PrivateDataContext.Provider value={data}><Portal authUser={user} onLogout={logout} reportsError={reportsError} onRetryReports={() => void loadPortalData()} onRefreshReports={loadPortalData} /></PrivateDataContext.Provider>;
 }

@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     "tmp/**",
     "output/**",
     "dist/**",
+    ".gcloud/**",
     ".vinext/**",
     ".wrangler/**",
     ".wrangler-config/**",

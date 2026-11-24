@@ -10,6 +10,7 @@ type Payload = { countries?: Country[]; refreshedAt?: string; source?: string; e
 
 const refreshMinutes = [480, 555, 630, 705, 780, 855, 930, 1005]; // 08:00 a 16:45, ocho ventanas.
 const metrics = ["Ventas", "Margen", "GAV", "ROP", "Utilidad Neta", "EBITDA"];
+const emptyCountries: Country[] = [];
 const number = (value: number) => new Intl.NumberFormat("es-CL", { maximumFractionDigits: 0 }).format(value);
 const percent = (value: number) => `${new Intl.NumberFormat("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value * 100)}%`;
 
@@ -49,7 +50,7 @@ export default function CountryProfitability() {
     return () => clearTimeout(timer);
   }, [load]);
 
-  const countries = data?.countries ?? [];
+  const countries = data?.countries ?? emptyCountries;
   const country = countries.find((item) => item.name === countryName) ?? countries[0];
   const scenario = country?.scenarios.find((item) => item.label === scenarioLabel) ?? country?.scenarios.at(-1);
   const prior = country?.scenarios[Math.max(0, (country?.scenarios.findIndex((item) => item.label === scenario?.label) ?? 0) - 1)];

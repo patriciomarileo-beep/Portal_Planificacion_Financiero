@@ -9,15 +9,16 @@ import { BrandSummary, InventoryFlow, LongTermPlan, RoadmapYoy } from "./Toolbox
 
 type Toast = { kind: "success" | "error"; message: string } | null;
 
+const monthsByPeriod: Record<string, PlanningMonth[]> = {
+  ANUAL: [...planningMonths], S1: ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN"], S2: ["JUL", "AGO", "SEP", "OCT", "NOV", "DIC"],
+  Q1: ["ENE", "FEB", "MAR"], Q2: ["ABR", "MAY", "JUN"], Q3: ["JUL", "AGO", "SEP"], Q4: ["OCT", "NOV", "DIC"],
+};
+
 export default function ForboxPlanning() {
   const [toast, setToast] = useState<Toast>(null);
   const [forboxView, setForboxView] = useState<"summary" | "planning" | "inventory" | "roadmap" | "longterm">("planning");
   const [draft, setDraft] = useState({ hierarchy: "Clase", location: "Canal", year: "2027", period: "ANUAL", view: "Venta y Margen", plan: "NY", comparison: "TY" });
   const [focus, setFocus] = useState(draft);
-  const monthsByPeriod: Record<string, PlanningMonth[]> = {
-    ANUAL: [...planningMonths], S1: ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN"], S2: ["JUL", "AGO", "SEP", "OCT", "NOV", "DIC"],
-    Q1: ["ENE", "FEB", "MAR"], Q2: ["ABR", "MAY", "JUN"], Q3: ["JUL", "AGO", "SEP"], Q4: ["OCT", "NOV", "DIC"],
-  };
   const visibleMonths = useMemo(() => monthsByPeriod[focus.period] ?? [...planningMonths], [focus.period]);
   const updateDraft = (key: keyof typeof draft, value: string) => setDraft((current) => ({ ...current, [key]: value }));
   return <section className={`toolbox-page ${forboxView === "planning" ? "" : "results-mode"}`}>

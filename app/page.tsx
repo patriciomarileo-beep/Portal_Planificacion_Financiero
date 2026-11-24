@@ -8,10 +8,7 @@ import type { AuthUser } from "@/modules/identity/domain/auth-user";
 import { canAccessMenu } from "@/modules/identity/domain/menu-access";
 import { UserMenu } from "@/modules/identity/ui/UserMenu";
 import { LoginForm } from "@/modules/identity/ui/LoginForm";
-import { 
-  closeAuthSession, 
-  loadAuthSession, 
-} from "@/modules/identity/services/auth-service";
+import { useAuthSession } from "@/modules/identity/hooks/useAuthSession";
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -1734,25 +1731,51 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
 // El estado se reemplaza en memoria para conservar la vista y los filtros activos.
 
 export default function Home() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [data, setData] = useState<PrivateData | null>(null);
-  const [checking, setChecking] = useState(true);
-  const [error, setError] = useState("");
+  
+  const {
+    user,
+    checking,
+    error,
+    acceptUser: storeAuthenticatedUser,
+    invalidateSession,
+    logout: closeAuthenticatedSession,
+  } = useAuthSession();
+
+  const [data, setData] =
+    useState<PrivateData | null>(null);
+
   const [reportsError, setReportsError] = useState("");
   const dataRequestRef = useRef<AbortController | null>(null);
+  const resetPortalData = useCallback(() => {
+    dataRequestRef.current?.abort();
+    clearSalesMarginData();
+    setReportsError("");
+    setData(null);
+  }, []);
+
   const loadPortalData = useCallback(async () => {
     dataRequestRef.current?.abort();
+
     const controller = new AbortController();
     dataRequestRef.current = controller;
-    setReportsError("");
+
     try {
-      const response = await fetch("/api/portal-data", { cache: "no-store", signal: controller.signal });
+      const response = await fetch(
+        "/api/portal-data", 
+        { 
+          cache: "no-store", 
+          signal: controller.signal 
+        }
+      );
+
       if (response.status === 401) {
         if (!controller.signal.aborted) {
           clearSalesMarginData();
           setData(null);
-          setUser(null);
-          setError("Tu sesión ya no está disponible. Ingresa nuevamente.");
+
+          invalidateSession(
+            "Tu sesión ya no está disponible. Ingresa nuevamente.",
+          );
         }
         return;
       }
@@ -1762,56 +1785,62 @@ export default function Home() {
     } catch (error) {
       if (!controller.signal.aborted) setReportsError(error instanceof Error ? error.message : "No fue posible cargar los informes.");
     }
-  }, []);
-  const acceptUser = useCallback((authenticatedUser: AuthUser) => {
-    dataRequestRef.current?.abort();
-    clearSalesMarginData();
-    setError("");
+  }, [invalidateSession]);
+
+  const refreshPortalData = useCallback(async () => {
     setReportsError("");
-    setData(null);
-    setUser(authenticatedUser);
-    if (canAccessMenu(authenticatedUser.role, "forecast")) void loadPortalData();
+    await loadPortalData();
   }, [loadPortalData]);
 
-  const loadSession = useCallback(
-    async (signal: AbortSignal) => {
-      const authenticatedUser =
-        await loadAuthSession(signal);
-
-      if (signal.aborted) {
-        return;
-      }
-
-      if (!authenticatedUser) {
-        clearSalesMarginData();
-        setUser(null);
-        setData(null);
-        return;
-      }
-
-      acceptUser(authenticatedUser);
+  const handleLogin = useCallback(
+    (authenticatedUser: AuthUser) => {
+      resetPortalData();
+      storeAuthenticatedUser(authenticatedUser);
     },
-    [acceptUser],
+    [resetPortalData, storeAuthenticatedUser],
   );
 
+  const handleLogout = useCallback(async () => {
+    await closeAuthenticatedSession();
+    resetPortalData();
+  }, [
+    closeAuthenticatedSession,
+    resetPortalData,
+  ]);
 
-  const logout = async () => {
+  useEffect(() => {
 
-    await closeAuthSession();
+    let active = true;
 
     dataRequestRef.current?.abort();
     clearSalesMarginData();
-    setError("");
-    setReportsError("");
-    setData(null);
-    setUser(null);
-  };
-  useEffect(() => {
-    const controller = new AbortController();
-    void Promise.resolve().then(() => loadSession(controller.signal)).catch(() => { if (!controller.signal.aborted) setError("No fue posible validar el acceso. Intenta nuevamente."); }).finally(() => { if (!controller.signal.aborted) setChecking(false); });
-    return () => { controller.abort(); dataRequestRef.current?.abort(); };
-  }, [loadSession]);
-  if (checking) return <main className="login-shell"><span className="login-status">Validando acceso...</span></main>;
+
+    if (
+      user &&
+      canAccessMenu(user.role, "forecast")
+    ) {
+      void Promise.resolve().then(() => {
+        if (active) {
+          return loadPortalData();
+        } 
+      });
+    }
+    return () => {
+      active = false;
+      dataRequestRef.current?.abort();
+    };
+  }, [user, loadPortalData]);
+
+  if (checking) {
+    return (
+      <main className="login-shell">
+        <span className="login-status">
+          Validando acceso...
+        </span>
+      </main>
+    );
+  }
+
   if (!user) { 
     return ( 
       <>
@@ -1822,11 +1851,11 @@ export default function Home() {
         )}
         
         <LoginForm 
-          onLogin={acceptUser}
+          onLogin={handleLogin}
           visual = {<DollarLoginPanel />} 
           />
         </>
         );
       }
-  return <PrivateDataContext.Provider value={data}><Portal authUser={user} onLogout={logout} reportsError={reportsError} onRetryReports={() => void loadPortalData()} onRefreshReports={loadPortalData} /></PrivateDataContext.Provider>;
+  return <PrivateDataContext.Provider value={data}><Portal authUser={user} onLogout={handleLogout} reportsError={reportsError} onRetryReports={() => void refreshPortalData()} onRefreshReports={refreshPortalData} /></PrivateDataContext.Provider>;
 }

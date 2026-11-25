@@ -217,8 +217,12 @@ BEGIN
     STRING_AGG(DISTINCT d.CLASIFICACION_RAW, ' / ' ORDER BY d.CLASIFICACION_RAW) AS CLASIFICACION_RAW,
     CASE
       WHEN COUNTIF(d.CLASIFICACION = 'REMODELACION') > 0 THEN 'REMODELACION'
-      WHEN COUNTIF(d.CLASIFICACION = 'SSS') > 0 THEN 'SSS'
       WHEN COUNTIF(d.CLASIFICACION = 'NS') > 0 THEN 'NS'
+      WHEN COUNTIF(d.CLASIFICACION = 'SSS') > 0 THEN 'SSS'
+      -- El maestro registra movimientos excepcionales. Una tienda con datos
+      -- reales y sin movimiento informado se clasifica como SSS para que la
+      -- dimension mensual cubra todo el historico.
+      WHEN COUNTIF(r.TIPO_DATO = 'REAL') > 0 THEN 'SSS'
       ELSE 'SIN CLASIFICAR'
     END AS CLASIFICACION,
     STRING_AGG(DISTINCT r.FUENTE, ' / ' ORDER BY r.FUENTE) AS FUENTE,

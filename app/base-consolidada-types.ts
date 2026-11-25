@@ -18,6 +18,8 @@ export type BaseRow = [
   number,
   number | null,
   StoreClassification?,
+  string?,
+  string?,
 ];
 
 export type StoreClassification =

@@ -55,6 +55,7 @@ import {
   type StoreClassification,
 } from "./store-classification";
 import { canAccessMenu, type PortalMenu } from "./menu-access";
+import { nextCompressedTopnavGroup } from "./topnav-state";
 import { clearSalesMarginData, loadSalesMargin } from "./sales-margin/sales-margin-data";
 import type { SalesMarginView } from "./sales-margin/SalesMargin";
 import MonthPeriodFilter, { type MonthPeriod } from "./components/MonthPeriodFilter";
@@ -70,12 +71,12 @@ const CountryProfitability = dynamic(() => import("./profitability/CountryProfit
 const StoreSensitivity = dynamic(() => import("./profitability/StoreSensitivity"), { loading: reportLoading });
 const SalesMargin = dynamic(() => import("./sales-margin/SalesMargin"), { loading: reportLoading });
 
-type Year = 2024 | 2025 | 2026 | 2027;
+type Year = 2023 | 2024 | 2025 | 2026 | 2027;
 type FwBand = "negative" | "low" | "high" | null;
 type ProfitMetric = "fourWalls" | "utility";
 type Quarter = "ANUAL" | "Q1" | "Q2" | "Q3" | "Q4";
 type ReportPeriod = MonthPeriod;
-type MonitorFilter = "TOTAL" | "CHAIN_OTHER" | "DUPLICATE" | "ACTIVE_YEAR" | "NO_CONTRACT" | "NO_M2" | "SSS_YEAR" | "NS_YEAR" | "REMODELED";
+type MonitorFilter = "TOTAL" | "CHAIN_OTHER" | "DUPLICATE" | "ACTIVE_YEAR" | "NO_CONTRACT" | "NO_M2" | "SSS_YEAR" | "NS_YEAR";
 type PortalSection = {
   id: string;
   label: string;
@@ -101,8 +102,17 @@ type StoreRow = {
   name: string;
   annual: Record<Year, Metric>;
   monthly: Record<2026 | 2027, Record<string, Metric>>;
+
   monthlyClassification: Record<
     2026 | 2027,
+    Record<string, StoreClassification>
+  >;
+  realMonthly: Record<
+    string,
+    Record<string, Metric>
+  >;
+  realMonthlyClassification: Record<
+    string,
     Record<string, StoreClassification>
   >;
 };
@@ -168,9 +178,9 @@ declare global {
   }
 }
 
-const years: Year[] = [2024, 2025, 2026, 2027];
+const years: Year[] = [2023, 2024, 2025, 2026, 2027];
 const yearLabel = (year: Year) =>
-  ({ 2024: "2024R", 2025: "2025R", 2026: "2026E", 2027: "2027P" })[year];
+  ({ 2023: "2023R", 2024: "2024R", 2025: "2025R", 2026: "2026E", 2027: "2027P" })[year];
 const monthOrder = [
   "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
@@ -375,19 +385,43 @@ const buildStores = (baseConsolidada: BaseRow[]): StoreRow[] => {
         code,
         chain: chainLabel(r[4], r[5]),
         name: r[5] || `Tienda ${code}`,
-        annual: { 2024: emptyMetric(), 2025: emptyMetric(), 2026: emptyMetric(), 2027: emptyMetric() },
+        annual: { 2023: emptyMetric(), 2024: emptyMetric(), 2025: emptyMetric(), 2026: emptyMetric(), 2027: emptyMetric() },
         monthly: { 2026: {}, 2027: {} },
         monthlyClassification: { 2026: {}, 2027: {} },
+        realMonthly: {},
+        realMonthlyClassification: {},
       });
     }
     const store = map.get(code)!;
     if (store.chain === "OTROS" && chainLabel(r[4], r[5]) !== "OTROS") store.chain = chainLabel(r[4], r[5]);
     if (r[2] === "ANUAL" || r[1] === "TOTAL") {
       store.annual[year] = addMetric(store.annual[year], metricFrom(r));
-    } else if ((year === 2026 || year === 2027) && r[2] === "MENSUAL") {
+    } else if (r[2] === "MENSUAL") {
       const month = r[1].toUpperCase();
-      store.monthly[year][month] = addMetric(store.monthly[year][month] ?? emptyMetric(), metricFrom(r));
-      if (r[18]) store.monthlyClassification[year][month] = r[18];
+      const scenario = r[19] ?? "";
+      const tipoDato = r[20] ?? "";
+
+      if (/^20\d{2}R$/.test(scenario) && tipoDato === "REAL") {
+        store.realMonthly[scenario] ??= {};
+
+        store.realMonthly[scenario][month] = addMetric(
+          store.realMonthly[scenario][month] ?? emptyMetric(),
+          metricFrom(r),
+        );
+        if (r[18]) {
+          store.realMonthlyClassification[scenario] ??= {};
+          store.realMonthlyClassification[scenario][month] = r[18];
+        }
+      } else if (scenario === "2026E" || scenario === "2027P") {
+        const monthlyYear = scenario === "2026E" ? 2026 : 2027;
+        store.monthly[monthlyYear][month] = addMetric(
+          store.monthly[monthlyYear][month] ?? emptyMetric(),
+          metricFrom(r),
+        );
+        if (r[18]) {
+          store.monthlyClassification[monthlyYear][month] = r[18];
+        }
+      }
     }
   }
   return [...map.values()];
@@ -474,20 +508,37 @@ function Executive({
   const [classification, setClassification] = useState<ClassificationFilter>("TOTAL");
   const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
 
-  const displayedYears: Year[] = period === "ANUAL" && classification === "TOTAL" ? years : [2026, 2027];
+  const displayedYears: Year[] = years;
   const activeMonths = period === "ANUAL"
     ? classification === "TOTAL" ? [] : monthOrder
     : period === "MES" ? selectedMonths : quarterMonths[period];
-  const metricForMonths = (store: StoreRow, year: 2026 | 2027, months: string[]) =>
-    months.reduce(
-      (sum, month) => classification === "TOTAL" || openingType(store, year, month) === classification
-        ? addMetric(sum, store.monthly[year][month] ?? emptyMetric())
-        : sum,
-      emptyMetric(),
-    );
+  const metricForMonths = (store: StoreRow, year: Year, months: string[]) => {
+    const historicalScenario = `${year}R`;
+    const monthlyMetrics = year <= 2025
+      ? store.realMonthly[historicalScenario] ?? {}
+      : store.monthly[year] ?? {};
+
+    return months.reduce((sum, month) => {
+      const sourceClassification = year <= 2025
+        ? store.realMonthlyClassification[historicalScenario]?.[month]
+        : openingType(store, year, month);
+      // En los periodos reales, una tienda sin NS informado pertenece a SSS.
+      // REMODELACION deja de ser una clasificacion visible del portal.
+      const monthClassification = year <= 2025 && (
+        !sourceClassification ||
+        sourceClassification === "SIN CLASIFICAR" ||
+        sourceClassification === "REMODELACIÓN"
+      )
+        ? "SSS"
+        : sourceClassification;
+
+      return classification === "TOTAL" || monthClassification === classification
+        ? addMetric(sum, monthlyMetrics[month] ?? emptyMetric())
+        : sum;
+    }, emptyMetric());
+  };
   const storeMetric = (store: StoreRow, year: Year) => {
     if (period === "ANUAL" && classification === "TOTAL") return store.annual[year];
-    if (year !== 2026 && year !== 2027) return emptyMetric();
     return metricForMonths(store, year, activeMonths);
   };
   const total = (ss: StoreRow[], y: Year) =>
@@ -527,7 +578,7 @@ function Executive({
         ...activeMonths.map((month) => ({ id: month, label: monthShort[month], months: [month] })),
         ...(activeMonths.length > 1 ? [{ id: "TOTAL", label: "TOTAL", months: activeMonths }] : []),
       ];
-  const breakdownTotals = ([2026, 2027] as const).map((year) =>
+  const breakdownTotals = displayedYears.map((year) =>
     breakdownPeriods.map((item) =>
       selection.reduce((sum, store) => addMetric(sum, metricForMonths(store, year, item.months)), emptyMetric())
     )
@@ -572,7 +623,7 @@ function Executive({
           </div>
           <div className="matrix-actions">
             <div className="classification-filter" aria-label="Clasificación mensual de tiendas">
-              {(["TOTAL", "SSS", "NS", "REMODELACIÓN"] as ClassificationFilter[]).map((item) => (
+              {(["TOTAL", "SSS", "NS"] as ClassificationFilter[]).map((item) => (
                 <button key={item} className={classification === item ? "active" : ""} onClick={() => setClassification(item)}>{item}</button>
               ))}
             </div>
@@ -603,15 +654,15 @@ function Executive({
           ) : (
             <table className="period-breakdown-table">
               <thead>
-                <tr><th rowSpan={2}>CONCEPTO</th><th colSpan={breakdownPeriods.length}>{yearLabel(2026)}</th><th colSpan={breakdownPeriods.length}>{yearLabel(2027)}</th></tr>
-                <tr>{([2026, 2027] as const).flatMap((year) => breakdownPeriods.map((item) => <th key={`${year}-${item.id}`} className={item.id === "TOTAL" ? "period-total-head" : ""}>{item.label}</th>))}</tr>
+                <tr><th rowSpan={2}>CONCEPTO</th>{displayedYears.map((year) => <th key={year} colSpan={breakdownPeriods.length}>{yearLabel(year)}</th>)}</tr>
+                <tr>{displayedYears.flatMap((year) => breakdownPeriods.map((item) => <th key={`${year}-${item.id}`} className={item.id === "TOTAL" ? "period-total-head" : ""}>{item.label}</th>))}</tr>
               </thead>
               <tbody>{rows.map((row) => (
                 <tr key={row.label} className={row.percent ? "margin-rate-row" : row.key === "utility" ? "total-row" : row.key === "ebitda" ? "ebitda-row" : ""}>
                   <td>{row.label}</td>
                   {breakdownTotals.flatMap((yearMetrics, yearIndex) => yearMetrics.map((metric, periodIndex) => (
                     <td key={`${yearIndex}-${breakdownPeriods[periodIndex].id}`} className={`metric-cell ${breakdownPeriods[periodIndex].id === "TOTAL" ? "period-total-cell" : ""}`}>
-                      {metricContent(row, metric, yearIndex === 1 ? breakdownTotals[0][periodIndex] : undefined)}
+                      {metricContent(row, metric, yearIndex > 0 ? breakdownTotals[yearIndex - 1][periodIndex] : undefined)}
                     </td>
                   )))}
                 </tr>
@@ -1196,18 +1247,14 @@ function StoreMonitor({ selection }: { selection: StoreRow[] }) {
     monthOrder.every((month) => openingType(store, year, month) === "SSS");
   const nsMonthsInYear = (store: StoreRow, year: 2026 | 2027) =>
     monthOrder.filter((month) => openingType(store, year, month) === "NS");
-  const isRemodeled = (store: StoreRow, year: 2026 | 2027) =>
-    hasClassificationInYear(store, year, "REMODELACIÓN");
   const classificationCounts = {
     2026: {
       ns: rows.filter((store) => hasNsInYear(store, 2026)).length,
       sss: rows.filter((store) => isSssForYear(store, 2026)).length,
-      remodeled: rows.filter((store) => isRemodeled(store, 2026)).length,
     },
     2027: {
       ns: rows.filter((store) => hasNsInYear(store, 2027)).length,
       sss: rows.filter((store) => isSssForYear(store, 2027)).length,
-      remodeled: rows.filter((store) => isRemodeled(store, 2027)).length,
     },
   };
   const pending = rows.filter((r) => r.issues.length);
@@ -1219,8 +1266,7 @@ function StoreMonitor({ selection }: { selection: StoreRow[] }) {
     if (monitorFilter === "NO_CONTRACT") return !store.contractEnd && store.annual[monitorYear].sales !== 0;
     if (monitorFilter === "NO_M2") return store.squareMeters <= 0;
     if (monitorFilter === "SSS_YEAR") return !hasNsInYear(store, monitorYear);
-    if (monitorFilter === "NS_YEAR") return hasNsInYear(store, monitorYear);
-    return isRemodeled(store, monitorYear);
+    return hasNsInYear(store, monitorYear);
   });
   const visibleRows = classificationFilter === "TOTAL"
     ? monitorRows
@@ -1243,14 +1289,13 @@ function StoreMonitor({ selection }: { selection: StoreRow[] }) {
         <button type="button" className={`monitor-kpi missing-m2 ${monitorFilter === "NO_M2" ? "active" : ""}`} onClick={() => selectMonitorFilter("NO_M2")}><label>TIENDAS SIN M²</label><strong>{rows.filter((r) => r.squareMeters <= 0).length}</strong><span>requieren completar superficie</span></button>
         <button type="button" className={`monitor-kpi classification-kpi sss ${monitorFilter === "SSS_YEAR" ? "active" : ""}`} onClick={() => selectMonitorFilter("SSS_YEAR")}><label>SSS {monitorYear === 2026 ? "2026E" : "2027P"}</label><strong>{classificationCounts[monitorYear].sss}</strong><span>SSS los 12 meses</span></button>
         <button type="button" className={`monitor-kpi classification-kpi ns ${monitorFilter === "NS_YEAR" ? "active" : ""}`} onClick={() => selectMonitorFilter("NS_YEAR")}><label>NS {monitorYear === 2026 ? "2026E" : "2027P"}</label><strong>{classificationCounts[monitorYear].ns}</strong><span>al menos un mes NS</span></button>
-        <button type="button" className={`monitor-kpi remodeled ${monitorFilter === "REMODELED" ? "active" : ""}`} onClick={() => selectMonitorFilter("REMODELED")}><label>REMODELADAS {monitorYear === 2026 ? "2026E" : "2027P"}</label><strong>{classificationCounts[monitorYear].remodeled}</strong><span>clasificación informada por origen</span></button>
       </section>
       <section className="panel monitor-panel">
         <div className="monitor-head">
           <div><label>BASE DE CONTROL</label><h3>Listado de tiendas</h3></div>
           <div className="monitor-head-actions">
             <div className="classification-filter" aria-label="Filtrar clasificación del monitor">
-              {(["TOTAL", "SSS", "NS", "REMODELACIÓN"] as ClassificationFilter[]).map((item) => (
+              {(["TOTAL", "SSS", "NS"] as ClassificationFilter[]).map((item) => (
                 <button key={item} className={classificationFilter === item ? "active" : ""} onClick={() => setClassificationFilter(item)}>{item}</button>
               ))}
             </div>
@@ -1752,6 +1797,22 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
   const [openTopnavGroup, setOpenTopnavGroup] = useState<PortalMenu | null>(null);
   const workspaceRef = useRef<HTMLElement>(null);
 
+  const openTopnavGroupOnHover = (group: PortalMenu) => {
+    if (!mobileNavOpen) setOpenTopnavGroup(group);
+  };
+  const closeTopnavGroupOnHover = (group?: PortalMenu) => {
+    if (mobileNavOpen) return;
+    setOpenTopnavGroup((current) => !group || current === group ? null : current);
+  };
+  const toggleTopnavGroup = (group: PortalMenu) => {
+    if (mobileNavOpen) {
+      setOpenTopnavGroup((current) => nextCompressedTopnavGroup(current, group));
+      return;
+    }
+
+    setOpenTopnavGroup((current) => current === group ? null : group);
+  };
+
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -1838,11 +1899,11 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
         </button>
         <button className="portal-mobile-toggle" type="button" onClick={() => { setMobileNavOpen((current) => !current); setOpenTopnavGroup(null); }} aria-expanded={mobileNavOpen} aria-label="Abrir menú"><Menu /></button>
         <nav className={`portal-topnav ${mobileNavOpen ? "open" : ""}`} aria-label="Informes financieros">
-          {canViewHome && <button type="button" className={portalSection === "home" ? "active" : ""} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("home"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Inicio</button>}
+          {canViewHome && <button type="button" className={portalSection === "home" ? "active" : ""} onMouseEnter={() => closeTopnavGroupOnHover()} onClick={() => { setPortalSection("home"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}>Inicio</button>}
           {canViewSalesMargin && <div
             className={`portal-topnav-group sales-margin-topnav-group ${openTopnavGroup === "sales-margin" ? "open" : ""}`}
-            onMouseEnter={() => setOpenTopnavGroup("sales-margin")}
-            onMouseLeave={() => setOpenTopnavGroup((current) => current === "sales-margin" ? null : current)}
+            onMouseEnter={() => openTopnavGroupOnHover("sales-margin")}
+            onMouseLeave={() => closeTopnavGroupOnHover("sales-margin")}
             onBlur={(event) => {
               if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
                 setOpenTopnavGroup((current) => current === "sales-margin" ? null : current);
@@ -1854,7 +1915,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
               className={portalSection === "sales-margin" ? "active" : ""}
               aria-haspopup="true"
               aria-expanded={openTopnavGroup === "sales-margin"}
-              onClick={() => setOpenTopnavGroup("sales-margin")}
+              onClick={() => toggleTopnavGroup("sales-margin")}
             >
               <CircleDollarSign />
               <span>Venta &amp; Margen</span>
@@ -1900,15 +1961,15 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
             return <div
               className={`portal-topnav-group ${groupOpen ? "open" : ""}`}
               key={group.id}
-              onMouseEnter={() => setOpenTopnavGroup(group.id)}
-              onMouseLeave={() => setOpenTopnavGroup((current) => current === group.id ? null : current)}
+              onMouseEnter={() => openTopnavGroupOnHover(group.id)}
+              onMouseLeave={() => closeTopnavGroupOnHover(group.id)}
               onBlur={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
                   setOpenTopnavGroup((current) => current === group.id ? null : current);
                 }
               }}
             >
-              <button type="button" className={group.items.some((item) => item.id === portalSection) ? "active" : ""} aria-haspopup="true" aria-expanded={groupOpen} onClick={() => setOpenTopnavGroup(group.id)}>
+              <button type="button" className={group.items.some((item) => item.id === portalSection) ? "active" : ""} aria-haspopup="true" aria-expanded={groupOpen} onClick={() => toggleTopnavGroup(group.id)}>
                 <GroupIcon /><span>{group.label}</span><ChevronDown />
               </button>
               <div className="portal-mega-menu">
@@ -1921,7 +1982,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
               </div>
             </div>;
           })}
-          {canManageUsers && <button type="button" className={portalSection === "users" ? "active" : ""} aria-current={portalSection === "users" ? "page" : undefined} onMouseEnter={() => setOpenTopnavGroup(null)} onClick={() => { setPortalSection("users"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}><Users /> Usuarios</button>}
+          {canManageUsers && <button type="button" className={portalSection === "users" ? "active" : ""} aria-current={portalSection === "users" ? "page" : undefined} onMouseEnter={() => closeTopnavGroupOnHover()} onClick={() => { setPortalSection("users"); setOpenTopnavGroup(null); setMobileNavOpen(false); }}><Users /> Usuarios</button>}
         </nav>
         <UserMenu user={authUser} onLogout={onLogout} />
       </header>

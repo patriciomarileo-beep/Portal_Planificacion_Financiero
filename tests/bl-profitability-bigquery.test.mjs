@@ -95,6 +95,7 @@ test("B&L portal endpoint reads the native table with full pagination", () => {
   assert.match(adapterSource, /MAX\(SYNCED_AT\) OVER\(\)/);
   assert.match(adapterSource, /TB_RENTABILIDAD_BL_CONSOLIDADA/);
   assert.match(adapterSource, /CURRENT_DATE\('America\/Santiago'\)/);
+  assert.match(adapterSource, /activeYear - 3/);
   assert.match(adapterSource, /activeYear - 2/);
   assert.match(adapterSource, /activeYear \+ 1/);
   assert.match(adapterSource, /CLASIFICACION/);
@@ -112,12 +113,16 @@ test("B&L decodes dynamic years and explicit monthly classifications", () => {
     year: "numeric",
     timeZone: "America/Santiago",
   }).format(new Date()));
-  const classifications = ["REMODELACION", "SSS", "NS", "SIN CLASIFICAR"];
-  const rows = [activeYear - 2, activeYear - 1, activeYear, activeYear + 1].map((year, index) => ({
+  const classifications = ["REMODELACION", "SSS", "NS", "SIN CLASIFICAR", "SSS"];
+  const rows = [activeYear - 3, activeYear - 2, activeYear - 1, activeYear, activeYear + 1].map((year, index) => ({
+    // La respuesta conserva el contrato posicional usado por BaseRow:
+    // clasificación (18), snapshot (19), escenario (20) y tipo de dato (21).
     f: [
       year, "ENERO", "MENSUAL", `CC-${year}`, "HP", `Tienda ${year}`,
       100, 50, -10, -10, -5, -2, -1, -1, -29, 0, 21, 25,
       classifications[index], "2026-11-20T12:00:00.000Z",
+      year <= activeYear - 1 ? `${year}R` : year === activeYear ? `${year}E` : `${year}P`,
+      year <= activeYear - 1 ? "REAL" : "FORECAST",
     ].map((value) => ({ v: String(value) })),
   }));
   const decoded = decodeStoreBigQuery({ rows });
@@ -128,9 +133,24 @@ test("B&L decodes dynamic years and explicit monthly classifications", () => {
   assert.equal(openingType({
     code: "210302",
     monthlyClassification: { 2026: { ENERO: "REMODELACIÓN" }, 2027: {} },
-  }, 2026, "ENERO"), "REMODELACIÓN");
+  }, 2026, "ENERO"), "NS");
   assert.equal(openingType({
     code: "210302",
     monthlyClassification: { 2026: { ENERO: "SIN CLASIFICAR" }, 2027: {} },
   }, 2026, "ENERO"), "NS");
+});
+
+test("B&L removes Remodelacion from the visible classification controls", () => {
+  assert.match(pageSource, /\["TOTAL", "SSS", "NS"\]/);
+  assert.doesNotMatch(pageSource, /"REMODELED"|monitor-kpi remodeled|\["TOTAL", "SSS", "NS", "REMODELACI/);
+});
+
+test("B&L exposes 2023R and opens every visible year by month", () => {
+  assert.match(pageSource, /type Year = 2023 \| 2024 \| 2025 \| 2026 \| 2027/);
+  assert.match(pageSource, /const years: Year\[\] = \[2023, 2024, 2025, 2026, 2027\]/);
+  assert.match(pageSource, /2023: "2023R"/);
+  assert.match(pageSource, /store\.realMonthly\[historicalScenario\]/);
+  assert.match(pageSource, /store\.realMonthlyClassification\[historicalScenario\]/);
+  assert.match(pageSource, /const breakdownTotals = displayedYears\.map/);
+  assert.match(consolidatedRefreshSql, /WHEN COUNTIF\(r\.TIPO_DATO = 'REAL'\) > 0 THEN 'SSS'/);
 });

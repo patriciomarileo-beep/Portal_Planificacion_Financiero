@@ -8,6 +8,7 @@ import { renderToString } from "react-dom/server";
 register("../scripts/test-typescript-loader.mjs", import.meta.url);
 const { clearSalesMarginData, deriveDefaultScenarioYears, getSalesMarginSnapshot, loadSalesMargin, salesMarginDefaultYears, salesMarginYearOptions } = await import("../app/sales-margin/sales-margin-data.ts");
 const { formatSourceUpdatedAt } = await import("../app/source-updated-at.ts");
+const { nextCompressedTopnavGroup } = await import("../app/topnav-state.ts");
 const {
   appendChainGroupedBrandDetails,
   buildDisplayRows,
@@ -225,6 +226,22 @@ test("the topbar exposes Sales and Margin as a dropdown with all its native view
   }
   assert.equal(page.match(/\["chainBrand", "Cadena × Marca"\]/g)?.length, 2);
   assert.doesNotMatch(page, /brandClassChannel/);
+});
+
+test("the responsive topbar opens groups only through an explicit click", () => {
+  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /const openTopnavGroupOnHover = \(group: PortalMenu\) => \{\s*if \(!mobileNavOpen\)/);
+  assert.match(page, /const closeTopnavGroupOnHover = \(group\?: PortalMenu\) => \{\s*if \(mobileNavOpen\) return/);
+  assert.match(page, /const toggleTopnavGroup = \(group: PortalMenu\)/);
+  assert.match(page, /if \(mobileNavOpen\) \{\s*setOpenTopnavGroup\(\(current\) => nextCompressedTopnavGroup\(current, group\)\)/);
+  assert.match(page, /onClick=\{\(\) => toggleTopnavGroup\("sales-margin"\)\}/);
+  assert.match(page, /onClick=\{\(\) => toggleTopnavGroup\(group\.id\)\}/);
+});
+
+test("selecting another responsive topbar module closes the previous one immediately", () => {
+  assert.equal(nextCompressedTopnavGroup(null, "sales-margin"), "sales-margin");
+  assert.equal(nextCompressedTopnavGroup("sales-margin", "forecast"), "forecast");
+  assert.equal(nextCompressedTopnavGroup("forecast", "forecast"), null);
 });
 
 test("direct access to Chain by brand activates its Sales and Margin tab", () => {

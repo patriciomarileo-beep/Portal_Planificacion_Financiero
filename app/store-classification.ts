@@ -1,9 +1,7 @@
 import type { StoreClassification } from "./base-consolidada-types";
 
 export type { StoreClassification } from "./base-consolidada-types";
-export type ClassificationFilter =
-  | "TOTAL"
-  | Exclude<StoreClassification, "SIN CLASIFICAR">;
+export type ClassificationFilter = "TOTAL" | "SSS" | "NS";
 
 const newStoresByMonth: Record<2026 | 2027, Record<string, Set<string>>> = {
   2026: {
@@ -52,11 +50,13 @@ export const openingType = (
   },
   year: 2026 | 2027,
   month = "DICIEMBRE",
-): Exclude<StoreClassification, "SIN CLASIFICAR"> => {
+): "SSS" | "NS" => {
   const sourceClassification = store.monthlyClassification?.[year]?.[month];
-  if (sourceClassification && sourceClassification !== "SIN CLASIFICAR") {
+  if (sourceClassification === "SSS" || sourceClassification === "NS") {
     return sourceClassification;
   }
+  // REMODELACION deja de ser una clasificacion visible del portal. Cuando
+  // viene informada por la fuente, se utiliza la regla operativa SSS/NS.
   return storeClassification(store.code, year, month);
 };
 

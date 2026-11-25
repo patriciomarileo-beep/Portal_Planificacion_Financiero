@@ -108,6 +108,8 @@ export const decodeStoreBigQuery = (
       requiredNumber(valueAt(row, 16), rowNumber, "UTILIDAD_FINAL"),
       nullableNumber(valueAt(row, 17), rowNumber, "FOUR_WALLS"),
       requiredClassification(valueAt(row, 18), rowNumber),
+      requiredText(valueAt(row, 20), rowNumber, "ESCENARIO"),
+      requiredText(valueAt(row, 21), rowNumber, "TIPO_DATO"),
     ];
   });
 
@@ -118,6 +120,7 @@ export const decodeStoreBigQuery = (
     }).format(new Date()),
   );
   const requiredYears = [
+    activeYear - 3,
     activeYear - 2,
     activeYear - 1,
     activeYear,
@@ -190,12 +193,20 @@ export async function getStoreBigQueryData(): Promise<{
           UTILIDAD_FINAL,
           FOUR_WALLS,
           COALESCE(NULLIF(TRIM(CLASIFICACION), ''), 'SIN CLASIFICAR') AS CLASIFICACION,
+          ESCENARIO,
+          TIPO_DATO,
           SYNCED_AT
         FROM \`${table}\`
         CROSS JOIN parameters
-        WHERE ESCENARIO IN (
-          CONCAT(CAST(active_year - 2 AS STRING), 'R'),
-          CONCAT(CAST(active_year - 1 AS STRING), 'R'),
+        WHERE (
+          TIPO_DATO = 'REAL'
+          AND ESCENARIO IN (
+            CONCAT(CAST(active_year - 3 AS STRING), 'R'),
+            CONCAT(CAST(active_year - 2 AS STRING), 'R'),
+            CONCAT(CAST(active_year - 1 AS STRING), 'R')
+          )
+        )
+        OR ESCENARIO IN (
           CONCAT(CAST(active_year AS STRING), 'E'),
           CONCAT(CAST(active_year + 1 AS STRING), 'P')
         )
@@ -224,8 +235,25 @@ export async function getStoreBigQueryData(): Promise<{
             SUM(COALESCE(FOUR_WALLS, 0))
           ) AS FOUR_WALLS,
           'SIN CLASIFICAR' AS CLASIFICACION,
+          ARRAY_AGG(
+            ESCENARIO ORDER BY SYNCED_AT DESC LIMIT 1
+          )[SAFE_OFFSET(0)] AS ESCENARIO,
+          'ANUAL' AS TIPO_DATO,
           MAX(SYNCED_AT) AS SYNCED_AT
         FROM monthly
+        WHERE (
+          ANO BETWEEN EXTRACT(YEAR FROM CURRENT_DATE('America/Santiago')) - 3
+              AND EXTRACT(YEAR FROM CURRENT_DATE('America/Santiago')) - 1
+          AND ESCENARIO = CONCAT(CAST(ANO AS STRING), 'R')
+        )
+        OR (
+          ANO = EXTRACT(YEAR FROM CURRENT_DATE('America/Santiago'))
+          AND ESCENARIO = CONCAT(CAST(ANO AS STRING), 'E')
+        )
+        OR (
+          ANO = EXTRACT(YEAR FROM CURRENT_DATE('America/Santiago')) + 1
+          AND ESCENARIO = CONCAT(CAST(ANO AS STRING), 'P')
+        )
         GROUP BY ANO, CC_REPORTE
       ), normalized AS (
         SELECT * FROM monthly
@@ -252,7 +280,9 @@ export async function getStoreBigQueryData(): Promise<{
         UTILIDAD_FINAL,
         FOUR_WALLS,
         CLASIFICACION,
-        FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E3SZ', MAX(SYNCED_AT) OVER()) AS BASE_SNAPSHOT_AT
+        FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E3SZ', MAX(SYNCED_AT) OVER()) AS BASE_SNAPSHOT_AT,
+        ESCENARIO,
+        TIPO_DATO
       FROM normalized
       WHERE CC_REPORTE IS NOT NULL
         AND TIENDA_REPORTE IS NOT NULL

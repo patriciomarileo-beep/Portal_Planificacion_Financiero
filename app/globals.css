@@ -1957,10 +1957,6 @@ td:first-child small {
   background: #fff0d8;
   color: #a56508;
 }
-.tag.classification-remodelacion {
-  background: #e6f6f4;
-  color: #14776f;
-}
 .status.bad {
   background: #fde9ec;
   color: var(--red);
@@ -2373,13 +2369,9 @@ footer {
   min-width: 112px;
   padding: 6px 8px;
 }
-.executive-matrix .period-breakdown-table th:first-child,
-.executive-matrix .period-breakdown-table td:first-child {
-  position: sticky;
-  left: 0;
-  z-index: 2;
+.executive-matrix .period-breakdown-table thead tr:first-child > th:first-child,
+.executive-matrix .period-breakdown-table tbody tr > td:first-child {
   min-width: 165px;
-  background: inherit;
 }
 .period-breakdown-table thead tr:first-child th {
   text-align: center;
@@ -2576,7 +2568,41 @@ footer {
   vertical-align: -2px;
 }
 .matrix-scroll {
+  position: relative;
+  isolation: isolate;
+  overflow-x: auto;
   margin: 0;
+  background: #fff;
+  overscroll-behavior-inline: contain;
+}
+.executive-matrix .matrix-scroll table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.executive-matrix .matrix-scroll table > thead > tr:first-child > th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background: #f8fafc;
+  background-clip: padding-box;
+  box-shadow: 1px 0 0 #dce4ef;
+}
+.executive-matrix .matrix-scroll table > tbody > tr > td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #fff;
+  background-clip: padding-box;
+  box-shadow: 1px 0 0 #edf0f4;
+}
+.executive-matrix .matrix-scroll table > tbody > tr.margin-rate-row > td:first-child {
+  background: #f7faff;
+}
+.executive-matrix .matrix-scroll table > tbody > tr.total-row > td:first-child {
+  background: #edf4ff;
+}
+.executive-matrix .matrix-scroll table > tbody > tr.ebitda-row > td:first-child {
+  background: #f4f8fe;
 }
 .matrix-title > strong {
   display: flex;
@@ -2772,7 +2798,6 @@ footer {
 .monitor-kpis .monitor-kpi:hover { border-color: #8aaed9; }
 .monitor-kpis .monitor-kpi.active { border-color: #1f5eaa; box-shadow: 0 0 0 2px rgba(31, 94, 170, .13); }
 .monitor-kpis .monitor-kpi.missing-m2 { border-top: 3px solid #8b5db5; background: linear-gradient(135deg, #fff, #f8f3fc); }
-.monitor-kpis .monitor-kpi.remodeled { border-top: 3px solid #168b83; background: linear-gradient(135deg, #fff, #effaf8); }
 .monitor-kpis .classification-kpi.sss {
   border-top: 3px solid #2f73c8;
   background: linear-gradient(135deg, #fff, #f3f7fd);

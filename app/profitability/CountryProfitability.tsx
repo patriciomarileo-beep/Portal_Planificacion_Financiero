@@ -49,7 +49,7 @@ export default function CountryProfitability() {
     return () => clearTimeout(timer);
   }, [load]);
 
-  const countries = data?.countries ?? [];
+  const countries = useMemo(() => data?.countries ?? [], [data]);
   const country = countries.find((item) => item.name === countryName) ?? countries[0];
   const scenario = country?.scenarios.find((item) => item.label === scenarioLabel) ?? country?.scenarios.at(-1);
   const prior = country?.scenarios[Math.max(0, (country?.scenarios.findIndex((item) => item.label === scenario?.label) ?? 0) - 1)];

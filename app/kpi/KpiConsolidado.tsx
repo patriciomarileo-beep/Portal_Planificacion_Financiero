@@ -147,25 +147,6 @@ const brandColors: Record<string, string> = {
   "UNDER ARMOUR": "#000000ff",
   VANS: "#000000ff",
 };
-const brandLogos: Record<string, string> = {
-  TODAS: "/brand-logos/todas.png",
-  AZALEIA: "/brand-logos/azaleia.png",
-  BSOUL: "/brand-logos/bsoul.png",
-  CATERPILLAR: "/brand-logos/caterpillar.png",
-  COLUMBIA: "/brand-logos/columbia.png",
-  CROCS: "/brand-logos/crocs.png",
-  "HUSH PUPPIES": "/brand-logos/hush-puppies.png",
-  "HUSH PUPPIES KIDS": "/brand-logos/hush-puppies-kids.png",
-  LOP: "/brand-logos/lop.png",
-  MERRELL: "/brand-logos/merrell.png",
-  "MOUNTAIN HARDWEAR": "/brand-logos/mountain-hardwear.png",
-  PARFOIS: "/brand-logos/parfois.png",
-  ROCKFORD: "/brand-logos/rockford.png",
-  NORSEG: "/brand-logos/norseg.png",
-  SAFETY: "/brand-logos/norseg.png",
-  "UNDER ARMOUR": "/brand-logos/under-armour.png",
-  VANS: "/brand-logos/vans.png",
-};
 const contrastColor = (hex: string) => {
   const channels = hex.slice(1, 7).match(/.{2}/g)?.map((channel) => Number.parseInt(channel, 16) / 255) ?? [0, 0, 0];
   const luminance = channels.map((channel) => channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4)
@@ -246,7 +227,6 @@ export default function KpiConsolidado() {
   const sourceUpdatedAt = formatSourceUpdatedAt(payload?.refreshedAt);
   const selectedBrandKey = selection.brand.trim().toUpperCase();
   const selectedBrandColor = brandColors[selectedBrandKey] ?? brandColors.TODAS;
-  const selectedBrandLogo = brandLogos[selectedBrandKey] ?? brandLogos.TODAS;
   const deckStyle = {
     "--kpi-brand-color": selectedBrandColor,
     "--kpi-brand-nav-contrast": contrastColor(selectedBrandColor),

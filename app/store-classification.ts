@@ -1,4 +1,9 @@
-export type StoreClassification = "SSS" | "NS";
+import type { StoreClassification } from "./base-consolidada-types";
+
+export type { StoreClassification } from "./base-consolidada-types";
+export type ClassificationFilter =
+  | "TOTAL"
+  | Exclude<StoreClassification, "SIN CLASIFICAR">;
 
 const newStoresByMonth: Record<2026 | 2027, Record<string, Set<string>>> = {
   2026: {
@@ -31,6 +36,27 @@ const newStoresByMonth: Record<2026 | 2027, Record<string, Set<string>>> = {
   },
 };
 
-export const storeClassification = (code: string, year: 2026 | 2027, month: string): StoreClassification =>
+export const storeClassification = (
+  code: string,
+  year: 2026 | 2027,
+  month: string,
+): Exclude<StoreClassification, "REMODELACIÓN" | "SIN CLASIFICAR"> =>
   newStoresByMonth[year][month]?.has(code) ? "NS" : "SSS";
+
+export const openingType = (
+  store: {
+    code: string;
+    monthlyClassification?: Partial<
+      Record<2026 | 2027, Record<string, StoreClassification>>
+    >;
+  },
+  year: 2026 | 2027,
+  month = "DICIEMBRE",
+): Exclude<StoreClassification, "SIN CLASIFICAR"> => {
+  const sourceClassification = store.monthlyClassification?.[year]?.[month];
+  if (sourceClassification && sourceClassification !== "SIN CLASIFICAR") {
+    return sourceClassification;
+  }
+  return storeClassification(store.code, year, month);
+};
 

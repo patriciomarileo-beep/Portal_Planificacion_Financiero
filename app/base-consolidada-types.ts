@@ -17,4 +17,11 @@ export type BaseRow = [
   number,
   number,
   number | null,
+  StoreClassification?,
 ];
+
+export type StoreClassification =
+  | "SSS"
+  | "NS"
+  | "REMODELACIÓN"
+  | "SIN CLASIFICAR";

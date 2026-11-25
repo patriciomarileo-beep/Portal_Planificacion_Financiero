@@ -1,13 +1,22 @@
 import assert from "node:assert/strict";
+import { register } from "node:module";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+register("../scripts/test-typescript-loader.mjs", import.meta.url);
+
 const setupSql = readFileSync(new URL("../sql/setup-bl-profitability-tables.sql", import.meta.url), "utf8");
 const refreshSql = readFileSync(new URL("../sql/refresh-bl-profitability.sql", import.meta.url), "utf8");
+const consolidatedSetupSql = readFileSync(new URL("../sql/setup-bl-consolidated.sql", import.meta.url), "utf8");
+const classificationSetupSql = readFileSync(new URL("../sql/setup-bl-store-classification.sql", import.meta.url), "utf8");
+const classificationRefreshSql = readFileSync(new URL("../sql/refresh-bl-store-classification.sql", import.meta.url), "utf8");
+const consolidatedRefreshSql = readFileSync(new URL("../sql/refresh-bl-consolidated.sql", import.meta.url), "utf8");
 const pageSource = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
 const adapterSource = readFileSync(new URL("../app/api/_shared/store-bigquery.ts", import.meta.url), "utf8");
 const routeSource = readFileSync(new URL("../app/api/portal-data/route.ts", import.meta.url), "utf8");
 const deploySource = readFileSync(new URL("../scripts/deploy-cloudrun.mjs", import.meta.url), "utf8");
+const { decodeStoreBigQuery } = await import("../app/api/_shared/store-bigquery.ts");
+const { openingType } = await import("../app/store-classification.ts");
 
 test("B&L keeps its six historical frontend views enabled", () => {
   assert.match(pageSource, /id: "bl", label: "B&L", enabled: true/);
@@ -66,6 +75,16 @@ test("B&L refresh validates before an atomic native publication", () => {
   assert.doesNotMatch(refreshSql, /TB_RENTABILIDAD_BL_(STAGING|AUDIT)/i);
 });
 
+test("B&L consolidates monthly classifications before publishing the query table", () => {
+  assert.match(consolidatedSetupSql, /TB_RENTABILIDAD_BL_CONSOLIDADA/);
+  assert.match(classificationSetupSql, /TB_CLASIFICACION_TIENDA/);
+  assert.match(classificationRefreshSql, /sp_refresh_clasificacion_tienda_bl/);
+  assert.match(consolidatedRefreshSql, /sp_refresh_rentabilidad_bl_consolidada/);
+  assert.match(consolidatedRefreshSql, /sp_refresh_clasificacion_tienda_bl/);
+  assert.match(consolidatedRefreshSql, /BEGIN TRANSACTION/i);
+  assert.match(consolidatedRefreshSql, /ROLLBACK TRANSACTION/i);
+});
+
 test("B&L portal endpoint reads the native table with full pagination", () => {
   assert.match(routeSource, /getStoreBigQueryData/);
   assert.doesNotMatch(routeSource, /getStoreSheetData|store-sheet/);
@@ -74,11 +93,44 @@ test("B&L portal endpoint reads the native table with full pagination", () => {
   assert.match(adapterSource, /paginate: true/);
   assert.match(adapterSource, /pageSize: 10000/);
   assert.match(adapterSource, /MAX\(SYNCED_AT\) OVER\(\)/);
-  assert.match(adapterSource, /requiredYears = \[2024, 2025, 2026, 2027\]/);
+  assert.match(adapterSource, /TB_RENTABILIDAD_BL_CONSOLIDADA/);
+  assert.match(adapterSource, /CURRENT_DATE\('America\/Santiago'\)/);
+  assert.match(adapterSource, /activeYear - 2/);
+  assert.match(adapterSource, /activeYear \+ 1/);
+  assert.match(adapterSource, /CLASIFICACION/);
   assert.doesNotMatch(adapterSource, /sheets\.googleapis\.com|BL_SHEET_ID/);
 });
 
 test("Cloud Run exposes only the native B&L table setting", () => {
   assert.match(deploySource, /BIGQUERY_BL_TABLE/);
+  assert.match(deploySource, /TB_RENTABILIDAD_BL_CONSOLIDADA/);
   assert.doesNotMatch(deploySource, /BL_SHEET_ID/);
+});
+
+test("B&L decodes dynamic years and explicit monthly classifications", () => {
+  const activeYear = Number(new Intl.DateTimeFormat("en", {
+    year: "numeric",
+    timeZone: "America/Santiago",
+  }).format(new Date()));
+  const classifications = ["REMODELACION", "SSS", "NS", "SIN CLASIFICAR"];
+  const rows = [activeYear - 2, activeYear - 1, activeYear, activeYear + 1].map((year, index) => ({
+    f: [
+      year, "ENERO", "MENSUAL", `CC-${year}`, "HP", `Tienda ${year}`,
+      100, 50, -10, -10, -5, -2, -1, -1, -29, 0, 21, 25,
+      classifications[index], "2026-11-20T12:00:00.000Z",
+    ].map((value) => ({ v: String(value) })),
+  }));
+  const decoded = decodeStoreBigQuery({ rows });
+
+  assert.equal(decoded.baseConsolidada[0][18], "REMODELACIÓN");
+  assert.equal(decoded.baseConsolidada[1][18], "SSS");
+  assert.equal(decoded.baseSnapshotAt, "2026-11-20T12:00:00.000Z");
+  assert.equal(openingType({
+    code: "210302",
+    monthlyClassification: { 2026: { ENERO: "REMODELACIÓN" }, 2027: {} },
+  }, 2026, "ENERO"), "REMODELACIÓN");
+  assert.equal(openingType({
+    code: "210302",
+    monthlyClassification: { 2026: { ENERO: "SIN CLASIFICAR" }, 2027: {} },
+  }, 2026, "ENERO"), "NS");
 });

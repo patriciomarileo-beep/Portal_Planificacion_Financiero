@@ -24,12 +24,13 @@ const originalEnv = { ...process.env };
 afterEach(() => { mock.restoreAll(); for (const key of Object.keys(process.env))
     if (!(key in originalEnv))
         delete process.env[key]; Object.assign(process.env, originalEnv); });
-const setup = () => Object.assign(process.env, { NODE_ENV: "production", AUTH_SESSION_SECRET: "test-only-" + "x".repeat(48), APP_ORIGIN: "https://portal.example.com", GOOGLE_OAUTH_CLIENT_ID: "test.apps.googleusercontent.com", DISABLE_GOOGLE_LOGIN: "false", BIGQUERY_BL_TABLE: "forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_RENTABILIDAD_BL" });
+const setup = () => Object.assign(process.env, { NODE_ENV: "production", AUTH_SESSION_SECRET: "test-only-" + "x".repeat(48), APP_ORIGIN: "https://portal.example.com", GOOGLE_OAUTH_CLIENT_ID: "test.apps.googleusercontent.com", DISABLE_GOOGLE_LOGIN: "false", BIGQUERY_BL_TABLE: "forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_RENTABILIDAD_BL_CONSOLIDADA" });
 const user = { email: "persona@forus.cl", name: "María Muñoz", role: "ADMINISTRADOR", personId: "42" };
 const post = (path, body, cookie = "") => new Request("https://portal.example.com" + path, { method: "POST", headers: { origin: "https://portal.example.com", "content-type": "application/json", cookie }, body: JSON.stringify(body) });
 const catalogRoles = ["SIN ROL", "ADMINISTRADOR", "ANALISTA FINANCIERO", "PLANIFICADOR FINANCIERO", "COMEX"];
-const storeBigQueryRows = [2024, 2025, 2026, 2027].map(year => ({
-    f: [year, "TOTAL", "ANUAL", `CC-${year}`, "HP", `Tienda ${year}`, 100, 50, -10, -10, -5, -2, -1, -1, -29, 0, 21, 25, "2026-11-20T12:00:00.000Z"]
+const activeYear = Number(new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "America/Santiago" }).format(new Date()));
+const storeBigQueryRows = [activeYear - 2, activeYear - 1, activeYear, activeYear + 1].map(year => ({
+    f: [year, "TOTAL", "ANUAL", `CC-${year}`, "HP", `Tienda ${year}`, 100, 50, -10, -10, -5, -2, -1, -1, -29, 0, 21, 25, "SIN CLASIFICAR", "2026-11-20T12:00:00.000Z"]
         .map(value => ({ v: value === null ? null : String(value) })),
 }));
 const database = (role = "ADMINISTRADOR", active = true, roles = catalogRoles) => {
@@ -376,8 +377,9 @@ test("analysts cannot write Forbox entries and planners cannot administer users"
   const portalPayload = await portalResponse.json();
   assert.equal(portalPayload.baseConsolidada.length, 4);
   assert.deepEqual(portalPayload.baseConsolidada[0], [
-    2024, "TOTAL", "ANUAL", "CC-2024", "HP", "Tienda 2024",
+    activeYear - 2, "TOTAL", "ANUAL", `CC-${activeYear - 2}`, "HP", `Tienda ${activeYear - 2}`,
     100, 50, -10, -10, -5, -2, -1, -1, -29, 0, 21, 25,
+    "SIN CLASIFICAR",
   ]);
   assert.equal(portalPayload.baseSnapshotAt, "2026-11-20T12:00:00.000Z");
   mock.restoreAll();

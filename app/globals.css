@@ -1957,6 +1957,10 @@ td:first-child small {
   background: #fff0d8;
   color: #a56508;
 }
+.tag.classification-remodelacion {
+  background: #e6f6f4;
+  color: #14776f;
+}
 .status.bad {
   background: #fde9ec;
   color: var(--red);

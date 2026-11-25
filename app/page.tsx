@@ -48,7 +48,11 @@ import { parseMarketIndicators, indicatorDateLabel, type MarketIndicator } from 
 import type { DollarHistoryPayload } from "./market/dollar-history-data";
 import type { BaseRow } from "./base-consolidada-types";
 import { PrivateDataContext, usePrivateData, type PrivateData } from "./private-data-context";
-import { storeClassification, type StoreClassification } from "./store-classification";
+import {
+  openingType,
+  type ClassificationFilter,
+  type StoreClassification,
+} from "./store-classification";
 import { canAccessMenu, type PortalMenu } from "./menu-access";
 import { clearSalesMarginData, loadSalesMargin } from "./sales-margin/sales-margin-data";
 import type { SalesMarginView } from "./sales-margin/SalesMargin";
@@ -70,7 +74,6 @@ type FwBand = "negative" | "low" | "high" | null;
 type ProfitMetric = "fourWalls" | "utility";
 type Quarter = "ANUAL" | "Q1" | "Q2" | "Q3" | "Q4";
 type ReportPeriod = MonthPeriod;
-type ClassificationFilter = "TOTAL" | StoreClassification;
 type MonitorFilter = "TOTAL" | "CHAIN_OTHER" | "DUPLICATE" | "ACTIVE_YEAR" | "NO_CONTRACT" | "NO_M2" | "SSS_YEAR" | "NS_YEAR" | "REMODELED";
 type PortalSection = {
   id: string;
@@ -97,6 +100,10 @@ type StoreRow = {
   name: string;
   annual: Record<Year, Metric>;
   monthly: Record<2026 | 2027, Record<string, Metric>>;
+  monthlyClassification: Record<
+    2026 | 2027,
+    Record<string, StoreClassification>
+  >;
 };
 type UserCell = string | number | boolean | null;
 type UserRow = {
@@ -177,6 +184,11 @@ const monthShort: Record<string, string> = {
   MAYO: "May", JUNIO: "Jun", JULIO: "Jul", AGOSTO: "Ago",
   SEPTIEMBRE: "Sep", OCTUBRE: "Oct", NOVIEMBRE: "Nov", DICIEMBRE: "Dic",
 };
+const classificationClass = (classification: string) =>
+  classification
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
 const portalGroups: { id: PortalMenu; label: string; description: string; icon: typeof BarChart3; items: PortalSection[] }[] = [
   {
     id: "forbox",
@@ -364,6 +376,7 @@ const buildStores = (baseConsolidada: BaseRow[]): StoreRow[] => {
         name: r[5] || `Tienda ${code}`,
         annual: { 2024: emptyMetric(), 2025: emptyMetric(), 2026: emptyMetric(), 2027: emptyMetric() },
         monthly: { 2026: {}, 2027: {} },
+        monthlyClassification: { 2026: {}, 2027: {} },
       });
     }
     const store = map.get(code)!;
@@ -373,6 +386,7 @@ const buildStores = (baseConsolidada: BaseRow[]): StoreRow[] => {
     } else if ((year === 2026 || year === 2027) && r[2] === "MENSUAL") {
       const month = r[1].toUpperCase();
       store.monthly[year][month] = addMetric(store.monthly[year][month] ?? emptyMetric(), metricFrom(r));
+      if (r[18]) store.monthlyClassification[year][month] = r[18];
     }
   }
   return [...map.values()];
@@ -404,8 +418,6 @@ const downloadExcel = (filename: string, headers: string[], rows: (string | numb
   link.click();
   URL.revokeObjectURL(url);
 };
-const openingType = (store: StoreRow, year: 2026 | 2027, month = "DICIEMBRE") =>
-  storeClassification(store.code, year, month);
 const fwBandOf = (store: StoreRow, year: Year, metric: ProfitMetric): FwBand => {
   if (store.annual[year].sales === 0) return null;
   const value = metric === "utility" ? store.annual[year].utility : (store.annual[year].fourWalls ?? 0);
@@ -559,7 +571,7 @@ function Executive({
           </div>
           <div className="matrix-actions">
             <div className="classification-filter" aria-label="Clasificación mensual de tiendas">
-              {(["TOTAL", "SSS", "NS"] as ClassificationFilter[]).map((item) => (
+              {(["TOTAL", "SSS", "NS", "REMODELACIÓN"] as ClassificationFilter[]).map((item) => (
                 <button key={item} className={classification === item ? "active" : ""} onClick={() => setClassification(item)}>{item}</button>
               ))}
             </div>
@@ -1217,26 +1229,32 @@ function StoreMonitor({ selection }: { selection: StoreRow[] }) {
     ].filter(Boolean);
     return { ...s, mall: mallOf(s.name), contractEnd, active, issues, squareMeters };
   });
+  const hasClassificationInYear = (
+    store: StoreRow,
+    year: 2026 | 2027,
+    classification: Exclude<ClassificationFilter, "TOTAL">,
+  ) => monthOrder.some((month) => openingType(store, year, month) === classification);
   const hasNsInYear = (store: StoreRow, year: 2026 | 2027) =>
-    monthOrder.some((month) => openingType(store, year, month) === "NS");
+    hasClassificationInYear(store, year, "NS");
+  const isSssForYear = (store: StoreRow, year: 2026 | 2027) =>
+    monthOrder.every((month) => openingType(store, year, month) === "SSS");
   const nsMonthsInYear = (store: StoreRow, year: 2026 | 2027) =>
     monthOrder.filter((month) => openingType(store, year, month) === "NS");
-  const isRemodeled = (store: StoreRow, year: 2026 | 2027) => {
-    const nsMonths = nsMonthsInYear(store, year).length;
-    return nsMonths >= 1 && nsMonths <= 3;
-  };
+  const isRemodeled = (store: StoreRow, year: 2026 | 2027) =>
+    hasClassificationInYear(store, year, "REMODELACIÓN");
   const classificationCounts = {
     2026: {
       ns: rows.filter((store) => hasNsInYear(store, 2026)).length,
-      sss: rows.filter((store) => !hasNsInYear(store, 2026)).length,
+      sss: rows.filter((store) => isSssForYear(store, 2026)).length,
+      remodeled: rows.filter((store) => isRemodeled(store, 2026)).length,
     },
     2027: {
       ns: rows.filter((store) => hasNsInYear(store, 2027)).length,
-      sss: rows.filter((store) => !hasNsInYear(store, 2027)).length,
+      sss: rows.filter((store) => isSssForYear(store, 2027)).length,
+      remodeled: rows.filter((store) => isRemodeled(store, 2027)).length,
     },
   };
   const pending = rows.filter((r) => r.issues.length);
-  const hasAnyNsMonth = (store: StoreRow) => ([2026, 2027] as const).some((year) => hasNsInYear(store, year));
   const monitorRows = rows.filter((store) => {
     if (monitorFilter === "TOTAL") return true;
     if (monitorFilter === "CHAIN_OTHER") return store.chain === "OTROS";
@@ -1250,7 +1268,9 @@ function StoreMonitor({ selection }: { selection: StoreRow[] }) {
   });
   const visibleRows = classificationFilter === "TOTAL"
     ? monitorRows
-    : monitorRows.filter((store) => classificationFilter === "NS" ? hasAnyNsMonth(store) : !hasAnyNsMonth(store));
+    : monitorRows.filter((store) => ([2026, 2027] as const).some(
+        (year) => hasClassificationInYear(store, year, classificationFilter),
+      ));
   const selectMonitorFilter = (filter: MonitorFilter) => {
     setMonitorFilter((current) => current === filter && filter !== "TOTAL" ? "TOTAL" : filter);
     setClassificationFilter("TOTAL");
@@ -1267,14 +1287,14 @@ function StoreMonitor({ selection }: { selection: StoreRow[] }) {
         <button type="button" className={`monitor-kpi missing-m2 ${monitorFilter === "NO_M2" ? "active" : ""}`} onClick={() => selectMonitorFilter("NO_M2")}><label>TIENDAS SIN M²</label><strong>{rows.filter((r) => r.squareMeters <= 0).length}</strong><span>requieren completar superficie</span></button>
         <button type="button" className={`monitor-kpi classification-kpi sss ${monitorFilter === "SSS_YEAR" ? "active" : ""}`} onClick={() => selectMonitorFilter("SSS_YEAR")}><label>SSS {monitorYear === 2026 ? "2026E" : "2027P"}</label><strong>{classificationCounts[monitorYear].sss}</strong><span>SSS los 12 meses</span></button>
         <button type="button" className={`monitor-kpi classification-kpi ns ${monitorFilter === "NS_YEAR" ? "active" : ""}`} onClick={() => selectMonitorFilter("NS_YEAR")}><label>NS {monitorYear === 2026 ? "2026E" : "2027P"}</label><strong>{classificationCounts[monitorYear].ns}</strong><span>al menos un mes NS</span></button>
-        <button type="button" className={`monitor-kpi remodeled ${monitorFilter === "REMODELED" ? "active" : ""}`} onClick={() => selectMonitorFilter("REMODELED")}><label>REMODELADAS {monitorYear === 2026 ? "2026E" : "2027P"}</label><strong>{rows.filter((r) => isRemodeled(r, monitorYear)).length}</strong><span>entre 1 y 3 meses NS</span></button>
+        <button type="button" className={`monitor-kpi remodeled ${monitorFilter === "REMODELED" ? "active" : ""}`} onClick={() => selectMonitorFilter("REMODELED")}><label>REMODELADAS {monitorYear === 2026 ? "2026E" : "2027P"}</label><strong>{classificationCounts[monitorYear].remodeled}</strong><span>clasificación informada por origen</span></button>
       </section>
       <section className="panel monitor-panel">
         <div className="monitor-head">
           <div><label>BASE DE CONTROL</label><h3>Listado de tiendas</h3></div>
           <div className="monitor-head-actions">
             <div className="classification-filter" aria-label="Filtrar clasificación del monitor">
-              {(["TOTAL", "SSS", "NS"] as ClassificationFilter[]).map((item) => (
+              {(["TOTAL", "SSS", "NS", "REMODELACIÓN"] as ClassificationFilter[]).map((item) => (
                 <button key={item} className={classificationFilter === item ? "active" : ""} onClick={() => setClassificationFilter(item)}>{item}</button>
               ))}
             </div>
@@ -1291,7 +1311,7 @@ function StoreMonitor({ selection }: { selection: StoreRow[] }) {
               <td><b>{s.code}</b></td><td><b>{s.name}</b></td><td className={s.chain === "OTROS" ? "neg bold" : ""}>{s.chain}</td><td>{s.mall}</td><td className={s.squareMeters <= 0 ? "missing-m2" : ""}>{s.squareMeters > 0 ? s.squareMeters.toLocaleString("es-CL", { maximumFractionDigits: 1 }) : "SIN M²"}</td><td>{nsMonthsInYear(s, monitorYear).length ? nsMonthsInYear(s, monitorYear).map((month) => monthShort[month]).join(" · ") : "—"}</td><td className={!s.contractEnd && s.annual[monitorYear].sales !== 0 ? "missing-contract" : ""}>{s.contractEnd ?? (s.annual[monitorYear].sales !== 0 ? "FALTA FECHA" : "NO REQUERIDA")}</td>
               {([2026, 2027] as const).flatMap((year) => monthOrder.map((month) => {
                 const classification = openingType(s, year, month);
-                return <td key={`${year}-${month}`}><i className={`tag classification-${classification.toLowerCase()}`}>{classification}</i></td>;
+                return <td key={`${year}-${month}`}><i className={`tag classification-${classificationClass(classification)}`}>{classification}</i></td>;
               }))}
               <td>{s.issues.length ? <i className="status low">● {s.issues.join(" · ")}</i> : <i className="status good">● Cuadrada</i>}</td>
             </tr>)}</tbody>

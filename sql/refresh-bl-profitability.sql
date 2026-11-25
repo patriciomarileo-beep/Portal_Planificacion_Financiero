@@ -203,7 +203,7 @@ BEGIN
     RAISE USING MESSAGE = v_validation_message;
   END IF;
 
-  CREATE TEMP TABLE source_snapshot AS
+  CREATE TEMP TABLE bl_profitability_source_snapshot AS
   SELECT
     SAFE_CAST(ANO_RAW AS INT64) AS ANO,
     MES,
@@ -253,7 +253,7 @@ BEGIN
       DEPRECIACION, FEE_COMERCIAL, FEE_ADM, COSTO_OPERACIONAL,
       RESULTADO_NO_OPERACIONAL, UTILIDAD_FINAL, FOUR_WALLS,
       CURRENT_TIMESTAMP()
-    FROM source_snapshot;
+    FROM bl_profitability_source_snapshot;
 
     COMMIT TRANSACTION;
   EXCEPTION WHEN ERROR THEN

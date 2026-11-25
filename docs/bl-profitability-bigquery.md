@@ -11,31 +11,31 @@ La vista B&L no se perdio. La version actual conserva:
 - Sensibilidad tiendas;
 - Monitor tiendas.
 
-La interfaz permanece en `app/page.tsx`. El corte del backend no modifica sus
-calculos ni su presentacion. `/api/portal-data` consume ahora exclusivamente la
-tabla nativa validada de BigQuery.
+La interfaz permanece en `app/page.tsx`. `/api/portal-data` consume la tabla
+consolidada validada de BigQuery y entrega la clasificacion mensual de origen
+junto con las medidas; el portal conserva las reglas existentes como respaldo
+cuando una tienda llega sin clasificacion.
 
 ## Arquitectura propuesta
 
 ```text
-Google Sheets / BASE_CONSOLIDADA!A:V
-                |
-                v
-ft_cl_planificacion_TB_EXT_RENTABILIDAD_BL        (tabla externa)
-                |
-                v
-sp_refresh_rentabilidad_bl                        (validacion + publicacion atomica)
-                |
-                v
-ft_cl_planificacion_TB_RENTABILIDAD_BL            (tabla nativa)
-                |
-                v
-/api/portal-data -> B&L                             (origen activo)
+Google Sheets B&L -> tabla externa -> TB_RENTABILIDAD_BL (tabla nativa)
+                                      \
+Google Sheets clasificacion -> dimension mensual
+                                       |
+                                       v
+                      sp_refresh_modelo_rentabilidad_bl
+                                       |
+                                       v
+                      TB_RENTABILIDAD_BL_CONSOLIDADA
+                                       |
+                                       v
+                         /api/portal-data -> B&L
 ```
 
 Solo la identidad que crea o ejecuta la consulta programada necesita permiso de
-lector sobre Google Sheets. La cuenta de Cloud Run necesitara exclusivamente
-lectura de BigQuery cuando se realice el corte del backend.
+lector sobre las hojas B&L y clasificacion. La cuenta de Cloud Run necesitara
+exclusivamente lectura de BigQuery cuando se realice el corte del backend.
 
 ## Objetos que se prepararan
 
@@ -44,6 +44,9 @@ lectura de BigQuery cuando se realice el corte del backend.
 | Tabla externa | `forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_EXT_RENTABILIDAD_BL` |
 | Tabla nativa | `forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_RENTABILIDAD_BL` |
 | Procedimiento | `forus-analitica-test-datalake.silver.sp_refresh_rentabilidad_bl` |
+| Dimension de clasificacion | `forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_CLASIFICACION_TIENDA` |
+| Tabla consolidada consultada por el portal | `forus-analitica-test-datalake.silver.ft_cl_planificacion_TB_RENTABILIDAD_BL_CONSOLIDADA` |
+| Procedimiento programado | `forus-analitica-test-datalake.silver.sp_refresh_modelo_rentabilidad_bl` |
 
 No se crean tablas persistentes de `STAGING` ni `AUDIT`.
 
@@ -115,22 +118,27 @@ Los conteos deben coincidir con la validacion de la tabla externa.
 
 ### 6. Crear la consulta programada bajo control manual
 
-En BigQuery Studio:
+Antes de programar la carga final, ejecuta una vez los scripts
+`sql/setup-bl-store-classification.sql` y `sql/setup-bl-consolidated.sql` para
+crear la dimension y tabla consolidada. Luego ejecuta
+`sql/refresh-bl-store-classification.sql` y `sql/refresh-bl-consolidated.sql`
+para instalar los procedimientos. La primera publicacion completa se valida
+con:
 
-1. Crea una **Scheduled query** con el siguiente texto:
+```sql
+CALL `forus-analitica-test-datalake.silver.sp_refresh_modelo_rentabilidad_bl`();
+```
 
-   ```sql
-   CALL `forus-analitica-test-datalake.silver.sp_refresh_rentabilidad_bl`();
-   ```
+En BigQuery Studio, crea la consulta programada con el mismo `CALL`:
 
-2. Nombre sugerido: `Accountability Portal - Sincronizacion Rentabilidad B&L`.
-3. Ubicacion: `us-east4`.
-4. Frecuencia recomendada: `every 5 minutes`. Es el intervalo minimo admitido
+1. Nombre sugerido: `Accountability Portal - Sincronizacion Rentabilidad B&L`.
+2. Ubicacion: `us-east4`.
+3. Frecuencia recomendada: `every 5 minutes`. Es el intervalo minimo admitido
    por Scheduled Queries; no se puede ejecutar cada minuto con este servicio.
-5. Usa las credenciales de la cuenta que tiene lectura de la hoja.
-6. Activa **email notification on failure**.
-7. No configures una tabla destino: el procedimiento publica en la tabla nativa.
-8. Revisa manualmente la primera ejecucion y confirma que termine en
+4. Usa las credenciales de la cuenta que tiene lectura de ambas hojas.
+5. Activa **email notification on failure**.
+6. No configures una tabla destino: el procedimiento publica en la tabla consolidada.
+7. Revisa manualmente la primera ejecucion y confirma que termine en
    `SUCCEEDED`.
 
 ## Controles incluidos
@@ -158,10 +166,12 @@ publica como `26885.91502`; no se redondea ni se multiplica el monto.
 
 ## Corte del portal completado
 
-El backend de B&L consulta la tabla nativa mediante `BIGQUERY_BL_TABLE`. La
-lectura pagina todos los resultados (la instantanea validada contiene 12.885
-filas), conserva exactamente el contrato `BaseRow` consumido por el frontend y
-publica `MAX(SYNCED_AT)` como fecha de actualizacion del informe.
+El backend de B&L consulta la tabla consolidada mediante `BIGQUERY_BL_TABLE`.
+La consulta selecciona dinamicamente los escenarios de los dos anos reales
+anteriores, el ano estimado y la siguiente proyeccion; agrega filas anuales a
+partir del detalle mensual y pagina todos los resultados. El contrato conserva
+las 18 posiciones existentes de `BaseRow`, agrega la clasificacion mensual en
+la posicion 19 y publica `MAX(SYNCED_AT)` como fecha de actualizacion.
 
 `BL_SHEET_ID` y los permisos de Google Sheets/Drive fueron retirados de Cloud
 Run. La identidad del portal solo necesita ejecutar trabajos y leer la tabla

@@ -122,6 +122,15 @@ export const salesMarginChainDisplayName = (chain: string) => {
   const normalized = chain.trim().toUpperCase();
   return chainDisplayAliases[normalized] ?? chain;
 };
+const brandDisplayAliases: Record<string, string> = {
+  "MOUNTAIN HARDWEAR": "MH",
+  "HUSH PUPPIES KIDS": "HPK",
+  "HUSH PUPPIES": "HP",
+};
+export const salesMarginBrandDisplayName = (brand: string) => {
+  const normalized = brand.trim().toUpperCase();
+  return brandDisplayAliases[normalized] ?? brand;
+};
 const quarterMonths: Record<Exclude<QuarterFilter, "ANUAL">, number[]> = {
   Q1: [1, 2, 3],
   Q2: [4, 5, 6],
@@ -163,8 +172,9 @@ const dependentSelectionLabel = (
   options: readonly string[],
   plural: string,
   constrained: boolean,
+  displayOption: (value: string) => string = (value) => value,
 ) => constrained
-  ? options.length === 1 ? options[0] : `${options.length} ${plural}`
+  ? options.length === 1 ? displayOption(options[0]) : `${options.length} ${plural}`
   : undefined;
 
 export const salesMarginBrandsForFilters = (
@@ -550,9 +560,15 @@ export const buildDisplayRows = (
       ];
     }
 
-    if (view === "channel") return unique(rows.map((row) => row.business)).flatMap((business) =>
-      periodRows(rows.filter((row) => row.business === business), `channel-${business}`, business),
-    );
+    if (view === "channel") {
+      const detail = unique(rows.map((row) => row.business)).flatMap((business) =>
+        periodRows(rows.filter((row) => row.business === business), `channel-${business}`, business),
+      );
+      return [
+        ...detail,
+        totalForSelectedPeriod(rows, "channel-total", "TOTAL", ""),
+      ];
+    }
 
     if (view === "brand") {
       const consolidated = periodRows(rows, "brand-consolidated", "CONSOLIDADO", "", "secondary", true);
@@ -663,13 +679,18 @@ export const buildDisplayRows = (
       a.primary.localeCompare(b.primary, "es") || quarterOrder.indexOf(a.secondary) - quarterOrder.indexOf(b.secondary),
     );
     const businesses = [...new Set(detail.map((row) => row.primary))];
-    return businesses.flatMap((business) => {
+    const rowsByBusiness = businesses.flatMap((business) => {
       const businessRows = detail.filter((row) => row.primary === business);
       return [
         ...businessRows,
         { key: `${business}\u0000TOTAL`, primary: business, secondary: "TOTAL", tertiary: "", metrics: sumMetrics(businessRows), total: true },
       ];
     });
+    const consolidated = groupedRows(rows, () => "TOTAL")[0];
+    return [
+      ...rowsByBusiness,
+      { ...consolidated, key: "channel\u0000TOTAL", total: true },
+    ];
   }
 
   if (view === "chainBrand") {
@@ -1194,6 +1215,9 @@ export default function SalesMargin({
   const sortAria = (key: ChainSortKey): "none" | "ascending" | "descending" =>
     chainSort.key !== key ? "none" : chainSort.direction === "asc" ? "ascending" : "descending";
   const primaryCell = (row: DisplayRow) => {
+    if (view === "brand" || view === "brandChannel" || view === "brandClass") {
+      return salesMarginBrandDisplayName(row.primary);
+    }
     if (view !== "chainBrand" || row.primary === "CONSOLIDADO") return row.primary;
     const expanded = expandedChains.has(row.primary);
     const brandCount = chainBrandCounts.get(row.primary) ?? 0;
@@ -1345,7 +1369,8 @@ export default function SalesMargin({
             options={filterOptions.brands}
             selected={brandFilter}
             onChange={(values) => changeFilter("brands", values)}
-            emptySelectionLabel={dependentSelectionLabel(filterOptions.brands, "MARCAS", activeChannelFilter.length > 0 || hasActiveChainFilter || classFilter.length > 0)}
+            emptySelectionLabel={dependentSelectionLabel(filterOptions.brands, "MARCAS", activeChannelFilter.length > 0 || hasActiveChainFilter || classFilter.length > 0, salesMarginBrandDisplayName)}
+            displayOption={salesMarginBrandDisplayName}
           />
           <MultiSelectFilter
             label="CANAL"

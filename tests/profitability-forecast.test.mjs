@@ -75,6 +75,15 @@ test("the brand ranking calculates both annual and budget margin variations", ()
   assert.match(channelProfitabilitySource, /cell\(item\.marginBudget\)/);
 });
 
+test("the brand ranking includes a filtered aggregate total", () => {
+  assert.match(channelProfitabilitySource, /const rankingTotal = useMemo/);
+  assert.match(channelProfitabilitySource, /salesAnnual: variation\(selected\.sales, prior\.sales\)/);
+  assert.match(channelProfitabilitySource, /marginBudget: variation\(selected\.margin, budget\.margin\)/);
+  assert.match(channelProfitabilitySource, /className="channel-ranking-total"/);
+  assert.match(channelProfitabilitySource, /<td>TOTAL<\/td>/);
+  assert.match(stylesSource, /\.channel-ranking-table tfoot td/);
+});
+
 test("Rentabilidad Forecast uses the standardized empty monthly multi-filter", () => {
   assert.match(channelProfitabilitySource, /"Enero", "Febrero", "Marzo"/);
   assert.match(channelProfitabilitySource, /"Octubre", "Noviembre", "Diciembre"/);
@@ -93,4 +102,10 @@ test("Rentabilidad Forecast replicates the Sales and Margin clear-filter control
   assert.match(channelProfitabilitySource, /setSelectedMonths\(\[\]\)/);
   assert.match(channelProfitabilitySource, /className="sales-margin-clear channel-filter-clear"/);
   assert.match(channelProfitabilitySource, /onClick=\{clearFilters\}/);
+});
+
+test("Rentabilidad Forecast scenario and brand filters use the Sales and Margin type scale", () => {
+  assert.match(channelProfitabilitySource, /className="scenario-filter"/);
+  assert.match(channelProfitabilitySource, /channel-filter-select brand-filter/);
+  assert.match(stylesSource, /channel-filter-select:is\(\.scenario-filter, \.brand-filter\)[\s\S]*?font-size: 11px;/);
 });

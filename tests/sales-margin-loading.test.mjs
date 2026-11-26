@@ -15,6 +15,7 @@ const {
   chainBrandRowsForAccordion,
   default: SalesMargin,
   reconcileSalesMarginFilters,
+  salesMarginBrandDisplayName,
   salesMarginChainDisplayName,
   salesMarginBrandsForFilters,
   salesMarginChainsForFilters,
@@ -265,6 +266,34 @@ test("channel options depend on the selected brands", () => {
   assert.deepEqual(salesMarginChannelsForBrands(rows, []), ["BRICK & LIFE", "ECOMMERCE", "MARKETPLACE", "WHOLESALE"]);
 });
 
+test("channel view appends one consolidated total for annual and selected periods", () => {
+  const base = payload.rows[0];
+  const rows = [
+    { ...base, business: "BRICK & LIFE", sales: 10, marginAmount: 4 },
+    { ...base, business: "ECOMMERCE", sales: 20, marginAmount: 8 },
+  ];
+
+  for (const period of ["ANUAL", "Q1"]) {
+    const display = buildDisplayRows(rows, "channel", period, [1, 2, 3]);
+    const total = display.at(-1);
+    assert.equal(total?.primary, "TOTAL");
+    assert.equal(total?.total, true);
+    assert.equal(total?.metrics["2027P"]?.sales, 30);
+    assert.equal(display.filter((row) => row.primary === "TOTAL").length, 1);
+  }
+});
+
+test("brand labels are abbreviated in tables and in the brand filter", () => {
+  assert.equal(salesMarginBrandDisplayName("MOUNTAIN HARDWEAR"), "MH");
+  assert.equal(salesMarginBrandDisplayName("HUSH PUPPIES KIDS"), "HPK");
+  assert.equal(salesMarginBrandDisplayName("HUSH PUPPIES"), "HP");
+  assert.equal(salesMarginBrandDisplayName("COLUMBIA"), "COLUMBIA");
+
+  const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
+  assert.match(report, /displayOption=\{salesMarginBrandDisplayName\}/);
+  assert.match(report, /view === "brand" \|\| view === "brandChannel" \|\| view === "brandClass"/);
+});
+
 test("brand, channel and class options are bidirectionally faceted", () => {
   const rows = [
     { ...payload.rows[0], brand: "BROOKS", business: "BRICK & LIFE", class: "CALZADO" },
@@ -452,11 +481,13 @@ test("a single-month table filter keeps unique React rows and never mixes quarte
     assert.equal(display.some((row) => row.expandable), false, `${view} should not show an empty accordion for one month`);
     const periodsAreSelectedMonthOrFlatTotal = display.every((row) => {
       const period = view === "channel" || view === "brand" ? row.secondary : row.tertiary;
-      const isFlatTotal = (view === "brandChannel" || view === "brandClass" || view === "chainBrand") && row.total && period === "";
+      const isFlatTotal = row.total && period === "";
       return period === "ENE" || isFlatTotal;
     });
     assert.equal(periodsAreSelectedMonthOrFlatTotal, true, `${view} must only render the selected month`);
-    assert.equal(display.some((row) => row.metrics["2027P"]?.sales === 20 || row.metrics["2027P"]?.sales === 40), false);
+    assert.equal(display.some((row) => !row.total && (
+      row.metrics["2027P"]?.sales === 20 || row.metrics["2027P"]?.sales === 40
+    )), false);
   }
 
   const report = readFileSync(new URL("../app/sales-margin/SalesMargin.tsx", import.meta.url), "utf8");
@@ -473,7 +504,8 @@ test("the Sales and Margin month filter starts empty and keeps the annual view u
 
   assert.match(report, /useState<number\[\]>\(\[\]\)/);
   assert.match(report, /setSelectedMonths\(\[\]\)/);
-  assert.match(html, /<b>0(?:<!-- -->)? MESES<\/b>/);
+  assert.match(html, /<div class="month-options-head"><b><\/b>/);
+  assert.doesNotMatch(html, /0 MESES/);
   assert.match(html, /type="checkbox"\/>Enero/);
   assert.match(html, /type="checkbox"\/>Diciembre/);
   assert.match(monthFilter, /<summary>MES<\/summary>/);

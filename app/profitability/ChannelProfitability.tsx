@@ -101,6 +101,7 @@ const sumRows = (rows: SourceRow[]): Totals => rows.reduce((total, row) => {
 const money = (value: number) => new Intl.NumberFormat("es-CL", { maximumFractionDigits: 0 }).format(value);
 const percent = (value: number) => `${new Intl.NumberFormat("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)}%`;
 const variation = (current: number, previous: number) => previous === 0 ? null : ((current / previous) - 1) * 100;
+const rankingVariationCell = (value: number | null) => <span className={value !== null && value < 0 ? "negative" : "positive"}>{value === null ? "—" : `${value >= 0 ? "+" : ""}${percent(value)}`}</span>;
 
 function Variation({ value }: { value: number | null }) {
   if (value === null) return <span className="channel-var neutral">Sin base comparable</span>;
@@ -586,6 +587,45 @@ export default function ChannelProfitability({
     });
   }, [brands, channel, matchesPeriod, rankingSort, rows, scenario, selectedBrands]);
 
+  const rankingTotal = useMemo(() => {
+    const selected = ranking.reduce((total, item) => {
+      total.sales += item.sales;
+      total.margin += item.margin;
+      total.operatingCost += item.operatingCost;
+      total.operatingResult += item.operatingResult;
+      total.utility += item.utility;
+      return total;
+    }, zeroTotals());
+    const prior = ranking.reduce((total, item) => {
+      total.sales += item.prior.sales;
+      total.margin += item.prior.margin;
+      total.operatingCost += item.prior.operatingCost;
+      total.operatingResult += item.prior.operatingResult;
+      total.utility += item.prior.utility;
+      return total;
+    }, zeroTotals());
+    const budget = ranking.reduce((total, item) => {
+      total.sales += item.budget.sales;
+      total.margin += item.budget.margin;
+      total.operatingCost += item.budget.operatingCost;
+      total.operatingResult += item.budget.operatingResult;
+      total.utility += item.budget.utility;
+      return total;
+    }, zeroTotals());
+
+    return {
+      ...selected,
+      salesAnnual: variation(selected.sales, prior.sales),
+      salesBudget: variation(selected.sales, budget.sales),
+      marginAnnual: variation(selected.margin, prior.margin),
+      marginBudget: variation(selected.margin, budget.margin),
+      operatingAnnual: variation(selected.operatingResult, prior.operatingResult),
+      operatingBudget: variation(selected.operatingResult, budget.operatingResult),
+      utilityAnnual: variation(selected.utility, prior.utility),
+      utilityBudget: variation(selected.utility, budget.utility),
+    };
+  }, [ranking]);
+
   const cards: { key: MetricKey; label: string; hint: string }[] = [
     { key: "sales", label: "Ventas", hint: "Ingresos del canal" },
     { key: "margin", label: "Margen", hint: current.sales ? `${percent(current.margin / current.sales * 100)} sobre ventas` : "Sobre ventas" },
@@ -723,7 +763,7 @@ export default function ChannelProfitability({
         return <th key={column.key} aria-sort={active ? rankingSort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" className={active ? "active" : ""} onClick={() => changeRankingSort(column.key)}>{column.label}<SortIcon aria-hidden="true" /></button></th>;
       })}</tr></thead><tbody>
         {ranking.map((item) => {
-          const cell = (value: number | null) => <span className={value !== null && value < 0 ? "negative" : "positive"}>{value === null ? "—" : `${value >= 0 ? "+" : ""}${percent(value)}`}</span>;
+          const cell = rankingVariationCell;
           const isFocused = focusedBrand === item.name;
           const handleBrandKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
             if (event.key === "Enter" || event.key === " ") {
@@ -733,7 +773,7 @@ export default function ChannelProfitability({
           };
           return <tr key={item.name} className={isFocused ? "channel-selected-brand" : ""} tabIndex={0} aria-selected={isFocused} onClick={() => selectRankingBrand(item.name)} onKeyDown={handleBrandKeyDown}><td><b>{item.name}</b></td><td>{money(item.sales)}</td><td>{cell(item.salesAnnual)}</td><td>{cell(item.salesBudget)}</td><td>{money(item.margin)}</td><td>{cell(item.marginAnnual)}</td><td>{cell(item.marginBudget)}</td><td className={item.operatingResult < 0 ? "negative" : "positive"}>{money(item.operatingResult)}</td><td>{cell(item.operatingAnnual)}</td><td>{cell(item.operatingBudget)}</td><td className={item.utility < 0 ? "negative" : "positive"}>{money(item.utility)}</td><td>{cell(item.utilityAnnual)}</td><td>{cell(item.utilityBudget)}</td></tr>;
         })}
-      </tbody></table></div>
+      </tbody><tfoot><tr className="channel-ranking-total"><td>TOTAL</td><td>{money(rankingTotal.sales)}</td><td>{rankingVariationCell(rankingTotal.salesAnnual)}</td><td>{rankingVariationCell(rankingTotal.salesBudget)}</td><td>{money(rankingTotal.margin)}</td><td>{rankingVariationCell(rankingTotal.marginAnnual)}</td><td>{rankingVariationCell(rankingTotal.marginBudget)}</td><td className={rankingTotal.operatingResult < 0 ? "negative" : "positive"}>{money(rankingTotal.operatingResult)}</td><td>{rankingVariationCell(rankingTotal.operatingAnnual)}</td><td>{rankingVariationCell(rankingTotal.operatingBudget)}</td><td className={rankingTotal.utility < 0 ? "negative" : "positive"}>{money(rankingTotal.utility)}</td><td>{rankingVariationCell(rankingTotal.utilityAnnual)}</td><td>{rankingVariationCell(rankingTotal.utilityBudget)}</td></tr></tfoot></table></div>
     </article>
   </section>;
 }

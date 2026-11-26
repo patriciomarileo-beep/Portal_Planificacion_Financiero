@@ -12,6 +12,8 @@ const classificationSetupSql = readFileSync(new URL("../sql/setup-bl-store-class
 const classificationRefreshSql = readFileSync(new URL("../sql/refresh-bl-store-classification.sql", import.meta.url), "utf8");
 const consolidatedRefreshSql = readFileSync(new URL("../sql/refresh-bl-consolidated.sql", import.meta.url), "utf8");
 const pageSource = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+const stylesSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+const monthFilterSource = readFileSync(new URL("../app/components/MonthPeriodFilter.tsx", import.meta.url), "utf8");
 const adapterSource = readFileSync(new URL("../app/api/_shared/store-bigquery.ts", import.meta.url), "utf8");
 const routeSource = readFileSync(new URL("../app/api/portal-data/route.ts", import.meta.url), "utf8");
 const deploySource = readFileSync(new URL("../scripts/deploy-cloudrun.mjs", import.meta.url), "utf8");
@@ -43,12 +45,53 @@ test("B&L annual comparison and M2 share the standardized empty monthly filter",
   assert.doesNotMatch(pageSource, /m2MonthFilterRef|toggleM2Month/);
 });
 
+test("B&L keeps selected months chronological and its period matrix readable", () => {
+  assert.match(monthFilterSource, /months\s*\.map\(\(\{ value \}\) => value\)\s*\.filter\(\(value\) => nextSelection\.has\(value\)\)/);
+  assert.match(monthFilterSource, /if \(nextPeriod === "ANUAL" && selectedMonths\.length > 0\) \{\s*onSelectedMonthsChange\(\[\]\);/);
+  assert.match(monthFilterSource, /selectedMonths\.length === 0\s*\? ""\s*: selectedMonths\.length === 1\s*\? "1 MES"\s*: `\$\{selectedMonths\.length\} MESES`/);
+  assert.match(monthFilterSource, /<b>\{selectedMonthsLabel\}<\/b>/);
+  assert.match(pageSource, /const chronologicalSelectedMonths = monthOrder\.filter\(\(month\) => selectedMonthSet\.has\(month\)\)/);
+  assert.match(pageSource, /period === "MES" \? chronologicalSelectedMonths : quarterMonths\[period\]/);
+  assert.match(stylesSource, /\.period-breakdown-table \.metric-value-stack > b \{\s*font-size: 12px;/);
+  assert.match(stylesSource, /\.period-breakdown-table \.sales-weight \{\s*font-size: 9px;/);
+  assert.match(stylesSource, /\.chain-divider \{\s*margin-top: 18px;[\s\S]*?border-top: 8px solid #eef3f8;/);
+});
+
+test("B&L uses compact matrices, standardized filters and a larger Four Walls chart", () => {
+  assert.match(pageSource, /className="bl-quarter-filter"/);
+  assert.match(pageSource, /className="annual-summary-table"/);
+  assert.match(pageSource, /className="chain-summary-table"/);
+  assert.match(pageSource, /className="two four-walls-grid"/);
+  assert.match(stylesSource, /\.annual-summary-table \{\s*width: 100%;\s*min-width: 100%;/);
+  assert.match(stylesSource, /\.chain-summary-table \{\s*width: 100%;\s*min-width: 100%;/);
+  assert.match(stylesSource, /:is\(\.bl-quarter-filter, \.classification-filter\) \{[\s\S]*?width: 220px;[\s\S]*?height: 46px;/);
+  assert.match(stylesSource, /\.four-walls-grid \.risk \.compact-table th \{\s*font-size: 11px;/);
+  assert.match(stylesSource, /\.four-walls-grid \.risk \.compact-table td \{\s*font-size: 11px;/);
+  assert.match(stylesSource, /\.four-walls-grid \.risk > h3,[\s\S]*?font-size: 16px;/);
+  assert.match(stylesSource, /\.four-walls-grid \.quadrant-panel \.recharts-cartesian-axis-tick-value \{\s*font-size: 12px;/);
+  assert.match(stylesSource, /\.four-walls-grid \.compact-chart \{\s*height: 300px;/);
+});
+
+test("B&L secondary views share the Annual Comparison type scale", () => {
+  assert.match(pageSource, /className="title break-even-title"/);
+  assert.match(pageSource, /className="title monitor-title"/);
+  assert.match(stylesSource, /:is\(\.m2-title, \.break-even-title, \.sensitivity-title, \.monitor-title\) h2 \{\s*font-size: 22px;/);
+  assert.match(stylesSource, /:is\(\.detail-group, \.be-panel,[\s\S]*?table th \{\s*font-size: 10px;/);
+  assert.match(stylesSource, /:is\(\.detail-group, \.be-panel,[\s\S]*?table td \{\s*font-size: 12px;/);
+  assert.match(stylesSource, /\.filters > \.chain-multiselect summary,[\s\S]*?\.filters > div input \{\s*font-size: 11px;/);
+});
+
 test("B&L replicates the Sales and Margin clear-filter control", () => {
   assert.match(pageSource, /const blActiveFilterCount = selectedChains\.length/);
+  assert.match(pageSource, /classification === "TOTAL" \? 0 : 1/);
+  assert.match(pageSource, /period === "ANUAL" \? 0 : 1/);
   assert.match(pageSource, /const clearBlFilters = \(\) => \{/);
   assert.match(pageSource, /setSelectedChains\(\[\]\)/);
   assert.match(pageSource, /setQuery\(""\)/);
   assert.match(pageSource, /setFwBand\(null\)/);
+  assert.match(pageSource, /setClassification\("TOTAL"\)/);
+  assert.match(pageSource, /setPeriod\("ANUAL"\)/);
+  assert.match(pageSource, /setSelectedMonths\(\[\]\)/);
   assert.match(pageSource, /className="sales-margin-clear bl-filter-clear"/);
   assert.match(pageSource, /onClick=\{clearBlFilters\}/);
 });

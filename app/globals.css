@@ -2193,9 +2193,12 @@ footer {
   align-items: center;
   padding: 15px 18px;
 }
+.matrix-title label {
+  font-size: 11px;
+}
 .matrix-title h2 {
   margin: 4px 0;
-  font-size: 20px;
+  font-size: 22px;
 }
 .matrix-title p {
   margin: 0;
@@ -2305,7 +2308,7 @@ footer {
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 12px 30px #172b4930;
-  font-size: 10px;
+  font-size: 12px;
 }
 .month-options-head {
   display: flex;
@@ -2352,7 +2355,7 @@ footer {
   padding: 6px 7px;
   border-radius: 4px;
   color: #304158;
-  font-size: 10px;
+  font-size: 11px;
   cursor: pointer;
 }
 .month-options label:hover { background: #edf4ff; }
@@ -2366,12 +2369,12 @@ footer {
 }
 .executive-matrix .period-breakdown-table th,
 .executive-matrix .period-breakdown-table td {
-  min-width: 112px;
-  padding: 6px 8px;
+  min-width: 104px;
+  padding: 8px 6px;
 }
 .executive-matrix .period-breakdown-table thead tr:first-child > th:first-child,
 .executive-matrix .period-breakdown-table tbody tr > td:first-child {
-  min-width: 165px;
+  min-width: 150px;
 }
 .period-breakdown-table thead tr:first-child th {
   text-align: center;
@@ -2380,17 +2383,18 @@ footer {
 }
 .period-breakdown-table thead tr:nth-child(2) th {
   text-align: center;
-  font-size: 8px;
+  font-size: 9px;
 }
 .period-breakdown-table .metric-cell-layout {
-  grid-template-columns: auto 44px;
+  grid-template-columns: auto 42px;
+  gap: 4px;
 }
 .period-breakdown-table .metric-value-stack > b {
-  font-size: 10px;
+  font-size: 12px;
 }
 .period-breakdown-table .metric-value-stack small,
 .period-breakdown-table .sales-weight {
-  font-size: 7px;
+  font-size: 9px;
 }
 .period-total-head,
 .period-total-cell {
@@ -2406,10 +2410,10 @@ footer {
 }
 .executive-matrix table td,
 .executive-matrix table th {
-  padding: 9px 16px;
+  padding: 9px 10px;
 }
 .executive-matrix table th {
-  font-size: 9px;
+  font-size: 10px;
 }
 .year-weight-heading {
   display: grid;
@@ -2432,10 +2436,18 @@ footer {
   letter-spacing: .04em;
 }
 .executive-matrix table td {
-  font-size: 11px;
+  font-size: 12px;
 }
 .executive-matrix table td b {
-  font-size: 12px;
+  font-size: 13px;
+}
+.executive-matrix .annual-summary-table {
+  width: 100%;
+  min-width: 100%;
+}
+.executive-matrix .chain-summary-table {
+  width: 100%;
+  min-width: 100%;
 }
 .executive-matrix table td:not(:first-child),
 .executive-matrix table th:not(:first-child) {
@@ -2462,8 +2474,10 @@ footer {
   border-top: 1px solid #cbd9ed;
 }
 .chain-divider {
-  padding: 14px 16px 9px;
-  border-top: 5px solid #f5f7fa;
+  margin-top: 18px;
+  padding: 18px 16px 11px;
+  border-top: 8px solid #eef3f8;
+  box-shadow: inset 0 1px #d8e2ef;
   display: flex;
   justify-content: space-between;
   align-items: end;
@@ -2475,10 +2489,10 @@ footer {
 }
 .chain-divider h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
 }
 .chain-divider span {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 .metric-select {
@@ -2514,7 +2528,7 @@ footer {
   display: block;
   margin-top: 3px;
   color: #7c899c;
-  font-size: 9px;
+  font-size: 10px;
 }
 .metric-cell {
   vertical-align: middle;
@@ -2634,6 +2648,58 @@ footer {
 .compact-table th,
 .compact-table td {
   padding: 8px 10px;
+}
+.four-walls-grid {
+  grid-template-columns: minmax(0, 1.35fr) minmax(420px, 1fr);
+}
+.four-walls-grid .risk .compact-table th,
+.four-walls-grid .risk .compact-table td {
+  padding-right: 7px;
+  padding-left: 7px;
+}
+.four-walls-grid .risk .compact-table th {
+  font-size: 11px;
+}
+.four-walls-grid .risk .compact-table td {
+  font-size: 11px;
+}
+.four-walls-grid .risk .compact-table td:first-child small {
+  font-size: 10px;
+}
+.four-walls-grid .risk > label {
+  font-size: 10px;
+}
+.four-walls-grid .risk > h3,
+.four-walls-grid .quadrant-panel .panel-toolbar h3 {
+  font-size: 16px;
+}
+.four-walls-grid .quadrant-panel .panel-toolbar > div > label {
+  font-size: 10px;
+}
+.four-walls-grid .quadrant-panel .profit-toggle button,
+.four-walls-grid .quadrant-panel .year-select {
+  font-size: 9px;
+}
+.four-walls-grid .quadrant-panel .recharts-cartesian-axis-tick-value {
+  font-size: 12px;
+}
+.four-walls-grid .quadrant-panel .chart-help {
+  font-size: 11px;
+}
+.four-walls-grid .quadrant-panel .summary-band > i {
+  font-size: 12px;
+}
+.four-walls-grid .quadrant-panel .summary-band b {
+  font-size: 13px;
+}
+.four-walls-grid .quadrant-panel .summary-band strong {
+  font-size: 9px;
+}
+.four-walls-grid .quadrant-panel .summary-band small {
+  font-size: 8px;
+}
+.four-walls-grid .compact-chart {
+  height: 300px;
 }
 .clickable-row {
   cursor: pointer;
@@ -3108,6 +3174,13 @@ footer {
 .channel-channel-view .channel-total-row td { color: #163b70; background: #eef4fb; border-top: 2px solid #b9cce2; font-weight: 800; }
 .channel-ranking-table { min-width: 1320px; }
 .channel-ranking-table th:not(:first-child), .channel-ranking-table td:not(:first-child) { text-align: center; }
+.channel-ranking-table tfoot td {
+  color: #163b70;
+  background: #e8f1fb;
+  border-top: 2px solid #9dbce0;
+  font-weight: 800;
+}
+.channel-ranking-table tfoot td:first-child { text-align: left; }
 .channel-periods { display: flex; padding: 4px; gap: 3px; border-radius: 12px; background: #eef1f5; }
 .channel-periods > button { min-width: 48px; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; color: #74849a; background: transparent; font-size: 9px; font-weight: 800; cursor: pointer; }
 .channel-periods > button.active { color: #183f76; background: #fff; box-shadow: 0 2px 8px rgba(22, 59, 112, .14); }
@@ -4540,6 +4613,42 @@ body {
   column-gap: 8px;
   text-align: left;
 }
+
+/* Etiquetas MARCA, CANAL, CADENA, CLASE y AÑO */
+.sales-margin-toolbar
+.sales-margin-multiselect
+summary {
+  font-size: 11px;
+}
+
+/* Valor seleccionado: TODAS, TODOS, 5 AÑOS, etc. */
+.sales-margin-toolbar
+.sales-margin-multiselect
+summary strong {
+  font-size: 11px;
+}
+
+/* Opciones dentro de las listas desplegables */
+.sales-margin-toolbar
+.sales-margin-multiselect-options button,
+.sales-margin-toolbar
+.sales-margin-multiselect-options label {
+  font-size: 11px;
+}
+
+/* Texto escrito en el buscador */
+.sales-margin-toolbar
+.sales-margin-option-search input {
+  font-size: 11px;
+}
+
+/* Mensaje “Sin coincidencias” */
+.sales-margin-toolbar
+.sales-margin-option-empty {
+  font-size: 11px;
+}
+
+
 .sales-margin-multiselect-options input[type="checkbox"] {
   width: 14px;
   height: 14px;
@@ -6034,6 +6143,58 @@ body {
   padding: 0 3px;
 }
 
+/* B&L: homologa ambos selectores con el control trimestral de Venta & Margen. */
+.microsoft-shell .executive-matrix .matrix-actions :is(.bl-quarter-filter, .classification-filter) {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  height: 46px;
+  display: grid;
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 2px;
+  padding: 4px;
+  overflow: visible;
+  border: 0;
+  border-radius: 3px;
+  background: #f0f2f5;
+}
+.microsoft-shell .executive-matrix .matrix-actions .bl-quarter-filter {
+  grid-template-columns: 44px repeat(4, minmax(0, 1fr)) 38px;
+}
+.microsoft-shell .executive-matrix .matrix-actions .classification-filter {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.microsoft-shell .executive-matrix .matrix-actions :is(.bl-quarter-filter, .classification-filter) > button {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 7px;
+  color: #8a95a5;
+  background: transparent;
+  font-size: 8px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.microsoft-shell .executive-matrix .matrix-actions :is(.bl-quarter-filter, .classification-filter) > button.active {
+  color: #173c73;
+  background: #fff;
+  box-shadow: 0 2px 7px #1c385322;
+}
+.microsoft-shell .executive-matrix .matrix-actions .bl-quarter-filter .month-period-filter {
+  min-width: 0;
+}
+.microsoft-shell .executive-matrix .matrix-actions .bl-quarter-filter .month-period-filter > summary {
+  min-width: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+}
+
 @media (max-width: 1180px) {
   .microsoft-shell .sales-margin-toolbar details[data-dropdown].sales-margin-multiselect {
     max-width: 180px;
@@ -6352,4 +6513,118 @@ body {
     width: 100%;
     max-width: 100%;
   }
+}
+
+/* Escala tipográfica común para filtros de Rentabilidad Forecast. */
+.microsoft-shell .channel-filters .channel-filter-select:is(.scenario-filter, .brand-filter) summary,
+.microsoft-shell .channel-filters .channel-filter-select:is(.scenario-filter, .brand-filter) summary strong,
+.microsoft-shell .channel-filters .channel-filter-select:is(.scenario-filter, .brand-filter) .channel-searchable-options > button,
+.microsoft-shell .channel-filters .channel-filter-select:is(.scenario-filter, .brand-filter) .channel-searchable-options > label,
+.microsoft-shell .channel-filters .channel-filter-select:is(.scenario-filter, .brand-filter) .sales-margin-option-search input,
+.microsoft-shell .channel-filters .channel-filter-select:is(.scenario-filter, .brand-filter) .sales-margin-option-empty {
+  font-size: 11px;
+}
+
+/* B&L: CADENA y búsqueda por CC comparten la tipografía de la barra de filtros. */
+.microsoft-shell .filters > .chain-multiselect summary,
+.microsoft-shell .filters > .chain-multiselect summary strong,
+.microsoft-shell .filters > .chain-multiselect .chain-options button,
+.microsoft-shell .filters > .chain-multiselect .chain-options label,
+.microsoft-shell .filters > div input {
+  font-size: 11px;
+}
+
+/* B&L: las vistas secundarias heredan la escala de Comparativa Anual. */
+.microsoft-shell :is(.m2-title, .break-even-title, .sensitivity-title, .monitor-title) h2 {
+  font-size: 22px;
+}
+
+.microsoft-shell :is(.m2-title, .break-even-title, .sensitivity-title, .monitor-title) p {
+  font-size: 11px;
+}
+
+.microsoft-shell :is(.detail-group, .be-panel, .m2-cat-analysis, .m2-chart-panel, .m2-table-panel, .sensitivity-page, .monitor-panel) table th {
+  font-size: 10px;
+}
+
+.microsoft-shell :is(.detail-group, .be-panel, .m2-cat-analysis, .m2-table-panel, .sensitivity-page, .monitor-panel) table td {
+  font-size: 12px;
+}
+
+.microsoft-shell :is(.detail-group, .be-panel, .m2-cat-analysis, .m2-table-panel, .sensitivity-page, .monitor-panel) table td > b:not(.m2-cat-badge) {
+  font-size: 13px;
+}
+
+.microsoft-shell :is(.detail-group, .be-panel, .m2-cat-analysis, .m2-table-panel, .sensitivity-page, .monitor-panel) table td small {
+  font-size: 10px;
+}
+
+.microsoft-shell .detail-group .group-head h2,
+.microsoft-shell :is(.be-panel, .m2-chart-panel, .m2-table-panel, .sensitivity-page, .monitor-panel) .monitor-head h3 {
+  font-size: 18px;
+}
+
+.microsoft-shell .detail-group .group-head :is(p, strong),
+.microsoft-shell :is(.be-panel, .m2-chart-panel, .m2-table-panel, .sensitivity-page, .monitor-panel) .monitor-head :is(label, p, span) {
+  font-size: 11px;
+}
+
+.microsoft-shell :is(.be-kpis, .m2-kpis, .monitor-kpis) label,
+.microsoft-shell .sensitivity-controls label,
+.microsoft-shell .sensitivity-controls article small {
+  font-size: 10px;
+}
+
+.microsoft-shell :is(.be-kpis, .m2-kpis, .monitor-kpis) span,
+.microsoft-shell .sensitivity-controls :is(input, label b, label span, label small) {
+  font-size: 10px;
+}
+
+.microsoft-shell :is(.break-even-title, .m2-title) .year-select,
+.microsoft-shell :is(.break-even-title, .m2-title) .year-select select,
+.microsoft-shell .break-even-title .profit-toggle button {
+  font-size: 8px;
+}
+
+.microsoft-shell .be-method,
+.microsoft-shell .sensitivity-note {
+  font-size: 10px;
+}
+
+.microsoft-shell .m2-cat-heading > div > label,
+.microsoft-shell .m2-cat-section-head label,
+.microsoft-shell .m2-cat-kpis label {
+  font-size: 10px;
+}
+
+/* B&L: centraliza las métricas sin mover las columnas descriptivas. */
+.microsoft-shell .executive-matrix table th:not(:first-child),
+.microsoft-shell .executive-matrix table td:not(:first-child),
+.microsoft-shell .break-even-table tbody td:nth-child(n + 3),
+.microsoft-shell .break-even-table tfoot td:nth-child(n + 3),
+.microsoft-shell .m2-table-panel table th:nth-child(n + 3),
+.microsoft-shell .m2-table-panel table td:nth-child(n + 3),
+.microsoft-shell .m2-cat-table th:nth-child(n + 2),
+.microsoft-shell .m2-cat-table td:nth-child(n + 2),
+.microsoft-shell .sensitivity-results table th:not(:first-child),
+.microsoft-shell .sensitivity-results table td:not(:first-child),
+.microsoft-shell .monitor-panel table th:nth-child(1),
+.microsoft-shell .monitor-panel table td:nth-child(1),
+.microsoft-shell .monitor-panel table th:nth-child(5),
+.microsoft-shell .monitor-panel table td:nth-child(5) {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.microsoft-shell .break-even-table thead tr:nth-child(2) th,
+.microsoft-shell .break-even-table thead tr:first-child th:nth-child(n + 3),
+.microsoft-shell .executive-matrix .period-breakdown-table thead tr:nth-child(2) th {
+  text-align: center;
+}
+
+.microsoft-shell .m2-cat-clusters th:not(:nth-child(2)),
+.microsoft-shell .m2-cat-clusters td:not(:nth-child(2)),
+.microsoft-shell .sensitivity-candidates th:not(:nth-child(3)),
+.microsoft-shell .sensitivity-candidates td:not(:nth-child(3)) {
+  text-align: center;
 }

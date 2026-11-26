@@ -487,6 +487,12 @@ function Tip({ active, payload, label }: { active?: boolean; payload?: TipPayloa
 function Executive({
   selection,
   universe,
+  period,
+  setPeriod,
+  classification,
+  setClassification,
+  selectedMonths,
+  setSelectedMonths,
   quadrantYear,
   setQuadrantYear,
   fwBand,
@@ -496,6 +502,12 @@ function Executive({
 }: {
   selection: StoreRow[];
   universe: StoreRow[];
+  period: ReportPeriod;
+  setPeriod: (period: ReportPeriod) => void;
+  classification: ClassificationFilter;
+  setClassification: (classification: ClassificationFilter) => void;
+  selectedMonths: string[];
+  setSelectedMonths: (months: string[]) => void;
   quadrantYear: Year;
   setQuadrantYear: (year: Year) => void;
   fwBand: FwBand;
@@ -504,14 +516,13 @@ function Executive({
   setAnalysisMetric: (metric: ProfitMetric) => void;
 }) {
   const [chainMetric, setChainMetric] = useState<keyof Metric | "marginPct">("utility");
-  const [period, setPeriod] = useState<ReportPeriod>("ANUAL");
-  const [classification, setClassification] = useState<ClassificationFilter>("TOTAL");
-  const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
 
   const displayedYears: Year[] = years;
+  const selectedMonthSet = new Set(selectedMonths);
+  const chronologicalSelectedMonths = monthOrder.filter((month) => selectedMonthSet.has(month));
   const activeMonths = period === "ANUAL"
     ? classification === "TOTAL" ? [] : monthOrder
-    : period === "MES" ? selectedMonths : quarterMonths[period];
+    : period === "MES" ? chronologicalSelectedMonths : quarterMonths[period];
   const metricForMonths = (store: StoreRow, year: Year, months: string[]) => {
     const historicalScenario = `${year}R`;
     const monthlyMetrics = year <= 2025
@@ -634,13 +645,14 @@ function Executive({
               selectedMonths={selectedMonths}
               onSelectedMonthsChange={setSelectedMonths}
               ariaLabel="Periodo del informe"
+              className="bl-quarter-filter"
             />
             <strong><Store /> {selection.filter((s) => storeMetric(s, 2027).sales !== 0).length} tiendas</strong>
           </div>
         </div>
-        <div className="scroll matrix-scroll">
+        <div className="scroll matrix-scroll executive-summary-scroll">
           {period === "ANUAL" ? (
-            <table>
+            <table className="annual-summary-table">
               <thead><tr><th>CONCEPTO</th>{displayedYears.map((y) => <th key={y}><span className="year-weight-heading"><b>{yearLabel(y)}</b><span className="weight-heading">PESO %</span></span></th>)}</tr></thead>
               <tbody>{rows.map((row) => (
                 <tr key={row.label} className={row.percent ? "margin-rate-row" : row.key === "utility" ? "total-row" : row.key === "ebitda" ? "ebitda-row" : ""}>
@@ -674,8 +686,8 @@ function Executive({
           <div><h3>APERTURA POR CADENA</h3><span>Totales por cadena reconciliados con el resumen ejecutivo</span></div>
           <label className="metric-select">ÍTEM A MEDIR<select value={chainMetric} onChange={(e) => setChainMetric(e.target.value as keyof Metric | "marginPct")}>{chainMetricOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><ChevronDown /></label>
         </div>
-        <div className="scroll matrix-scroll">
-          <table>
+        <div className="scroll matrix-scroll chain-summary-scroll">
+          <table className="chain-summary-table">
             <thead><tr><th>CADENA</th>{displayedYears.map((y) => <th key={y}>{yearLabel(y)}</th>)}</tr></thead>
             <tbody>
               {chains.filter((chain) => selection.some((store) => store.chain === chain)).map((chain) => {
@@ -785,7 +797,7 @@ function FourWalls({
       {analysisMetric === "fourWalls" && derived > 0 && (
         <div className="data-warning compact-warning"><AlertTriangle /><span><b>{derived} tiendas usan respaldo en {yearLabel(activeQuadrantYear)} · {periodLabel}.</b> Se aplica la fórmula de negocio sólo cuando V devuelve error o vacío.</span></div>
       )}
-      <section className="two">
+      <section className="two four-walls-grid">
         <section className="panel risk">
           <label>TIENDA CON {analysisLabel.toUpperCase()} NEGATIVA</label>
           <h3>Alertas críticas de {analysisLabel} · {periodLabel}</h3>
@@ -932,7 +944,7 @@ function Detail({ selection }: { selection: StoreRow[] }) {
             <div className="group-head"><div><h2>Rentabilidad {group}</h2><p>{group === "Alta" ? "Utilidad / venta ≥ 6%" : group === "Media" ? "Utilidad / venta entre 2% y 6%" : "Utilidad / venta < 2%"}</p></div><strong>{list.length} tiendas</strong></div>
             <div className="panel scroll">
               <table className="detail-table">
-                <thead><tr><th>TIENDA</th><th>CADENA</th><th>APERTURA</th><th>VENTAS</th><th>MARGEN</th><th>MARGEN / VENTA</th><th>ARRIENDOS</th><th>REMUNERACIONES</th><th>COSTO OPERACIONAL</th><th>RESULTADO OPERACIONAL</th><th>UTILIDAD</th><th>VAR. UTILIDAD</th></tr></thead>
+                <thead><tr><th>TIENDA</th><th>CADENA</th><th>APERTURA</th><th>VENTAS</th><th>MARGEN</th><th>MARGEN / VENTA</th><th>ARRIENDOS</th><th>REMUNERACIONES</th><th>COP</th><th>ROP</th><th>UTILIDAD</th><th>VAR. UTILIDAD</th></tr></thead>
                 <tbody>{list.map((s) => <tr key={s.code}>
                   <td><b>{s.name}</b><small>#{s.code}</small></td><td>{s.chain}</td><td><i className="tag">{openingType(s, 2027)}</i></td>
                   <td>{money(s.metric.sales)}</td><td>{money(s.metric.margin)}</td><td><b>{pct(s.metric.margin,s.metric.sales).toFixed(2)}%</b></td>
@@ -1154,7 +1166,7 @@ function BreakEven({ selection }: { selection: StoreRow[] }) {
   );
   return (
     <>
-      <div className="title"><div><i>05</i><span><h2>Break-Even</h2><p>Simulación de punto cero para tiendas con {metricLabel.toLowerCase()} negativo en {yearLabel(breakEvenYear)}</p></span></div><div className="title-actions"><div className="quadrant-controls be-controls"><div className="profit-toggle"><button className={breakEvenMetric === "fourWalls" ? "active" : ""} onClick={() => setBreakEvenMetric("fourWalls")}>FOUR WALLS</button><button className={breakEvenMetric === "utility" ? "active" : ""} onClick={() => setBreakEvenMetric("utility")}>UTILIDAD</button></div><label className="year-select">AÑO<select value={breakEvenYear} onChange={(e) => setBreakEvenYear(Number(e.target.value) as Year)}>{years.map((y) => <option key={y} value={y}>{yearLabel(y)}</option>)}</select><ChevronDown /></label></div><strong className="neg">{rows.length} tiendas bajo punto de equilibrio</strong><button className="export-button" onClick={exportBreakEven}>EXPORTAR A EXCEL</button></div></div>
+      <div className="title break-even-title"><div><i>05</i><span><h2>Break-Even</h2><p>Simulación de punto cero para tiendas con {metricLabel.toLowerCase()} negativo en {yearLabel(breakEvenYear)}</p></span></div><div className="title-actions"><div className="quadrant-controls be-controls"><div className="profit-toggle"><button className={breakEvenMetric === "fourWalls" ? "active" : ""} onClick={() => setBreakEvenMetric("fourWalls")}>FOUR WALLS</button><button className={breakEvenMetric === "utility" ? "active" : ""} onClick={() => setBreakEvenMetric("utility")}>UTILIDAD</button></div><label className="year-select">AÑO<select value={breakEvenYear} onChange={(e) => setBreakEvenYear(Number(e.target.value) as Year)}>{years.map((y) => <option key={y} value={y}>{yearLabel(y)}</option>)}</select><ChevronDown /></label></div><strong className="neg">{rows.length} tiendas bajo punto de equilibrio</strong><button className="export-button" onClick={exportBreakEven}>EXPORTAR A EXCEL</button></div></div>
       <section className="be-kpis">
         <article><label>{metricLabel.toUpperCase()} NEGATIVO · {yearLabel(breakEvenYear)}</label><strong className="neg">{money(totalLoss)}</strong><span>universo simulado</span></article>
         <article><label>VENTA ACTUAL · {yearLabel(breakEvenYear)}</label><strong>{money(totalCurrentSales)}</strong><span>tiendas con pérdida</span></article>
@@ -1279,7 +1291,7 @@ function StoreMonitor({ selection }: { selection: StoreRow[] }) {
   };
   return (
     <>
-      <div className="title"><div><i>04</i><span><h2>Monitor maestro de tiendas</h2><p>Control preliminar para cuadratura de tiendas, cadenas y mall / ubicación</p></span></div><div className="monitor-year-control"><div className="classification-filter" aria-label="Año del monitor">{([2026, 2027] as const).map((year) => <button type="button" key={year} className={monitorYear === year ? "active" : ""} onClick={() => { setMonitorYear(year); setMonitorFilter("TOTAL"); setClassificationFilter("TOTAL"); }}>{year === 2026 ? "2026E" : "2027P"}</button>)}</div><strong>{pending.length} registros por revisar</strong></div></div>
+      <div className="title monitor-title"><div><i>04</i><span><h2>Monitor maestro de tiendas</h2><p>Control preliminar para cuadratura de tiendas, cadenas y mall / ubicación</p></span></div><div className="monitor-year-control"><div className="classification-filter" aria-label="Año del monitor">{([2026, 2027] as const).map((year) => <button type="button" key={year} className={monitorYear === year ? "active" : ""} onClick={() => { setMonitorYear(year); setMonitorFilter("TOTAL"); setClassificationFilter("TOTAL"); }}>{year === 2026 ? "2026E" : "2027P"}</button>)}</div><strong>{pending.length} registros por revisar</strong></div></div>
       <section className="monitor-kpis">
         <button type="button" className={`monitor-kpi ${monitorFilter === "TOTAL" ? "active" : ""}`} onClick={() => selectMonitorFilter("TOTAL")}><label>TIENDAS / CC</label><strong>{rows.length}</strong><span>registros únicos</span></button>
         <button type="button" className={`monitor-kpi ${monitorFilter === "CHAIN_OTHER" ? "active" : ""}`} onClick={() => selectMonitorFilter("CHAIN_OTHER")}><label>CADENA OTROS</label><strong>{rows.filter((r) => r.chain === "OTROS").length}</strong><span>requieren clasificación</span></button>
@@ -1774,6 +1786,9 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
   const [quadrantYear, setQuadrantYear] = useState<Year>(2027);
   const [fwBand, setFwBand] = useState<FwBand>(null);
   const [analysisMetric, setAnalysisMetric] = useState<ProfitMetric>("fourWalls");
+  const [period, setPeriod] = useState<ReportPeriod>("ANUAL");
+  const [classification, setClassification] = useState<ClassificationFilter>("TOTAL");
+  const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [salesMarginRefreshKey, setSalesMarginRefreshKey] = useState(0);
   const [salesMarginInitialView, setSalesMarginInitialView] = useState<SalesMarginView>("summary");
@@ -1858,11 +1873,18 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
   const toggleChain = (chain: string) => setSelectedChains((current) =>
     current.includes(chain) ? current.filter((item) => item !== chain) : [...current, chain]
   );
-  const blActiveFilterCount = selectedChains.length + (query.trim() ? 1 : 0) + (fwBand ? 1 : 0);
+  const blActiveFilterCount = selectedChains.length
+    + (query.trim() ? 1 : 0)
+    + (fwBand ? 1 : 0)
+    + (classification === "TOTAL" ? 0 : 1)
+    + (period === "ANUAL" ? 0 : 1);
   const clearBlFilters = () => {
     setSelectedChains([]);
     setQuery("");
     setFwBand(null);
+    setClassification("TOTAL");
+    setPeriod("ANUAL");
+    setSelectedMonths([]);
   };
 
   const canManageUsers = canAccessMenu(authUser.role, "users");
@@ -2058,7 +2080,7 @@ function Portal({ authUser, onLogout, reportsError, onRetryReports, onRefreshRep
         {blActiveFilterCount > 0 && <button className="sales-margin-clear bl-filter-clear" type="button" onClick={clearBlFilters} title="Limpiar filtros"><X /> {blActiveFilterCount}</button>}
       </section>
       <div className="content">
-        {activeView === "annual" ? <Executive selection={selection} universe={universe} quadrantYear={quadrantYear} setQuadrantYear={setQuadrantYear} fwBand={fwBand} setFwBand={setFwBand} analysisMetric={analysisMetric} setAnalysisMetric={setAnalysisMetric} /> : activeView === "detail" ? <Detail selection={selection} /> : activeView === "break-even" ? <BreakEven selection={selection} /> : activeView === "m2" ? <M2Analysis selection={selection} /> : activeView === "sensitivity" ? <StoreSensitivity /> : <StoreMonitor selection={selection} />}
+        {activeView === "annual" ? <Executive selection={selection} universe={universe} period={period} setPeriod={setPeriod} classification={classification} setClassification={setClassification} selectedMonths={selectedMonths} setSelectedMonths={setSelectedMonths} quadrantYear={quadrantYear} setQuadrantYear={setQuadrantYear} fwBand={fwBand} setFwBand={setFwBand} analysisMetric={analysisMetric} setAnalysisMetric={setAnalysisMetric} /> : activeView === "detail" ? <Detail selection={selection} /> : activeView === "break-even" ? <BreakEven selection={selection} /> : activeView === "m2" ? <M2Analysis selection={selection} /> : activeView === "sensitivity" ? <StoreSensitivity /> : <StoreMonitor selection={selection} />}
       </div>
       <footer>Planificación Financiera · Forus <span>INFORME EN MM$</span></footer>
       </> : portalSection === "ecommerce" ? <ChannelProfitability channel="Ecommerce" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "marketplace" ? <ChannelProfitability channel="Marketplace" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "wholesale" ? <ChannelProfitability channel="Wholesale" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "consolidada" ? <ChannelProfitability channel="Consolidado" refreshKey={profitabilityRefreshKey} onRefreshComplete={completeProfitabilityRefresh} /> : portalSection === "paises" ? <CountryProfitability /> : portalSection === "benchmark-nacional" ? <NationalBenchmark /> : portalSection === "benchmark-internacional" ? <InternationalBenchmark /> : portalSection === "macroeconomia-ipom" ? <MacroeconomicsMarket /> : portalSection === "mercado-retail-cnc" ? <RetailCncMarket /> : portalSection === "importaciones-retail" ? <ImportacionesIndustria key="retail" /> : portalSection === "importaciones-cosmeticos" ? <ImportacionesIndustria key="cosmetics" variant="cosmetics" /> : <section className="construction-page">

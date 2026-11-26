@@ -32,16 +32,27 @@ export default function MonthPeriodFilter<T extends string | number>({
   const visibleMonths = useMemo(() => months.filter(({ label }) =>
     label.toLocaleLowerCase("es").includes(normalizedQuery)
   ), [months, normalizedQuery]);
+  const selectedMonthsLabel = selectedMonths.length === 0
+    ? ""
+    : selectedMonths.length === 1
+      ? "1 MES"
+      : `${selectedMonths.length} MESES`;
 
   const selectPeriod = (nextPeriod: Exclude<MonthPeriod, "MES">) => {
+    if (nextPeriod === "ANUAL" && selectedMonths.length > 0) {
+      onSelectedMonthsChange([]);
+    }
     onPeriodChange(nextPeriod);
     detailsRef.current?.removeAttribute("open");
   };
 
   const toggleMonth = (month: T) => {
-    const nextSelectedMonths = selectedMonths.includes(month)
-      ? selectedMonths.filter((item) => item !== month)
-      : [...selectedMonths, month];
+    const nextSelection = new Set(selectedMonths);
+    if (nextSelection.has(month)) nextSelection.delete(month);
+    else nextSelection.add(month);
+    const nextSelectedMonths = months
+      .map(({ value }) => value)
+      .filter((value) => nextSelection.has(value));
 
     onSelectedMonthsChange(nextSelectedMonths);
     onPeriodChange(nextSelectedMonths.length > 0 ? "MES" : "ANUAL");
@@ -103,7 +114,7 @@ export default function MonthPeriodFilter<T extends string | number>({
       <summary>MES</summary>
       <div id={optionsId} className="month-options">
         <div className="month-options-head">
-          <b>{selectedMonths.length} MESES</b>
+          <b>{selectedMonthsLabel}</b>
           <button type="button" onClick={toggleAllMonths}>{selectedMonths.length === months.length ? "LIMPIAR" : "TODOS"}</button>
         </div>
         <div className="month-options-search">

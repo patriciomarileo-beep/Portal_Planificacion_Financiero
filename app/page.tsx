@@ -1155,6 +1155,45 @@ function BreakEven({ selection }: { selection: StoreRow[] }) {
   const totalCurrentSales = rows.reduce((a, s) => a + s.current.sales, 0);
   const totalTargetSales = rows.reduce((a, s) => a + s.targetSales, 0);
   const totalTargetMargin = rows.reduce((a, s) => a + s.targetMargin, 0);
+
+
+  /* Totales históricos: solo las tiendas visibles
+     en la simulación Break-Even. */
+  const historicalTotals = years.map((year) => {
+    let sales = 0;
+    let margin = 0;
+    let result = 0;
+    let validResults = 0;
+  
+    for (const store of rows) {
+      const annual = store.annual[year];
+    
+      sales += annual.sales;
+      margin += annual.margin;
+    
+      const value = metricValue(store, year);
+    
+      if (value !== null && Number.isFinite(value)) {
+        result += value;
+        validResults += 1;
+      }
+    }
+  
+    return {
+      year,
+      sales,
+      margin,
+      marginPct: pct(margin, sales),
+      result: validResults > 0 ? result : null,
+    };
+  });
+  
+  const totalSalesGap = rows.reduce(
+    (sum, store) => sum + store.salesGap,
+    0
+  );
+
+  
   const exportBreakEven = () => downloadExcel(
     `break-even-${breakEvenMetric}-${scenarioLabel}`,
     ["CC", "TIENDA", "CADENA", ...years.flatMap((y) => [`VENTA ${yearLabel(y)}`, `MARGEN % ${yearLabel(y)}`, `${metricLabel.toUpperCase()} ${yearLabel(y)}`]), `VENTA ${scenarioLabel}`, `MARGEN ${scenarioLabel}`, `MARGEN % ${scenarioLabel}`, "BRECHA VENTA", `${metricLabel.toUpperCase()} ${scenarioLabel}`],
@@ -1207,7 +1246,44 @@ function BreakEven({ selection }: { selection: StoreRow[] }) {
               <td className="sim-cell"><b>{money(s.salesGap)}</b><small>{s.growth === null ? "Base sin venta" : `+${s.growth.toFixed(1)}%`}</small></td>
               <td className="sim-cell pos bold">{money(0)}</td>
             </tr>)}</tbody>
-            <tfoot><tr className="grand-total"><td>TOTAL</td><td>{rows.length} tiendas</td><td colSpan={12}></td><td>{money(totalTargetSales)}</td><td>{money(totalTargetMargin)}</td><td>{pct(totalTargetMargin,totalTargetSales).toFixed(2)}%</td><td>{money(totalTargetSales-totalCurrentSales)}</td><td>{money(0)}</td></tr></tfoot>
+              <tfoot>
+                <tr className="grand-total">
+                  <td><b>TOTAL</b></td>
+                  <td>{rows.length} tiendas</td>
+
+                  {/* 5 años × 3 indicadores = 15 columnas */}
+                  {historicalTotals.flatMap((total) => [
+                    <td key={`${total.year}-sales`}>
+                      {money(total.sales)}
+                    </td>,
+                    <td key={`${total.year}-margin`}>
+                      {total.marginPct.toFixed(2)}%
+                    </td>,
+                    <td key={`${total.year}-result`}>
+                      {total.result === null
+                        ? "—"
+                        : money(total.result)}
+                    </td>,
+                  ])}
+
+                  {/* 5 columnas de simulación */}
+                  <td>{money(totalTargetSales)}</td>
+                
+                  <td>{money(totalTargetMargin)}</td>
+                
+                  <td>
+                    {pct(
+                      totalTargetMargin,
+                      totalTargetSales
+                    ).toFixed(2)}%
+                  </td>
+                  
+                  <td>{money(totalSalesGap)}</td>
+                  
+                  <td>{money(0)}</td>
+                </tr>
+              </tfoot>
+
           </table>
         </div>
       </section>

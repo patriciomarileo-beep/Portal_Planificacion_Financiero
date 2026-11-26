@@ -1943,8 +1943,8 @@ td:first-child small {
 .tag,
 .status {
   font-style: normal;
-  font-size: 8px;
-  font-weight: bold;
+  font-size: 12px;
+  font-weight: 650;
   background: #edf2f8;
   border-radius: 10px;
   padding: 4px 6px;
@@ -3505,42 +3505,87 @@ footer {
   .m2-cat-kpis > div:nth-child(3), .m2-cat-kpis > div:nth-child(4) { border-top: 1px solid var(--line); }
   .m2-cat-kpis > div:nth-child(3) { padding-left: 0; }
 }
+
+
+/* =========================================================
+   BREAK-EVEN: columnas TIENDA y CADENA fijas
+   ========================================================= */
+
+.break-even-table {
+  --be-tienda-width: 220px;
+  --be-cadena-width: 110px;
+
+  min-width: 2150px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Encabezado fijo durante scroll vertical */
 .break-even-table thead {
   position: sticky;
   top: 0;
-  z-index: 3;
+  z-index: 4;
 }
+
+.break-even-table thead th {
+  background-color: #f8fafc;
+}
+
 .break-even-table thead tr:first-child th {
   text-align: center;
   border-left: 1px solid var(--line);
-  background: #eef3f9;
+  background-color: #eef3f9;
 }
-.break-even-table thead tr:first-child th:first-child,
-.break-even-table thead tr:first-child th:nth-child(2) {
-  text-align: left;
-}
-.break-even-table th:first-child,
-.break-even-table td:first-child {
+
+/* Primera columna: TIENDA */
+.break-even-table thead tr:first-child > th:first-child,
+.break-even-table tbody > tr > td:first-child {
   position: sticky;
   left: 0;
-  z-index: 2;
-  min-width: 190px;
-  background: #fff;
+  width: var(--be-tienda-width);
+  min-width: var(--be-tienda-width);
+  max-width: var(--be-tienda-width);
+  box-sizing: border-box;
+  text-align: left;
+  background-color: #fff;
 }
-.break-even-table th:nth-child(2),
-.break-even-table td:nth-child(2) {
+
+/* Segunda columna: CADENA */
+.break-even-table thead tr:first-child > th:nth-child(2),
+.break-even-table tbody > tr > td:nth-child(2) {
   position: sticky;
-  left: 190px;
+  left: var(--be-tienda-width);
+  width: var(--be-cadena-width);
+  min-width: var(--be-cadena-width);
+  max-width: var(--be-cadena-width);
+  box-sizing: border-box;
+  text-align: left;
+  background-color: #fff;
+  box-shadow: 1px 0 1px rgba(32, 57, 87, 0.12);
+}
+
+/* Celdas fijas del cuerpo */
+.break-even-table tbody > tr > td:first-child,
+.break-even-table tbody > tr > td:nth-child(2) {
   z-index: 2;
-  min-width: 100px;
-  background: #fff;
-  box-shadow: 5px 0 8px #2039570b;
+  background-color: #fff;
 }
-.break-even-table thead th:first-child,
-.break-even-table thead th:nth-child(2) {
-  z-index: 5;
-  background: #f8fafc;
+
+/* TIENDA y CADENA por encima de los otros encabezados */
+.break-even-table thead tr:first-child > th:first-child,
+.break-even-table thead tr:first-child > th:nth-child(2) {
+  z-index: 6;
+  background-color: #eef3f9;
 }
+
+/* VENTA, MARGEN % y demás métricas:
+   deben desplazarse horizontalmente */
+.break-even-table thead tr:nth-child(2) > th {
+  position: static;
+  z-index: auto;
+  background-color: #f8fafc;
+}
+
 .break-even-table .sim-head,
 .break-even-table .sim-cell {
   background: #edf8f3;
@@ -3551,10 +3596,32 @@ footer {
   color: #8793a5;
   font-size: 7px;
 }
-.break-even-table tfoot td {
+
+/* Pie de tabla Break-Even */
+.break-even-table tfoot tr.grand-total > td {
   position: static;
   font-weight: 800;
+  background-color: #173e7d;
+  color: #fff;
 }
+
+/* TOTAL: primera columna fija */
+.break-even-table tfoot tr.grand-total > td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background-color: #173e7d;
+}
+
+/* Cantidad de tiendas: segunda columna fija */
+.break-even-table tfoot tr.grand-total > td:nth-child(2) {
+  position: sticky;
+  left: 220px;
+  z-index: 4;
+  background-color: #173e7d;
+  box-shadow: 2px 0 4px rgba(32, 57, 87, 0.06);
+}
+
 .data-warning svg {
   width: 18px;
   flex: 0 0 auto;
@@ -6174,7 +6241,7 @@ summary strong {
   border-radius: 7px;
   color: #8a95a5;
   background: transparent;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -6627,4 +6694,113 @@ summary strong {
 .microsoft-shell .sensitivity-candidates th:not(:nth-child(3)),
 .microsoft-shell .sensitivity-candidates td:not(:nth-child(3)) {
   text-align: center;
+}
+
+
+/* B&L: aumentar tamaño de los valores PESO % */
+.microsoft-shell .executive-matrix .sales-weight {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Vista anual: ampliar espacio de PESO % */
+.microsoft-shell .executive-matrix .annual-summary-table
+:is(.metric-cell-layout, .year-weight-heading) {
+  grid-template-columns: auto 60px;
+}
+
+.microsoft-shell .executive-matrix .weight-heading {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+
+
+/* =========================================================
+   B&L - RESUMEN EJECUTIVO
+   Centrar AÑO, valores financieros y PESO %
+   Solo tabla annual-summary-table
+   ========================================================= */
+
+/* Centrar los encabezados y valores */
+.microsoft-shell .executive-matrix
+.annual-summary-table th:not(:first-child),
+.microsoft-shell .executive-matrix
+.annual-summary-table td:not(:first-child) {
+  text-align: center;
+}
+
+/* Mantener dos columnas internas equilibradas */
+.microsoft-shell .executive-matrix
+.annual-summary-table :is(.year-weight-heading, .metric-cell-layout) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 60px;
+  align-items: center;
+  justify-content: stretch;
+  justify-items: center;
+  gap: 7px;
+  width: 100%;
+}
+
+/* Centrar los años */
+.microsoft-shell .executive-matrix
+.annual-summary-table .year-weight-heading > b {
+  text-align: center;
+}
+
+/* Centrar los valores financieros */
+.microsoft-shell .executive-matrix
+.annual-summary-table .metric-value-stack {
+  width: 100%;
+  text-align: center;
+}
+
+/* Centrar variaciones YoY y diferencias */
+.microsoft-shell .executive-matrix
+.annual-summary-table .metric-change-line,
+.microsoft-shell .executive-matrix
+.annual-summary-table .metric-value-stack small {
+  align-items: center;
+  justify-content: center;
+}
+
+/* Centrar encabezado y porcentajes PESO % */
+.microsoft-shell .executive-matrix
+.annual-summary-table .weight-heading,
+.microsoft-shell .executive-matrix
+.annual-summary-table .sales-weight {
+  width: 100%;
+  text-align: center;
+  justify-self: center;
+}
+
+
+/* =========================================================
+   B&L - DETALLE DE RENTABILIDAD
+   Centrar encabezados y valores numericos
+   ========================================================= */
+
+.microsoft-shell .detail-group .detail-table
+:is(th, td):is(
+  :nth-child(4),  /* VENTAS */
+  :nth-child(5),  /* MARGEN */
+  :nth-child(6),  /* MARGEN / VENTA */
+  :nth-child(7),  /* ARRIENDOS */
+  :nth-child(8),  /* REMUNERACIONES */
+  :nth-child(9),  /* COP */
+  :nth-child(10), /* ROP */
+  :nth-child(11), /* UTILIDAD */
+  :nth-child(12)  /* VAR. UTILIDAD */
+) {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Centrar el indicador YoY de VAR. UTILIDAD */
+.microsoft-shell .detail-group .detail-table
+td:nth-child(12) > small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }

@@ -106,6 +106,63 @@ test("all sensitive handlers reject anonymous requests before reading source or 
     assert.equal((await privateFile(request, { params: Promise.resolve({ path: ["profitability-channels.csv"] }) })).status, 401);
     assert.equal((await ingest(post("/api/ingesta-bigquery", {}))).status, 401);
 });
+test("the national source requires a valid session and Mercado permission", async () => {
+    const path = ["market", "national-source.csv"];
+    setup();
+    const anonymous = await privateFile(
+        new Request("https://portal.example.com/data/market/national-source.csv"),
+        { params: Promise.resolve({ path }) },
+    );
+    assert.equal(anonymous.status, 401);
+    assert.equal((await anonymous.json()).error, "Sesión requerida.");
+
+    for (const role of ["ADMINISTRADOR", "ANALISTA FINANCIERO", "PLANIFICADOR FINANCIERO"]) {
+        setup();
+        database(role);
+        const cookie = await createSessionCookie(user);
+        const response = await privateFile(
+            new Request("https://portal.example.com/data/market/national-source.csv", { headers: { cookie } }),
+            { params: Promise.resolve({ path }) },
+        );
+        assert.equal(response.status, 200, `${role} debe poder leer la fuente nacional`);
+        assert.match(response.headers.get("content-type") ?? "", /^text\/csv/);
+        assert.equal(response.headers.get("cache-control"), "private, no-store");
+        assert.equal(await response.text(), readFileSync(new URL("../private-data/assets/market/national-source.csv", import.meta.url), "utf8"));
+        mock.restoreAll();
+    }
+
+    setup();
+    database("COMEX");
+    const cookie = await createSessionCookie(user);
+    const forbidden = await privateFile(
+        new Request("https://portal.example.com/data/market/national-source.csv", { headers: { cookie } }),
+        { params: Promise.resolve({ path }) },
+    );
+    assert.equal(forbidden.status, 403);
+    assert.equal((await forbidden.json()).error, "No tienes acceso a este menú.");
+});
+test("private source distinguishes missing files from read failures without exposing internal details", async () => {
+    setup();
+    database();
+    const cookie = await createSessionCookie(user);
+    const request = new Request("https://portal.example.com/data/market/national-source.csv", { headers: { cookie } });
+    const missing = await privateFile(request, { params: Promise.resolve({ path: ["market", "nonexistent-source-test.csv"] }) });
+    assert.equal(missing.status, 404);
+    assert.deepEqual(await missing.json(), { error: "Archivo no encontrado." });
+
+    // Leer un directorio produce EISDIR: no debe confundirse con un archivo ausente.
+    const logged = mock.method(console, "error", () => {});
+    const failed = await privateFile(request, { params: Promise.resolve({ path: ["market"] }) });
+    assert.equal(failed.status, 500);
+    const payload = await failed.json();
+    assert.equal(payload.error, "No fue posible completar la operación.");
+    assert.match(payload.errorId, /^[\da-f-]{36}$/i);
+    assert.equal(logged.mock.calls.length, 1);
+    const log = JSON.parse(logged.mock.calls[0].arguments[0]);
+    assert.equal(log.errorId, payload.errorId);
+    assert.equal(log.context, "data-file");
+    assert.doesNotMatch(JSON.stringify(payload), /EISDIR|private-data|node:fs|stack/);
+});
 test("role demotion and account deactivation override the role in existing cookies", async () => {
     setup();
     const cookie = await createSessionCookie(user);

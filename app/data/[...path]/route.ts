@@ -12,7 +12,16 @@ export async function GET(request: Request, context: { params: Promise<{ path: s
     const file = resolve(root, ...path);
     if (!file.startsWith(root + sep)) throw new HttpError(404, "Archivo no encontrado.");
     let bytes;
-    try { bytes = await readFile(file); } catch { throw new HttpError(404, "Archivo no encontrado."); }
+    try {
+      bytes = await readFile(file);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "ENOENT" || code === "ENOTDIR") {
+        throw new HttpError(404, "Archivo no encontrado.");
+      }
+      // Los fallos de permisos/runtime se registran como 500 con errorId.
+      throw error;
+    }
     return new Response(bytes, { headers: { "content-type": file.endsWith(".pdf") ? "application/pdf" : "text/csv; charset=utf-8", "cache-control": "private, no-store", "x-content-type-options": "nosniff" } });
   } catch (error) { return errorResponse(error, "data-file"); }
 }

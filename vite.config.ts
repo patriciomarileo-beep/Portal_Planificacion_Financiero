@@ -31,17 +31,21 @@ const localBindingConfig = {
     : [],
 };
 
-export default defineConfig({
+export default defineConfig(({ command, isPreview }) => ({
+  // El desarrollo usa Node.js para leer los archivos privados del disco.
+  // Una caché separada evita reutilizar dependencias optimizadas para Workers.
+  cacheDir: command === "serve" && !isPreview ? "node_modules/.vite-node" : "node_modules/.vite",
   server: {
-    host: "127.0.0.1",
-    port: 3001,
+    host: "localhost",
+    port: 3000,
+    strictPort: true,
   },
   plugins: [
     vinext(),
     sites(),
-    cloudflare({
+    (command === "build" || isPreview) && cloudflare({
       viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
       config: localBindingConfig,
     }),
   ],
-});
+}));

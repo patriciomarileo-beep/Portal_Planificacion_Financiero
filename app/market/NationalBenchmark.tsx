@@ -1,21 +1,223 @@
 "use client";
-import {useEffect,useState} from "react";
-import {BarChart3,Building2,ChevronDown,CircleDollarSign,TrendingUp} from "lucide-react";
-import {CompanyLogo} from "./companyLogos";
-type Row=Record<string,string>; type Scope="Consolidado"|"Retail"; type Key="revenue"|"ebitda"|"operating"|"net"|"gav"|"ebitdaMargin"|"gavMargin"; type Metrics=Record<Key,number|null>&{growth:number|null;previous:Partial<Record<Key,number>>}; type Company={name:string;metrics:Metrics};
-const names=["Cencosud","Falabella","Ripley","FORUS","Tricot","Hites"],periods=["2T25","2T26","6M25","6M26"];
-const map:Record<string,Key>={Ingresos:"revenue","EBITDA reportado (IFRS)":"ebitda","Resultado Operacional":"operating","Utilidad Neta":"net",GAV:"gav","EBITDA Margen":"ebitdaMargin","GAV / Venta %":"gavMargin"};
-const indicators=[{label:"Ingresos",weight:10,lower:false,value:(m:Metrics)=>m.revenue},{label:"Crecimiento de ingresos",weight:20,lower:false,value:(m:Metrics)=>m.growth},{label:"Margen EBITDA",weight:25,lower:false,value:(m:Metrics)=>m.ebitdaMargin},{label:"GAV / Venta",weight:15,lower:true,value:(m:Metrics)=>m.gavMargin},{label:"Margen operacional",weight:15,lower:false,value:(m:Metrics)=>m.revenue&&m.operating!==null?m.operating/m.revenue*100:null},{label:"Margen neto",weight:15,lower:false,value:(m:Metrics)=>m.revenue&&m.net!==null?m.net/m.revenue*100:null}];
-function csv(text:string){const out:string[][]=[];let row:string[]=[],cell="",q=false;for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){if(q&&text[i+1]==='"'){cell+='"';i++;}else q=!q;}else if(!q&&(c===","||c==="\n")){row.push(cell.replace(/\r$/, ""));cell="";if(c==="\n"){out.push(row);row=[];}}else cell+=c;}if(cell||row.length){row.push(cell);out.push(row);}const [head,...body]=out;return body.map(r=>Object.fromEntries(head.map((h,i)=>[h,r[i]??""])));}
-const num=(s="")=>{const c=s.replace(/,/g,"").replace(/%/g,"").trim();return c&&Number.isFinite(Number(c))?Number(c):null;}; const canon=(s:string)=>{const c=s.toUpperCase().replace(/[.]/g,"").trim();return c.startsWith("RIPLEY")?"RIPLEY":c;};
-function metrics(rows:Row[],name:string,period:string,scope:Scope){const m:Metrics={revenue:null,ebitda:null,operating:null,net:null,gav:null,ebitdaMargin:null,gavMargin:null,growth:null,previous:{}};for(const [label,key] of Object.entries(map)){const candidates=rows.filter(r=>canon(r.EMPRESA)===canon(name)&&r.PERIODO_ORIGEN===period&&r.METRICA_ORIGEN===label&&!/PerÃº|PerÃƒÂº|Colombia|Uruguay/i.test(r.TITULO_HOJA_ORIGEN));const selected=scope==="Consolidado"?candidates.find(r=>/Total Empresa/i.test(r.TITULO_HOJA_ORIGEN))??candidates[0]:candidates.find(r=>/Chile Retail/i.test(r.TITULO_HOJA_ORIGEN))??candidates[1];if(!selected)continue;m[key]=num(selected.VALOR);const prior=num(selected.VALOR_PERIODO_ANT);if(prior!==null)m.previous[key]=prior;if(key==="revenue")m.growth=num(selected.VAR_PCT_AA_BD);}return m;}
-const n=(v:number|null|undefined)=>v??0,money=(v:number|null|undefined)=>v==null?"N/D":`${new Intl.NumberFormat("es-CL",{maximumFractionDigits:0}).format(v)} MM$`,pct=(v:number|null|undefined,sign=false)=>v==null?"N/D":`${sign&&v>0?"+":""}${v.toFixed(1).replace(".",",")}%`,delta=(a:number|null|undefined,b:number|null|undefined)=>a==null||!b?null:(a/b-1)*100;
-function rank(companies:Company[]){const dist=indicators.map(i=>companies.map(c=>i.value(c.metrics)).filter((v):v is number=>v!==null));return companies.map(c=>{let score=0,coverage=0;const parts=indicators.map((i,x)=>{const v=i.value(c.metrics),peers=dist[x];if(v===null)return{...i,points:0,available:false};let p=peers.length<=1?.5:(peers.filter(k=>k<v).length+(peers.filter(k=>k===v).length-1)/2)/(peers.length-1);if(i.lower)p=1-p;const points=p*i.weight;score+=points;coverage+=i.weight;return{...i,points,available:true};});return{company:c,score,coverage,parts};}).sort((a,b)=>b.score-a.score).map((r,index,all)=>({...r,rank:all.findIndex(x=>Math.abs(x.score-r.score)<1e-9)+1}));}
-export default function NationalBenchmark(){const [rows,setRows]=useState<Row[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[period,setPeriod]=useState("6M26"),[scope,setScope]=useState<Scope>("Consolidado"),[selected,setSelected]=useState("Todas");useEffect(()=>{fetch("/data/market/national-source.csv").then(r=>{if(!r.ok)throw Error("No fue posible cargar la fuente nacional.");return r.text();}).then(t=>setRows(csv(t))).catch((e:Error)=>setError(e.message)).finally(()=>setLoading(false));},[]);const data=(()=>names.map(name=>({name,metrics:metrics(rows,name,period,scope)})))(),visible=selected==="Todas"?data:data.filter(c=>c.name===selected),ranking=(()=>rank(data))();const total=visible.reduce((s,c)=>({revenue:s.revenue+n(c.metrics.revenue),ebitda:s.ebitda+n(c.metrics.ebitda),operating:s.operating+n(c.metrics.operating),net:s.net+n(c.metrics.net),pr:s.pr+n(c.metrics.previous.revenue),pe:s.pe+n(c.metrics.previous.ebitda),po:s.po+n(c.metrics.previous.operating),pn:s.pn+n(c.metrics.previous.net)}),{revenue:0,ebitda:0,operating:0,net:0,pr:0,pe:0,po:0,pn:0});if(loading)return <section className="market-state">Cargando Benchmark Nacional…</section>;if(error)return <section className="market-state error">{error}</section>;const kpis=[["Ingresos agregados",total.revenue,total.pr,TrendingUp],["EBITDA agregado",total.ebitda,total.pe,BarChart3],["Resultado operacional",total.operating,total.po,Building2],["Utilidad neta",total.net,total.pn,CircleDollarSign]] as const;const max=Math.max(...data.flatMap(c=>[n(c.metrics.revenue),n(c.metrics.previous.revenue)]),1);
-return <section className="market-page benchmark-expanded"><div className="market-title-row"><div><label>RESULTADOS FINANCIEROS COMPARABLES</label><h1>{scope==="Consolidado"?"Resultados consolidados":"Retail (TxD)"}</h1><p>Lectura comparativa del desempeño {period}, con base del año anterior.</p></div><span className="market-source">FUENTE <b>BD NACIONAL · MM$ CLP</b></span></div><div className="market-filters"><div><span>PERÍODO</span><div className="market-segments">{periods.map(v=><button key={v} className={period===v?"active":""} onClick={()=>setPeriod(v)}>{v}</button>)}</div></div><div><span>APERTURA</span><div className="market-segments">{(["Consolidado","Retail"] as Scope[]).map(v=><button key={v} className={scope===v?"active":""} onClick={()=>setScope(v)}>{v}</button>)}</div></div><label><span>EMPRESA</span><div className="market-select"><select value={selected} onChange={e=>setSelected(e.target.value)}><option>Todas</option>{names.map(v=><option key={v}>{v}</option>)}</select><ChevronDown/></div></label></div>
-<div className="market-kpis benchmark-kpis">{kpis.map(([label,current,prior,Icon])=>{const d=delta(current,prior);return <article key={label}><i><Icon/></i><span>{label}</span><strong>{money(current)}</strong><b className={n(d)<0?"negative":"positive"}>{pct(d,true)} vs año anterior</b><small>Anterior: {money(prior)}</small></article>;})}</div>
-<Section label="VENTAS DEL NEGOCIO" title="Ingresos · actual versus año anterior" aside={`${period} · ${scope}`}><div className="company-comparison-list">{data.map(c=><div key={c.name}><div className="company-name"><CompanyLogo name={c.name}/><b>{c.name}</b></div><div className="dual-bars"><i><em style={{width:`${n(c.metrics.revenue)/max*100}%`}}/></i><i><em style={{width:`${n(c.metrics.previous.revenue)/max*100}%`}}/></i></div><div><strong>{money(c.metrics.revenue)}</strong><small>{money(c.metrics.previous.revenue)}</small><b className={n(c.metrics.growth)<0?"negative":"positive"}>{pct(c.metrics.growth,true)}</b></div></div>)}</div></Section>
-<Section label="DETALLE DE COMPAÑÍAS" title="Vista comparativa" aside="MM$ CLP"><Table><thead><tr><th>COMPAÑÍA</th><th>INGRESOS ACTUAL</th><th>AÑO ANTERIOR</th><th>CREC. A/A</th><th>EBITDA</th><th>MARGEN EBITDA</th></tr></thead><tbody>{data.map(c=><tr key={c.name}><td><span className="table-company"><CompanyLogo name={c.name}/><b>{c.name}</b></span></td><td>{money(c.metrics.revenue)}</td><td>{money(c.metrics.previous.revenue)}</td><td className={n(c.metrics.growth)<0?"negative":"positive"}>{pct(c.metrics.growth,true)}</td><td>{money(c.metrics.ebitda)}</td><td>{pct(c.metrics.ebitdaMargin)}</td></tr>)}</tbody></Table></Section>
-<Section label="LECTURA FINANCIERA" title="Más allá de los ingresos" aside="ACTUAL + AÑO ANTERIOR"><div className="indicator-card-grid">{[{label:"GAV / Venta",key:"gavMargin" as Key},{label:"Margen operacional",key:"operating" as Key,margin:true},{label:"Margen neto",key:"net" as Key,margin:true}].map(i=><article key={i.label}><label>INDICADOR FINANCIERO</label><h3>{i.label}</h3>{data.map(c=>{const current=i.margin&&c.metrics.revenue?n(c.metrics[i.key])/c.metrics.revenue*100:c.metrics[i.key],prior=i.margin&&c.metrics.previous.revenue?n(c.metrics.previous[i.key])/c.metrics.previous.revenue*100:c.metrics.previous[i.key];return <div className="indicator-company" key={c.name}><span><CompanyLogo name={c.name}/>{c.name}</span><i><em style={{width:`${Math.min(100,Math.max(1,n(current)))}%`}}/><em className="previous" style={{width:`${Math.min(100,Math.max(1,n(prior)))}%`}}/></i><strong>{pct(current)}</strong><small>{pct(prior)}</small></div>;})}</article>)}</div></Section>
-<Section label={`EVALUACIÓN PONDERADA · ${scope.toUpperCase()}`} title="Ranking financiero final" aside="PUNTAJE SOBRE 100"><details className="ranking-method"><summary>Ver metodología y ponderaciones</summary><p>Modelo por percentiles entre las seis compañías. Un valor mayor recibe más puntos, excepto GAV / Venta. Datos faltantes aportan cero puntos sin redistribuir pesos; la cobertura muestra el peso disponible.</p><div>{indicators.map(i=><span key={i.label}>{i.label}: <b>{i.weight}%</b>{i.lower?" · menor es mejor":""}</span>)}</div></details><Table><thead><tr><th>POSICIÓN</th><th>COMPAÑÍA</th><th>PUNTAJE / 100</th><th>COBERTURA</th><th>APORTE POR INDICADOR</th></tr></thead><tbody>{ranking.map(r=><tr key={r.company.name}><td>#{r.rank}</td><td><span className="table-company"><CompanyLogo name={r.company.name}/><b>{r.company.name}</b></span></td><td><strong>{r.score.toFixed(1).replace(".",",")} puntos</strong><div className="score-track"><i style={{width:`${r.score}%`}}/></div></td><td>{r.coverage}%{r.coverage<100?" · incompleto":""}</td><td><details><summary>Desglose</summary>{r.parts.map(p=><p key={p.label}>{p.label}: <b>{p.points.toFixed(1)} / {p.weight}</b></p>)}</details></td></tr>)}</tbody></Table></Section></section>;}
-function Section({label,title,aside,children}:{label:string;title:string;aside:string;children:React.ReactNode}){return <section className="benchmark-section"><header><div><label>{label}</label><h2>{title}</h2></div><span>{aside}</span></header>{children}</section>;}function Table({children}:{children:React.ReactNode}){return <div className="market-table-wrap"><table>{children}</table></div>;}
+
+import { useEffect, useState } from "react";
+import { BarChart3, ChevronDown, Download, FileText, TrendingUp } from "lucide-react";
+import { CompanyLogo } from "./companyLogos";
+
+type Row = Record<string, string>;
+type Scope = "Consolidado" | "Retail";
+type Value = { current: number | null; previous: number | null };
+type Company = { name: string; values: Record<string, Value> };
+type Indicator = { label: string; source: string; kind: "money" | "percent" | "change" | "points"; group?: boolean };
+type SourceErrorPayload = { error?: unknown; errorId?: unknown };
+
+const indicators: Indicator[] = [
+  { label: "Ingresos", source: "Ingresos", kind: "money", group: true },
+  { label: "A/A ingresos", source: "Ingresos", kind: "change" },
+  { label: "Ganancia bruta", source: "Ganancia Bruta", kind: "money", group: true },
+  { label: "Margen bruto", source: "Margen Bruto", kind: "percent" },
+  { label: "Variación margen bruto", source: "Margen Bruto", kind: "points" },
+  { label: "GAV", source: "GAV", kind: "money", group: true },
+  { label: "GAV / venta", source: "GAV / Venta %", kind: "percent" },
+  { label: "Resultado operacional", source: "Resultado Operacional", kind: "money", group: true },
+  { label: "Margen operacional", source: "Margen Operacional", kind: "percent" },
+  { label: "Utilidad neta", source: "Utilidad Neta", kind: "money", group: true },
+  { label: "Margen neto", source: "Margen Neto", kind: "percent" },
+  { label: "EBITDA reportado (IFRS)", source: "EBITDA reportado (IFRS)", kind: "money", group: true },
+  { label: "Margen EBITDA", source: "EBITDA Margen", kind: "percent" },
+];
+const priority = ["FORUS", "Falabella", "Cencosud", "Hites", "Ripley", "Tricot", "Abc SA"];
+const empty: Value = { current: null, previous: null };
+const number = (text = "") => {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.replace(/[,%\s]/g, "").replace(/^\((.*)\)$/, "-$1");
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : null;
+};
+const median = (items: number[]) => {
+  if (!items.length) return null;
+  const sorted = [...items].sort((a, b) => a - b);
+  const center = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[center] : (sorted[center - 1] + sorted[center]) / 2;
+};
+const change = (a: number | null, b: number | null) => a === null || b === null || b === 0 ? null : (a / b - 1) * 100;
+const fmtNumber = (value: number, digits = 0) => new Intl.NumberFormat("es-CL", { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+const fmt = (value: number | null, kind: Indicator["kind"], signed = false) => value === null ? "N/D" :
+  `${signed && value > 0 ? "+" : ""}${fmtNumber(value, kind === "money" ? 0 : 1)}${kind === "money" ? "" : kind === "points" ? " pp" : "%"}`;
+const metric = (company: Company, source: string) => company.values[source] ?? empty;
+const valueFor = (company: Company, indicator: Indicator): Value => {
+  const source = metric(company, indicator.source);
+  if (indicator.kind === "change") return { current: change(source.current, source.previous), previous: null };
+  if (indicator.kind === "points") return { current: source.current === null || source.previous === null ? null : source.current - source.previous, previous: null };
+  return source;
+};
+const rankingIndicators = [
+  { label: "Ingresos", weight: 10, lower: false, value: (company: Company) => metric(company, "Ingresos").current },
+  { label: "Crecimiento de ingresos", weight: 20, lower: false, value: (company: Company) => change(metric(company, "Ingresos").current, metric(company, "Ingresos").previous) },
+  { label: "Margen EBITDA", weight: 25, lower: false, value: (company: Company) => metric(company, "EBITDA Margen").current },
+  { label: "GAV / venta", weight: 15, lower: true, value: (company: Company) => metric(company, "GAV / Venta %").current },
+  { label: "Margen operacional", weight: 15, lower: false, value: (company: Company) => metric(company, "Margen Operacional").current },
+  { label: "Margen neto", weight: 15, lower: false, value: (company: Company) => metric(company, "Margen Neto").current },
+];
+function rankCompanies(companies: Company[]) {
+  const distributions = rankingIndicators.map((indicator) => companies.map(indicator.value).filter((value): value is number => value !== null));
+  const ranked = companies.map((company) => {
+    let score = 0, coverage = 0;
+    const parts = rankingIndicators.map((indicator, index) => {
+      const value = indicator.value(company);
+      if (value === null) return { label: indicator.label, points: 0, weight: indicator.weight };
+      const peers = distributions[index];
+      let percentile = peers.length <= 1 ? 0.5 :
+        (peers.filter((peer) => peer < value).length + (peers.filter((peer) => peer === value).length - 1) / 2) / (peers.length - 1);
+      if (indicator.lower) percentile = 1 - percentile;
+      const points = percentile * indicator.weight;
+      score += points;
+      coverage += indicator.weight;
+      return { label: indicator.label, points, weight: indicator.weight };
+    });
+    return { company, score, coverage, parts };
+  }).sort((a, b) => b.score - a.score);
+  return ranked.map((entry) => ({ ...entry, position: ranked.findIndex((other) => Math.abs(other.score - entry.score) < 1e-9) + 1 }));
+}
+
+function parseCsv(text: string): Row[] {
+  const records: string[][] = [];
+  let record: string[] = [], cell = "", quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') {
+      if (quoted && text[i + 1] === '"') { cell += '"'; i++; } else quoted = !quoted;
+    } else if (!quoted && (char === "," || char === "\n")) {
+      record.push(cell.replace(/\r$/, "")); cell = "";
+      if (char === "\n") { records.push(record); record = []; }
+    } else cell += char;
+  }
+  if (cell || record.length) records.push([...record, cell]);
+  const [header = [], ...body] = records;
+  const keys = header.map((key) => key.replace(/^\uFEFF/, ""));
+  return body.filter((cells) => cells.length === keys.length).map((cells) => Object.fromEntries(keys.map((key, index) => [key, cells[index]])));
+}
+function periodOrder(period: string) {
+  const match = period.match(/^(\d+)([TM])([0-9]{2,4})$/i);
+  if (!match) return -1;
+  const year = Number(match[3].length === 2 ? `20${match[3]}` : match[3]);
+  return year * 12 + Number(match[1]) * (match[2].toUpperCase() === "T" ? 3 : 1);
+}
+function isScope(row: Row, scope: Scope) {
+  const title = row.TITULO_HOJA_ORIGEN || "";
+  if (/Chile Retail/i.test(title)) return scope === "Retail";
+  if (/Total Empresa/i.test(title)) return scope === "Consolidado";
+  if (title.trim()) return false;
+  // La fuente histórica no titula Chile Retail en trimestres ni Total Empresa en acumulados.
+  return scope === (/^\d+T\d+/i.test(row.PERIODO_ORIGEN || "") ? "Retail" : "Consolidado");
+}
+function companiesFor(rows: Row[], period: string, scope: Scope): Company[] {
+  const byName = new Map<string, Company>();
+  for (const row of rows) {
+    if (row.PERIODO_ORIGEN !== period || !isScope(row, scope) || !row.EMPRESA || !row.METRICA_ORIGEN) continue;
+    const source = row.METRICA_ORIGEN;
+    if (!indicators.some((indicator) => indicator.source === source)) continue;
+    const company = byName.get(row.EMPRESA) ?? { name: row.EMPRESA, values: {} };
+    if (!company.values[source]) company.values[source] = { current: number(row.VALOR), previous: number(row.VALOR_PERIODO_ANT) };
+    byName.set(row.EMPRESA, company);
+  }
+  return [...byName.values()].filter((company) => metric(company, "Ingresos").current !== null)
+    .sort((a, b) => (priority.indexOf(a.name) < 0 ? 100 : priority.indexOf(a.name)) - (priority.indexOf(b.name) < 0 ? 100 : priority.indexOf(b.name)) || a.name.localeCompare(b.name, "es"));
+}
+function downloadCsv(filename: string, records: string[][]) {
+  const escape = (cell: string) => `"${cell.replace(/"/g, '""')}"`;
+  const content = "\uFEFF" + records.map((record) => record.map(escape).join(";")).join("\r\n");
+  const url = URL.createObjectURL(new Blob([content], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url; link.download = filename; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function sourceError(response: Response) {
+  let payload: SourceErrorPayload = {};
+  try {
+    payload = await response.json() as SourceErrorPayload;
+  } catch {
+    // La ruta puede responder sin JSON ante un error de infraestructura.
+  }
+  const detail = typeof payload.error === "string" && payload.error.trim()
+    ? payload.error.trim()
+    : "La fuente no entregó un detalle adicional.";
+  const errorId = typeof payload.errorId === "string" && payload.errorId.trim()
+    ? ` Identificador: ${payload.errorId.trim()}.`
+    : "";
+  return `No fue posible cargar la fuente nacional (HTTP ${response.status}). ${detail}${errorId}`;
+}
+
+export default function NationalBenchmark() {
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [period, setPeriod] = useState("");
+  const [scope, setScope] = useState<Scope>("Consolidado");
+  const [selected, setSelected] = useState("Todas");
+  useEffect(() => {
+    fetch("/data/market/national-source.csv", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw Error(await sourceError(response));
+        return response.text();
+      })
+      .then((text) => setRows(parseCsv(text)))
+      .catch((cause: Error) => setError(cause.message))
+      .finally(() => setLoading(false));
+  }, []);
+  const periods = [...new Set(rows.map((row) => row.PERIODO_ORIGEN))].filter((item) => periodOrder(item) > 0 && rows.some((row) => row.PERIODO_ORIGEN === item && row.EMPRESA === "FORUS" && row.METRICA_ORIGEN === "Ingresos" && isScope(row, "Consolidado")))
+    .sort((a, b) => periodOrder(a) - periodOrder(b));
+  const activePeriod = periods.includes(period) ? period : periods.at(-1) ?? "";
+  const all = companiesFor(rows, activePeriod, scope);
+  const visible = selected === "Todas" ? all : all.filter((company) => company.name === selected);
+  const focus = all.find((company) => company.name === (selected === "Todas" ? "FORUS" : selected));
+  const peers = all.filter((company) => company.name !== focus?.name);
+  const ranking = rankCompanies(all).filter((entry) => selected === "Todas" || entry.company.name === selected);
+  const comparisons = [
+    { title: "Crecimiento de ingresos", indicator: indicators[1], icon: TrendingUp },
+    { title: "Margen bruto", indicator: indicators[3], icon: BarChart3 },
+    { title: "Margen EBITDA", indicator: indicators[12], icon: BarChart3 },
+    { title: "Margen neto", indicator: indicators[10], icon: BarChart3 },
+  ].map((item) => {
+    const current = focus ? valueFor(focus, item.indicator).current : null;
+    const peer = median(peers.map((company) => valueFor(company, item.indicator).current).filter((item): item is number => item !== null));
+    return { ...item, current, peer, gap: current === null || peer === null ? null : current - peer };
+  });
+  const exportRows = [
+    ["Benchmark nacional", activePeriod, scope, selected === "Todas" ? "Todas las empresas" : selected],
+    ["Indicador", ...visible.flatMap((company) => [`${company.name} anterior`, `${company.name} actual`])],
+    ...indicators.map((indicator) => [indicator.label, ...visible.flatMap((company) => {
+      const value = valueFor(company, indicator);
+      return [fmt(value.previous, indicator.kind), fmt(value.current, indicator.kind)];
+    })]),
+  ];
+  if (loading) return <section className="market-state">Cargando Benchmark Nacional…</section>;
+  if (error) return <section className="market-state error">{error}</section>;
+  if (!activePeriod || !all.length) return <section className="market-state error">No hay datos comparables en la fuente nacional.</section>;
+
+  const revenue = focus ? metric(focus, "Ingresos") : empty;
+  const ebitda = focus ? metric(focus, "EBITDA reportado (IFRS)") : empty;
+  const net = focus ? metric(focus, "Utilidad Neta") : empty;
+  const growth = change(revenue.current, revenue.previous);
+  const executive = focus ? [
+    `${focus.name} registró ingresos de ${fmt(revenue.current, "money")} MM$ en ${activePeriod}, con una variación de ${fmt(growth, "change", true)} frente al año anterior.`,
+    `La mediana de crecimiento de ${peers.length} compañías comparables fue ${fmt(comparisons[0].peer, "change", true)}. La brecha de ${focus.name} fue ${fmt(comparisons[0].gap, "points", true)}.`,
+    `El EBITDA reportado fue ${fmt(ebitda.current, "money")} MM$ (${fmt(change(ebitda.current, ebitda.previous), "change", true)} A/A) y la utilidad neta ${fmt(net.current, "money")} MM$ (${fmt(change(net.current, net.previous), "change", true)} A/A).`,
+    `El margen EBITDA se ubicó en ${fmt(comparisons[2].current, "percent")}, frente a una mediana de ${fmt(comparisons[2].peer, "percent")} en las otras compañías.`,
+  ] : [];
+  const maxRevenue = Math.max(1, ...visible.flatMap((company) => [metric(company, "Ingresos").current ?? 0, metric(company, "Ingresos").previous ?? 0]));
+  return <section className="market-page benchmark-expanded national-benchmark" id="national-benchmark-report">
+    <div className="market-title-row"><div><label>RESULTADOS FINANCIEROS COMPARABLES</label><h1>{scope === "Consolidado" ? "Resultados consolidados" : "Resultados retail Chile"}</h1><p>Lectura comparativa del desempeño {activePeriod}, con base del año anterior.</p></div><span className="market-source">FUENTE <b>BD NACIONAL · MM$ CLP</b></span></div>
+    <div className="market-filters"><div><span>PERÍODO</span><div className="market-segments">{periods.map((item) => <button type="button" key={item} className={activePeriod === item ? "active" : ""} onClick={() => setPeriod(item)}>{item}</button>)}</div></div><div><span>APERTURA</span><div className="market-segments">{(["Consolidado", "Retail"] as Scope[]).map((item) => <button type="button" key={item} className={scope === item ? "active" : ""} onClick={() => { setScope(item); setSelected("Todas"); }}>{item}</button>)}</div></div><label><span>EMPRESA</span><div className="market-select"><select value={selected} onChange={(event) => setSelected(event.target.value)}><option>Todas</option>{all.map((company) => <option key={company.name}>{company.name}</option>)}</select><ChevronDown /></div></label><div className="benchmark-export-actions"><button type="button" onClick={() => downloadCsv(`benchmark-nacional-${activePeriod}-${scope.toLowerCase()}-${selected.replace(/\s+/g, "-")}.csv`, exportRows)}><Download /> Exportar CSV</button><button type="button" onClick={() => window.print()}><FileText /> Exportar PDF</button></div></div>
+    <div className="market-kpis benchmark-kpis">{comparisons.map(({ title, indicator, icon: Icon, current, peer, gap }) => <article key={title}><i><Icon /></i><span>{focus?.name.toUpperCase()} · {title.toUpperCase()}</span><strong>{fmt(current, indicator.kind, indicator.kind === "change")}</strong><b className={gap === null ? "" : gap >= 0 ? "positive" : "negative"}>{gap === null ? "Sin comparación" : `${fmt(gap, "points", true)} vs mediana`}</b><small>Mediana de otras compañías: {fmt(peer, indicator.kind, indicator.kind === "change")}</small></article>)}</div>
+    <Section label="BENCHMARK NACIONAL" title="Comparativo financiero por compañía" aside={`${activePeriod} · ${scope} · MM$ CLP`}><div className="benchmark-matrix-wrap"><table className="benchmark-matrix"><thead><tr><th rowSpan={2} scope="col">Indicador financiero</th>{visible.map((company) => <th key={company.name} colSpan={2} scope="colgroup" className={company.name === "FORUS" ? "forus" : ""}>{company.name}</th>)}</tr><tr>{visible.flatMap((company) => [<th key={`${company.name}-prior`} scope="col">Año anterior</th>, <th key={`${company.name}-current`} scope="col">{activePeriod}</th>])}</tr></thead><tbody>{indicators.map((indicator) => <tr key={indicator.label} className={indicator.group ? "group" : ""}><th scope="row">{indicator.label}</th>{visible.flatMap((company) => { const item = valueFor(company, indicator); return [<td key={`${company.name}-${indicator.label}-prior`}>{fmt(item.previous, indicator.kind)}</td>, <td key={`${company.name}-${indicator.label}-current`} className={company.name === "FORUS" ? "forus" : ""}>{fmt(item.current, indicator.kind, indicator.kind === "change" || indicator.kind === "points")}</td>]; })}</tr>)}</tbody></table></div><p className="benchmark-data-note">N/D: dato no disponible. A/A compara el período actual con el anterior; pp indica puntos porcentuales. Cifras según la fuente, sin imputar valores.</p></Section>
+    <Section label="INFORME EJECUTIVO" title={`${focus?.name} frente al mercado`} aside={`${activePeriod} · ${scope}`}><div className="benchmark-executive"><p className="benchmark-executive-lead">Síntesis para alta gerencia basada en los filtros activos.</p>{executive.map((line) => <p key={line}>{line}</p>)}<small>Comparación con mediana de compañías con dato disponible; los importes son MM$ CLP.</small></div></Section>
+    <Section label="VENTAS DEL NEGOCIO" title="Ingresos · actual versus año anterior" aside={`${activePeriod} · ${scope}`}><div className="company-comparison-list">{visible.map((company) => { const item = metric(company, "Ingresos"); return <div key={company.name}><div className="company-name"><CompanyLogo name={company.name} /><b>{company.name}</b></div><div className="dual-bars"><i><em style={{ width: `${(item.current ?? 0) / maxRevenue * 100}%` }} /></i><i><em style={{ width: `${(item.previous ?? 0) / maxRevenue * 100}%` }} /></i></div><div><strong>{fmt(item.current, "money")} MM$</strong><small>{fmt(item.previous, "money")} MM$ anterior</small><b className={(change(item.current, item.previous) ?? 0) < 0 ? "negative" : "positive"}>{fmt(change(item.current, item.previous), "change", true)}</b></div></div>; })}</div></Section>
+    <Section label={`EVALUACIÓN PONDERADA · ${scope.toUpperCase()}`} title="Ranking financiero final" aside="PUNTAJE SOBRE 100"><details className="ranking-method"><summary>Ver metodología y ponderaciones</summary><p>Modelo por percentiles entre las compañías disponibles. Un valor mayor recibe más puntos, excepto GAV / venta. Los datos faltantes aportan cero puntos sin redistribuir pesos; la cobertura muestra el peso disponible.</p><div>{rankingIndicators.map((indicator) => <span key={indicator.label}>{indicator.label}: <b>{indicator.weight}%</b>{indicator.lower ? " · menor es mejor" : ""}</span>)}</div></details><div className="market-table-wrap"><table><thead><tr><th>POSICIÓN</th><th>COMPAÑÍA</th><th>PUNTAJE / 100</th><th>COBERTURA</th><th>APORTE POR INDICADOR</th></tr></thead><tbody>{ranking.map((entry) => <tr key={entry.company.name}><td>#{entry.position}</td><td><span className="table-company"><CompanyLogo name={entry.company.name} /><b>{entry.company.name}</b></span></td><td><strong>{fmtNumber(entry.score, 1)} puntos</strong><div className="score-track"><i style={{ width: `${entry.score}%` }} /></div></td><td>{entry.coverage}%{entry.coverage < 100 ? " · incompleto" : ""}</td><td><details><summary>Desglose</summary>{entry.parts.map((part) => <p key={part.label}>{part.label}: <b>{fmtNumber(part.points, 1)} / {part.weight}</b></p>)}</details></td></tr>)}</tbody></table></div></Section>
+  </section>;
+}
+function Section({ label, title, aside, children }: { label: string; title: string; aside: string; children: React.ReactNode }) {
+  return <section className="benchmark-section"><header><div><label>{label}</label><h2>{title}</h2></div><span>{aside}</span></header>{children}</section>;
+}

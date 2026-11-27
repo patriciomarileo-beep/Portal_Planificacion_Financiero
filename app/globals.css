@@ -6782,6 +6782,7 @@ summary strong {
 
 .microsoft-shell .detail-group .detail-table
 :is(th, td):is(
+  :nth-child(3),  /* APERTURA */
   :nth-child(4),  /* VENTAS */
   :nth-child(5),  /* MARGEN */
   :nth-child(6),  /* MARGEN / VENTA */
@@ -6803,4 +6804,409 @@ td:nth-child(12) > small {
   align-items: center;
   justify-content: center;
   gap: 4px;
+}
+
+
+
+/* ==========================================
+   DETAIL-TABLE: ACORDEÓN DE RENTABILIDAD
+   ========================================== */
+
+.detail-accordion-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.detail-accordion-toggle:hover {
+  color: #173e7d;
+}
+
+.detail-accordion-toggle:focus-visible {
+  outline: 2px solid #285eb2;
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+
+.detail-accordion-toggle svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.2s ease;
+}
+
+.detail-accordion-toggle svg.is-open {
+  transform: rotate(180deg);
+}
+
+
+
+/* ==========================================
+   STORE MODAL - MEJORA DE LEGIBILIDAD
+   ========================================== */
+
+/* Título de la tienda */
+.store-modal .modal-head h2 {
+  font-size: 25px;
+}
+
+/* Código, cadena y clasificación */
+.store-modal .modal-head p {
+  font-size: 13px;
+}
+
+/* Etiquetas de sección */
+.store-modal .modal-head label,
+.store-modal .modal-grid > div > label {
+  font-size: 12px;
+}
+
+/* Encabezados de la tabla */
+.store-modal .modal-table th {
+  font-size: 12px;
+}
+
+/* Conceptos y valores financieros */
+.store-modal .modal-table td {
+  font-size: 13px;
+}
+
+/* Variaciones YoY */
+.store-modal .modal-table td small {
+  font-size: 11px;
+}
+
+/* Nota de origen Four Walls */
+.store-modal .fw-origin {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Etiquetas del gráfico */
+.store-modal .modal-chart
+.recharts-cartesian-axis-tick-value {
+  font-size: 12px;
+}
+
+/* Leyenda del gráfico */
+.store-modal .modal-chart
+.recharts-legend-item-text {
+  font-size: 12px !important;
+}
+
+/* Evitar cortes al aumentar la fuente */
+.store-modal .modal-table {
+  overflow-x: auto;
+}
+
+
+
+/* ==========================================
+   STORE MODAL - CENTRAR AÑOS Y VARIACIONES
+   ========================================== */
+
+/* Centrar encabezados y valores:
+   2026E, 2027P y VAR. */
+.store-modal .modal-table th:nth-child(n+2),
+.store-modal .modal-table td:nth-child(n+2) {
+  text-align: center;
+}
+
+/* Centrar indicadores YoY de VAR. */
+.store-modal .modal-table td:nth-child(4) small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* Mantener CONCEPTO alineado a la izquierda */
+.store-modal .modal-table th:first-child,
+.store-modal .modal-table td:first-child {
+  text-align: left;
+}
+
+
+
+/* ==========================================
+   B&L - SELECTOR ÚNICO DE MÉTRICAS
+   Diseño basado en chain-multiselect
+   ========================================== */
+
+.microsoft-shell .metric-single-select {
+  position: relative;
+  width: 210px;
+  min-width: 210px;
+  flex: 0 0 210px;
+}
+
+/* Diseño del selector */
+.microsoft-shell .metric-single-select summary {
+  height: 46px;
+  padding: 6px 28px 4px 10px;
+  border: 1px solid #dce1e7;
+  border-radius: 3px;
+  background: #fafbfc;
+  font-size: 11px;
+}
+
+/* Métrica seleccionada */
+.microsoft-shell .metric-single-select summary strong {
+  font-size: 11px;
+  font-weight: 700;
+  color: #304158;
+}
+
+/* Desplegable alineado a la derecha */
+.microsoft-shell .metric-single-select .metric-options {
+  left: auto;
+  right: 0;
+  width: 240px;
+  max-height: 330px;
+  overflow-y: auto;
+}
+
+/* Opciones disponibles */
+.microsoft-shell .metric-single-select
+.metric-options button {
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* Opción seleccionada */
+.microsoft-shell .metric-single-select
+.metric-options button.active {
+  background: #edf4ff;
+  color: #173e7d;
+  font-weight: 700;
+}
+
+/* Resaltar navegación por teclado */
+.microsoft-shell .metric-single-select
+.metric-options button:focus-visible {
+  outline: 2px solid #285eb2;
+  outline-offset: -2px;
+}
+
+
+
+/* ==========================================
+   B&L - SELECTOR DE AÑO DEL CUADRANTE
+   Basado en chain-multiselect
+   ========================================== */
+
+.microsoft-shell .quadrant-panel
+.quadrant-year-select {
+  position: relative;
+  width: 125px;
+  min-width: 125px;
+  flex: 0 0 125px;
+}
+
+/* Selector principal */
+.microsoft-shell .quadrant-panel
+.quadrant-year-select summary {
+  height: 46px;
+  padding: 6px 28px 4px 10px;
+  border: 1px solid #dce1e7;
+  border-radius: 3px;
+  background: #fafbfc;
+  color: #8793a5;
+  font-size: 11px;
+}
+
+/* Año seleccionado */
+.microsoft-shell .quadrant-panel
+.quadrant-year-select summary strong {
+  font-size: 11px;
+  font-weight: 700;
+  color: #304158;
+}
+
+/* Menú desplegable */
+.microsoft-shell .quadrant-panel
+.quadrant-year-options {
+  left: auto;
+  right: 0;
+  width: 150px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+/* Opciones */
+.microsoft-shell .quadrant-panel
+.quadrant-year-options button {
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* Año activo */
+.microsoft-shell .quadrant-panel
+.quadrant-year-options button.active {
+  background: #edf4ff;
+  color: #173e7d;
+  font-weight: 700;
+}
+
+/* Navegación por teclado */
+.microsoft-shell .quadrant-panel
+.quadrant-year-options button:focus-visible {
+  outline: 2px solid #285eb2;
+  outline-offset: -2px;
+}
+
+/* Mantener el desplegable sobre el gráfico */
+.microsoft-shell .quadrant-panel
+.quadrant-year-select[open] {
+  z-index: 40;
+}
+
+
+
+/* ==========================================
+   B&L - ESPACIADO HORIZONTAL
+   PERIOD-BREAKDOWN-TABLE
+   ========================================== */
+
+/* Ampliar columnas de meses y trimestres */
+.microsoft-shell .executive-matrix
+.period-breakdown-table th,
+.microsoft-shell .executive-matrix
+.period-breakdown-table td {
+  min-width: 160px;
+  padding: 11px 16px;
+}
+
+/* Mayor espacio para la columna CONCEPTO */
+.microsoft-shell .executive-matrix
+.period-breakdown-table thead tr:first-child > th:first-child,
+.microsoft-shell .executive-matrix
+.period-breakdown-table tbody tr > td:first-child {
+  min-width: 200px;
+}
+
+/* Separar valores financieros y PESO % */
+.microsoft-shell .executive-matrix
+.period-breakdown-table .metric-cell-layout {
+  grid-template-columns: minmax(0, 1fr) 50px;
+  gap: 12px;
+}
+
+/* Mantener desplazamiento horizontal */
+.microsoft-shell .executive-matrix
+.period-breakdown-table {
+  width: max-content;
+  min-width: 100%;
+}
+
+
+
+/* ==========================================
+   BREAK-EVEN - CONTROLES HOMOLOGADOS
+   ========================================== */
+
+/* Alinear ambos selectores */
+.microsoft-shell .break-even-title .be-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+/* Profit-toggle: altura del selector de año */
+.microsoft-shell .break-even-title
+.be-controls .profit-toggle {
+  height: 46px;
+  min-height: 46px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  padding: 3px;
+}
+
+/* Botones FOUR WALLS y UTILIDAD */
+.microsoft-shell .break-even-title
+.be-controls .profit-toggle button {
+  height: 100%;
+  min-height: 0;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Selector de año */
+.microsoft-shell .break-even-title
+.be-year-select {
+  position: relative;
+  width: 125px;
+  min-width: 125px;
+  flex: 0 0 125px;
+}
+
+/* Misma dimensión y apariencia que quadrant-year-select */
+.microsoft-shell .break-even-title
+.be-year-select summary {
+  height: 46px;
+  box-sizing: border-box;
+  padding: 6px 28px 4px 10px;
+  border: 1px solid #dce1e7;
+  border-radius: 3px;
+  background: #fafbfc;
+  color: #8793a5;
+  font-size: 11px;
+}
+
+/* Año seleccionado */
+.microsoft-shell .break-even-title
+.be-year-select summary strong {
+  font-size: 11px;
+  font-weight: 700;
+  color: #304158;
+}
+
+/* Menú de años */
+.microsoft-shell .break-even-title
+.be-year-options {
+  top: calc(100% + 4px);
+  left: auto;
+  right: 0;
+  width: 150px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+/* Opciones */
+.microsoft-shell .break-even-title
+.be-year-options button {
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* Año activo */
+.microsoft-shell .break-even-title
+.be-year-options button.active {
+  background: #edf4ff;
+  color: #173e7d;
+  font-weight: 700;
+}
+
+/* Navegación por teclado */
+.microsoft-shell .break-even-title
+.be-year-options button:focus-visible {
+  outline: 2px solid #285eb2;
+  outline-offset: -2px;
+}
+
+/* Mantener el desplegable por encima del contenido */
+.microsoft-shell .break-even-title
+.be-year-select[open] {
+  z-index: 40;
 }

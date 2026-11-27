@@ -517,6 +517,9 @@ function Executive({
 }) {
   const [chainMetric, setChainMetric] = useState<keyof Metric | "marginPct">("utility");
 
+  const metricDropdownRef = useRef<HTMLDetailsElement>(null);
+
+
   const displayedYears: Year[] = years;
   const selectedMonthSet = new Set(selectedMonths);
   const chronologicalSelectedMonths = monthOrder.filter((month) => selectedMonthSet.has(month));
@@ -684,7 +687,74 @@ function Executive({
         </div>
         <div className="chain-divider">
           <div><h3>APERTURA POR CADENA</h3><span>Totales por cadena reconciliados con el resumen ejecutivo</span></div>
-          <label className="metric-select">ÍTEM A MEDIR<select value={chainMetric} onChange={(e) => setChainMetric(e.target.value as keyof Metric | "marginPct")}>{chainMetricOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><ChevronDown /></label>
+            <details
+              ref={metricDropdownRef}
+              data-dropdown
+              name="portal-dropdown"
+              className="chain-multiselect metric-single-select"
+            >
+              <summary>
+                <span>
+                  ÍTEM A MEDIR
+                  <strong>{selectedMetricLabel}</strong>
+                </span>
+                <ChevronDown />
+              </summary>
+
+              <div
+                className="chain-options metric-options"
+                role="group"
+                aria-label="Seleccionar ítem a medir"
+                onKeyDown={(e) => {
+                  const buttons = Array.from(
+                    e.currentTarget.querySelectorAll("button")
+                  );
+                
+                  const index = buttons.indexOf(
+                    document.activeElement as HTMLButtonElement
+                  );
+                
+                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                  
+                    const direction = e.key === "ArrowDown" ? 1 : -1;
+                    const nextIndex =
+                      (index + direction + buttons.length) % buttons.length;
+                  
+                    buttons[nextIndex]?.focus();
+                  }
+                
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                  
+                    if (metricDropdownRef.current) {
+                      metricDropdownRef.current.open = false;
+                      metricDropdownRef.current
+                        .querySelector("summary")
+                        ?.focus();
+                    }
+                  }
+                }}
+              >
+                {chainMetricOptions.map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    className={chainMetric === item.value ? "active" : ""}
+                    aria-pressed={chainMetric === item.value}
+                    onClick={() => {
+                      setChainMetric(item.value);
+                    
+                      if (metricDropdownRef.current) {
+                        metricDropdownRef.current.open = false;
+                      }
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </details>
         </div>
         <div className="scroll matrix-scroll chain-summary-scroll">
           <table className="chain-summary-table">
@@ -750,6 +820,7 @@ function FourWalls({
   setAnalysisMetric: (metric: ProfitMetric) => void;
 }) {
   const [selected, setSelected] = useState<StoreRow | null>(null);
+  const quadrantYearDropdownRef = useRef<HTMLDetailsElement>(null);
   const analysisLabel = analysisMetric === "utility" ? "Utilidad" : "Four Walls";
   const sectionTitle = analysisMetric === "utility" ? "Análisis de Utilidad" : "Rentabilidad Four Walls";
   const analysisYears: Year[] = period === "ANUAL" && classification === "TOTAL" ? years : [2026, 2027];
@@ -827,7 +898,86 @@ function FourWalls({
                 <button className={analysisMetric === "fourWalls" ? "active" : ""} onClick={() => { setAnalysisMetric("fourWalls"); setFwBand(null); }}>FOUR WALLS</button>
                 <button className={analysisMetric === "utility" ? "active" : ""} onClick={() => { setAnalysisMetric("utility"); setFwBand(null); }}>UTILIDAD</button>
               </div>
-              <label className="year-select">AÑO<select value={activeQuadrantYear} onChange={(e) => setQuadrantYear(Number(e.target.value) as Year)}>{analysisYears.map((y) => <option key={y} value={y}>{yearLabel(y)}</option>)}</select><ChevronDown /></label>
+                <details
+                  ref={quadrantYearDropdownRef}
+                  data-dropdown
+                  name="portal-dropdown"
+                  className="chain-multiselect quadrant-year-select"
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      if (quadrantYearDropdownRef.current?.open) {
+                        event.preventDefault();
+                        quadrantYearDropdownRef.current.open = false;
+                        quadrantYearDropdownRef.current
+                          .querySelector("summary")
+                          ?.focus();
+                      }
+                      return;
+                    }
+                  
+                    if (
+                      event.key !== "ArrowDown" &&
+                      event.key !== "ArrowUp"
+                    ) return;
+                  
+                    if (!quadrantYearDropdownRef.current?.open) return;
+                  
+                    const options = Array.from(
+                      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                        ".quadrant-year-options button"
+                      )
+                    );
+                  
+                    if (!options.length) return;
+                  
+                    event.preventDefault();
+                  
+                    const index = options.indexOf(
+                      document.activeElement as HTMLButtonElement
+                    );
+                  
+                    const nextIndex =
+                      index === -1
+                        ? event.key === "ArrowDown" ? 0 : options.length - 1
+                        : (
+                            index +
+                            (event.key === "ArrowDown" ? 1 : -1) +
+                            options.length
+                          ) % options.length;
+                        
+                    options[nextIndex].focus();
+                  }}
+                >
+                  <summary>
+                    <span>
+                      AÑO
+                      <strong>{yearLabel(activeQuadrantYear)}</strong>
+                    </span>
+                    <ChevronDown />
+                  </summary>
+                
+                  <div className="chain-options quadrant-year-options">
+                    {analysisYears.map((year) => (
+                      <button
+                        key={year}
+                        type="button"
+                        className={
+                          activeQuadrantYear === year ? "active" : ""
+                        }
+                        aria-pressed={activeQuadrantYear === year}
+                        onClick={() => {
+                          setQuadrantYear(year);
+                        
+                          if (quadrantYearDropdownRef.current) {
+                            quadrantYearDropdownRef.current.open = false;
+                          }
+                        }}
+                      >
+                        {yearLabel(year)}
+                      </button>
+                    ))}
+                  </div>
+                </details>   
             </div>
           </div>
           <div className="chart compact-chart">
@@ -928,31 +1078,119 @@ function StoreModal({ store, onClose }: { store: StoreRow; onClose: () => void }
   );
 }
 
+
 function Detail({ selection }: { selection: StoreRow[] }) {
+  type Group = "Alta" | "Media" | "Baja";
+
+  const [expandedGroup, setExpandedGroup] =
+    useState<Group | null>(null);
+
   const rows = selection.map((s) => {
     const m = s.annual[2027];
     const profitability = pct(m.utility, m.sales);
-    const group = profitability >= 6 ? "Alta" : profitability >= 2 ? "Media" : "Baja";
+    const group =
+      profitability >= 6 ? "Alta" :
+      profitability >= 2 ? "Media" : "Baja";
+
     return { ...s, metric: m, profitability, group };
   }).sort((a, b) => b.profitability - a.profitability);
+
   return (
     <>
-      {(["Alta","Media","Baja"] as const).map((group) => {
+      {(["Alta", "Media", "Baja"] as const).map((group) => {
         const list = rows.filter((r) => r.group === group);
+        const isExpanded = expandedGroup === group;
+        const panelId = `detail-panel-${group.toLowerCase()}`;
+
         return (
-          <section className={`detail-group group-${group.toLowerCase()}`} key={group}>
-            <div className="group-head"><div><h2>Rentabilidad {group}</h2><p>{group === "Alta" ? "Utilidad / venta ≥ 6%" : group === "Media" ? "Utilidad / venta entre 2% y 6%" : "Utilidad / venta < 2%"}</p></div><strong>{list.length} tiendas</strong></div>
-            <div className="panel scroll">
-              <table className="detail-table">
-                <thead><tr><th>TIENDA</th><th>CADENA</th><th>APERTURA</th><th>VENTAS</th><th>MARGEN</th><th>MARGEN / VENTA</th><th>ARRIENDOS</th><th>REMUNERACIONES</th><th>COP</th><th>ROP</th><th>UTILIDAD</th><th>VAR. UTILIDAD</th></tr></thead>
-                <tbody>{list.map((s) => <tr key={s.code}>
-                  <td><b>{s.name}</b><small>#{s.code}</small></td><td>{s.chain}</td><td><i className="tag">{openingType(s, 2027)}</i></td>
-                  <td>{money(s.metric.sales)}</td><td>{money(s.metric.margin)}</td><td><b>{pct(s.metric.margin,s.metric.sales).toFixed(2)}%</b></td>
-                  <td>{money(s.metric.rent)}</td><td>{money(s.metric.payroll)}</td><td>{money(s.metric.operatingCost)}</td>
-                  <td className={s.metric.operatingResult >= 0 ? "pos" : "neg"}>{money(s.metric.operatingResult)}</td><td className={s.metric.utility >= 0 ? "pos bold" : "neg bold"}>{money(s.metric.utility)}</td>
-                  <td><YoY current={s.metric.utility} prior={s.annual[2026].utility} /></td>
-                </tr>)}</tbody>
-              </table>
+          <section
+            className={`detail-group group-${group.toLowerCase()}`}
+            key={group}
+          >
+            <div className="group-head">
+              <div>
+                <h2>
+                  <button
+                    type="button"
+                    className="detail-accordion-toggle"
+                    aria-expanded={isExpanded}
+                    aria-controls={panelId}
+                    onClick={() =>
+                      setExpandedGroup(isExpanded ? null : group)
+                    }
+                  >
+                    Rentabilidad {group}
+                    <ChevronDown
+                      className={isExpanded ? "is-open" : ""}
+                      aria-hidden="true"
+                    />
+                  </button>
+                </h2>
+                <p>
+                  {group === "Alta"
+                    ? "Utilidad / venta ≥ 6%"
+                    : group === "Media"
+                    ? "Utilidad / venta entre 2% y 6%"
+                    : "Utilidad / venta < 2%"}
+                </p>
+              </div>
+              <strong>{list.length} tiendas</strong>
+            </div>
+
+            <div
+              id={panelId}
+              role="region"
+              aria-label={`Detalle rentabilidad ${group}`}
+            >
+              {isExpanded && (
+                <div className="panel scroll">
+                  <table className="detail-table">
+                    <thead>
+                      <tr>
+                        {[
+                          "TIENDA", "CADENA", "APERTURA",
+                          "VENTAS", "MARGEN", "MARGEN / VENTA",
+                          "ARRIENDOS", "REMUNERACIONES",
+                          "COP", "ROP", "UTILIDAD", "VAR. UTILIDAD"
+                        ].map((column) => (
+                          <th key={column}>{column}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {list.map((s) => (
+                        <tr key={s.code}>
+                          <td><b>{s.name}</b><small>#{s.code}</small></td>
+                          <td>{s.chain}</td>
+                          <td><i className="tag">{openingType(s, 2027)}</i></td>
+                          <td>{money(s.metric.sales)}</td>
+                          <td>{money(s.metric.margin)}</td>
+                          <td>
+                            <b>
+                              {pct(s.metric.margin, s.metric.sales).toFixed(2)}%
+                            </b>
+                          </td>
+                          <td>{money(s.metric.rent)}</td>
+                          <td>{money(s.metric.payroll)}</td>
+                          <td>{money(s.metric.operatingCost)}</td>
+                          <td className={s.metric.operatingResult >= 0 ? "pos" : "neg"}>
+                            {money(s.metric.operatingResult)}
+                          </td>
+                          <td className={s.metric.utility >= 0 ? "pos bold" : "neg bold"}>
+                            {money(s.metric.utility)}
+                          </td>
+                          <td>
+                            <YoY
+                              current={s.metric.utility}
+                              prior={s.annual[2026].utility}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </section>
         );
@@ -960,6 +1198,7 @@ function Detail({ selection }: { selection: StoreRow[] }) {
     </>
   );
 }
+
 
 const normalizeStoreKey = (value: string) => value
   .normalize("NFD")
@@ -1118,6 +1357,7 @@ function M2Analysis({ selection }: { selection: StoreRow[] }) {
 function BreakEven({ selection }: { selection: StoreRow[] }) {
   const [breakEvenMetric, setBreakEvenMetric] = useState<ProfitMetric>("fourWalls");
   const [breakEvenYear, setBreakEvenYear] = useState<Year>(2027);
+  const breakEvenYearDropdownRef = useRef<HTMLDetailsElement>(null);
   const metricValue = (store: StoreRow, year: Year) => breakEvenMetric === "utility" ? store.annual[year].utility : store.annual[year].fourWalls;
   const metricLabel = breakEvenMetric === "utility" ? "Utilidad" : "Four Walls";
   const scenarioLabel = `${breakEvenYear}S`;
@@ -1205,7 +1445,125 @@ function BreakEven({ selection }: { selection: StoreRow[] }) {
   );
   return (
     <>
-      <div className="title break-even-title"><div><i>05</i><span><h2>Break-Even</h2><p>Simulación de punto cero para tiendas con {metricLabel.toLowerCase()} negativo en {yearLabel(breakEvenYear)}</p></span></div><div className="title-actions"><div className="quadrant-controls be-controls"><div className="profit-toggle"><button className={breakEvenMetric === "fourWalls" ? "active" : ""} onClick={() => setBreakEvenMetric("fourWalls")}>FOUR WALLS</button><button className={breakEvenMetric === "utility" ? "active" : ""} onClick={() => setBreakEvenMetric("utility")}>UTILIDAD</button></div><label className="year-select">AÑO<select value={breakEvenYear} onChange={(e) => setBreakEvenYear(Number(e.target.value) as Year)}>{years.map((y) => <option key={y} value={y}>{yearLabel(y)}</option>)}</select><ChevronDown /></label></div><strong className="neg">{rows.length} tiendas bajo punto de equilibrio</strong><button className="export-button" onClick={exportBreakEven}>EXPORTAR A EXCEL</button></div></div>
+      <div className="title break-even-title">
+        <div>
+          <i>05</i>
+          <span>
+            <h2>Break-Even</h2>
+            <p>Simulación de punto cero para tiendas con {metricLabel.toLowerCase()} negativo en {yearLabel(breakEvenYear)}</p>
+          </span>
+        </div>
+        <div className="title-actions">
+          <div className="quadrant-controls be-controls">
+            {/* Selector de métrica */}
+            <div
+              className="profit-toggle"
+              aria-label="Métrica de Break-Even"
+            >
+              <button
+                type="button"
+                className={breakEvenMetric === "fourWalls" ? "active" : ""}
+                aria-pressed={breakEvenMetric === "fourWalls"}
+                onClick={() => setBreakEvenMetric("fourWalls")}
+              >
+                FOUR WALLS
+              </button>
+
+              <button
+                type="button"
+                className={breakEvenMetric === "utility" ? "active" : ""}
+                aria-pressed={breakEvenMetric === "utility"}
+                onClick={() => setBreakEvenMetric("utility")}
+              >
+                UTILIDAD
+              </button>
+            </div>
+
+            {/* Selector único de año */}
+            <details
+              ref={breakEvenYearDropdownRef}
+              data-dropdown
+              name="portal-dropdown"
+              className="chain-multiselect quadrant-year-select be-year-select"
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  if (breakEvenYearDropdownRef.current?.open) {
+                    event.preventDefault();
+                    breakEvenYearDropdownRef.current.open = false;
+                    breakEvenYearDropdownRef.current
+                      .querySelector("summary")
+                      ?.focus();
+                  }
+                  return;
+                }
+              
+                if (
+                  event.key !== "ArrowDown" &&
+                  event.key !== "ArrowUp"
+                ) return;
+              
+                if (!breakEvenYearDropdownRef.current?.open) return;
+              
+                const options = Array.from(
+                  event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                    ".be-year-options button"
+                  )
+                );
+              
+                if (!options.length) return;
+              
+                event.preventDefault();
+              
+                const index = options.indexOf(
+                  document.activeElement as HTMLButtonElement
+                );
+              
+                const nextIndex =
+                  index === -1
+                    ? event.key === "ArrowDown"
+                      ? 0
+                      : options.length - 1
+                    : (
+                        index +
+                        (event.key === "ArrowDown" ? 1 : -1) +
+                        options.length
+                      ) % options.length;
+                    
+                options[nextIndex].focus();
+              }}
+            >
+              <summary>
+                <span>
+                  AÑO
+                  <strong>{yearLabel(breakEvenYear)}</strong>
+                </span>
+                <ChevronDown />
+              </summary>
+            
+              <div className="chain-options be-year-options">
+                {years.map((year) => (
+                  <button
+                    key={year}
+                    type="button"
+                    className={breakEvenYear === year ? "active" : ""}
+                    aria-pressed={breakEvenYear === year}
+                    onClick={() => {
+                      setBreakEvenYear(year);
+                    
+                      if (breakEvenYearDropdownRef.current) {
+                        breakEvenYearDropdownRef.current.open = false;
+                      }
+                    }}
+                  >
+                    {yearLabel(year)}
+                  </button>
+                ))}
+              </div>
+            </details>
+          </div>
+          <strong className="neg">{rows.length} tiendas bajo punto de equilibrio</strong><button className="export-button" onClick={exportBreakEven}>EXPORTAR A EXCEL</button>
+          </div>
+        </div>
       <section className="be-kpis">
         <article><label>{metricLabel.toUpperCase()} NEGATIVO · {yearLabel(breakEvenYear)}</label><strong className="neg">{money(totalLoss)}</strong><span>universo simulado</span></article>
         <article><label>VENTA ACTUAL · {yearLabel(breakEvenYear)}</label><strong>{money(totalCurrentSales)}</strong><span>tiendas con pérdida</span></article>
